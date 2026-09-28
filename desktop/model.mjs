@@ -96,7 +96,7 @@ function clip(box, bound) {
 function idSet(box) {
   if (box == null) return null; // read not performed => unknown
   const arr = Array.isArray(box) ? box : box.ids;
-  return new Set(arr);
+  return new Set((arr ?? []).map(row => typeof row === 'object' && row !== null ? row.id : row));
 }
 
 function makeNode(id) {

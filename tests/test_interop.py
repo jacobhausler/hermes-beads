@@ -76,6 +76,12 @@ class WorkUnsupported(unittest.TestCase):
         self.assertEqual(out["error"], "unqualified_admission_claim")
         self.assertFalse(out["delivery"])
 
+    def test_empty_self_qualified_receipt_cannot_admit(self):
+        out = interop.submit_request(dict(REQ, intent="work",
+            workflow_admission={"qualified": True}))
+        self.assertFalse(out["ok"])
+        self.assertNotEqual(out.get("status"), "admitted")
+
     def test_workflow_never_imported(self):
         self.assertFalse(any("hermes-workflows" in m or m == "wf"
                              for m in sys.modules))

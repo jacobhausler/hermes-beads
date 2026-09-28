@@ -179,11 +179,7 @@ def submit_request(request) -> dict:
             "unqualified_admission_claim",
             f"receipt claims supported but installed evidence says otherwise: {bogus}",
             request)
-    return {
-        "ok": True, "workspace": workspace, "bead": bead, "intent": intent,
-        "status": "admitted",
-        "route": "workflow_admission_door",
-        "receipt_id": receipt.get("receipt_id"),
-        "delivery": False,
-        "no_dispatch": True,  # this lane never dispatches; integration owns effects
-    }
+    # No authenticated admission API is qualified in this slice. Caller-supplied
+    # booleans or receipt IDs cannot turn a routing decision into authorization.
+    return _typed_reject("workflow_admission_unqualified",
+                         "No qualified admission door; Work remains unavailable", request)
