@@ -233,12 +233,7 @@ class RealStoreParity(unittest.TestCase):
     def _comparable(self, rows):
         """Parsed-field projection: native identities/fields, key-sorted so
         serialization order can never be the comparison."""
-        keep = ("id", "title", "status", "priority", "issue_type",
-                "assignee", "labels", "notes", "acceptance_criteria",
-                "external_ref", "parent", "deleted_status")
-        return sorted(
-            ({k: r.get(k) for k in keep if k in r} for r in rows),
-            key=lambda r: r.get("id") or "")
+        return sorted(rows, key=lambda r: r.get("id") or "")
 
     def test_frontier_parity_same_shell_native_ready(self):
         # Task-targeted verification: plugin frontier == same-shell
