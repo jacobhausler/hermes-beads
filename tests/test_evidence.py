@@ -221,6 +221,26 @@ class AuthorizedClosure(unittest.TestCase):
             self._close(reason="   ")
 
 
+class AuthorizedReopen(unittest.TestCase):
+    def test_authorized_reopen_readback_and_refusal(self):
+        store = make_store()
+        iid = create(store, "to reopen")
+        a = actor("closer")
+        subprocess.run([BD_BIN, "-C", store, "--actor", a, "close", iid,
+                        "--reason", "done: artifact.log", "--json"],
+                       capture_output=True, text=True, check=True)
+        rec = evidence.authorized_reopen(store, iid, actor=a, bd_bin=BD_BIN,
+                                         authorization="parent ok",
+                                         reason="reopen: evidence was stale")
+        self.assertTrue(rec["readback_verified"])
+        self.assertEqual(show_dict(store, iid)["status"], "open")
+        before = show_raw(store, iid)
+        with self.assertRaises(evidence.ClosureRefusedError):
+            evidence.authorized_reopen(store, iid, actor=a, bd_bin=BD_BIN,
+                                       authorization="", reason="whatever")
+        self.assertEqual(show_raw(store, iid), before)
+
+
 class EpicInspectionNoSweep(unittest.TestCase):
     def test_epic_eligibility_read_only_inspection(self):
         store = make_store()
