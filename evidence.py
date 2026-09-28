@@ -45,23 +45,37 @@ import write_protocol
 EVIDENCE_PREFIX = "EVIDENCE"
 REQUEST_PREFIX = "REQUEST-CLOSURE"
 
-# REVIEW-A: attempt tokens match at their boundary, never as a substring
-# ("attempt=a1" must not match inside "attempt=a1-final").
-# REVIEW-B: an artifact citation must be artifact-shaped (path/URL/ID:
-# separator or dot, min length) — a caller-chosen "e" cites nothing.
-_ATTEMPT_TOKEN_SEP = r"[A-Za-z0-9_.:/@-]"
-MIN_ARTIFACT_LEN = 3
+# Parent ruling (exact-envelope): match the machine envelope FIELDS, not
+# the comment text. The writer emits exactly
+#   EVIDENCE attempt=<a> artifacts=<a1;a2;...> [summary=<free text>]
+# so the reader parses that anchored header and compares the attempt field
+# by equality and each artifact against the ';'-delimited entries exactly.
+# Regex boundary classes and substring containment over the whole text both
+# leaked (a1+final, test_evidence.py ⊂ tests/test_evidence.py, summary
+# tokens). Artifacts may not contain ';' or whitespace — the writer's own
+# delimiter contract.
+_HEADER_RE = re.compile(
+    rf"^{re.escape(EVIDENCE_PREFIX)} "
+    rf"attempt=(?P<attempt>\S+) "
+    rf"artifacts=(?P<artifacts>[^;\s][^;\s]*(?:;[^;\s][^;\s]*)*)"
+    rf"(?: summary=(?P<summary>.*))?$")
 
 
-def _attempt_token_re(attempt):
-    return re.compile(
-        rf"(?<!{_ATTEMPT_TOKEN_SEP})attempt={re.escape(str(attempt))}"
-        rf"(?!{_ATTEMPT_TOKEN_SEP})")
+def _parse_envelope_fields(text):
+    """(attempt, artifacts) exactly as written, or None if the comment is
+    not a well-formed envelope."""
+    m = _HEADER_RE.match(text)
+    if not m:
+        return None
+    return m.group("attempt"), m.group("artifacts").split(";")
 
 
-def _artifact_shaped(a):
-    return (isinstance(a, str) and len(a) >= MIN_ARTIFACT_LEN
-            and ("/" in a or "." in a))
+def _field_citable(a):
+    """A demanded artifact must be a single field-safe token: non-empty str
+    with no ';' (the field delimiter) and no whitespace (field
+    terminator)."""
+    return (isinstance(a, str) and a and ";" not in a
+            and not any(ch.isspace() for ch in a))
 
 CLOSE_REFUSAL = (
     "worker surface never closes: closure is the parent's verified act on "
@@ -91,11 +105,19 @@ class ClosureAmbiguityError(EvidenceError):
 
 def evidence_comment_text(attempt, artifacts, summary=""):
     """The machine-checkable append-only envelope: EVIDENCE attempt=<a>
-    artifacts=<;sep> [summary]."""
+    artifacts=<;sep> [summary]. Artifacts are validated against the
+    reader's field contract so a recorded envelope is always parseable."""
     if not attempt or not str(attempt).strip():
         raise ValueError("evidence requires a non-empty attempt identity")
+    if any(ch.isspace() for ch in str(attempt)):
+        raise ValueError("attempt must be a single whitespace-free token")
     if not artifacts:
         raise ValueError("evidence requires at least one cited artifact")
+    uncitable = [a for a in artifacts if not _field_citable(a)]
+    if uncitable:
+        raise ValueError(
+            f"artifacts must be single field-safe tokens (no ';' or "
+            f"whitespace); not recordable: {uncitable!r}")
     text = (f"{EVIDENCE_PREFIX} attempt={attempt} "
             f"artifacts={';'.join(artifacts)}")
     if summary:
@@ -107,16 +129,21 @@ def _find_evidence_comment(workspace, issue_id, *, evidence_actor, attempt,
                            artifacts, bd_bin):
     """Comments API (NOT show — show does not embed comments), exact-scope
     match: same store (workspace), same bead (issue_id), author=
-    evidence_actor, contains attempt=<attempt>, cites every artifact.
-    Returns the comment or None; a failed comments read raises honestly."""
+    evidence_actor, and the comment parses as a well-formed envelope whose
+    attempt field EQUALS `attempt` and whose ';'-delimited artifact fields
+    include every demanded artifact exactly. Returns the comment or None;
+    a failed comments read raises honestly."""
     rows = read_model.comments(workspace, issue_id, bd_bin=bd_bin)
-    attempt_re = _attempt_token_re(attempt)
     for c in rows:
         text = c.get("text") or ""
-        if (c.get("author") == evidence_actor
-                and text.startswith(EVIDENCE_PREFIX)
-                and attempt_re.search(text)
-                and all(a in text for a in artifacts)):
+        if c.get("author") != evidence_actor:
+            continue
+        fields = _parse_envelope_fields(text)
+        if fields is None:
+            continue
+        rec_attempt, rec_artifacts = fields
+        if rec_attempt == str(attempt) and all(a in rec_artifacts
+                                               for a in artifacts):
             return c
     return None
 
@@ -174,12 +201,12 @@ def authorized_close(workspace, issue_id, *, actor, authorization, reason,
             "an empty reason; the plugin surface does not)")
     if not artifacts:
         raise ClosureRefusedError("close refused: no artifacts cited")
-    unshaped = [a for a in artifacts if not _artifact_shaped(a)]
-    if unshaped:
+    uncitable = [a for a in artifacts if not _field_citable(a)]
+    if uncitable:
         raise ClosureRefusedError(
-            f"close refused: artifacts must be artifact-shaped tokens "
-            f"(path/URL/ID, >= {MIN_ARTIFACT_LEN} chars, containing '/' or "
-            f"'.'); not citable: {unshaped}")
+            "close refused: artifacts must be single field-safe tokens "
+            "(no ';' delimiter, no whitespace); not citable: "
+            f"{uncitable!r}")
     missing_cite = [a for a in artifacts if a not in reason]
     if missing_cite:
         raise ClosureRefusedError(

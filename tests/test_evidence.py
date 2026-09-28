@@ -276,6 +276,84 @@ class AuthorizedClosure(unittest.TestCase):
             self._close(reason="   ")
 
 
+class ExactEnvelopeMatching(unittest.TestCase):
+    """Parent ruling: match the machine envelope FIELDS exactly — anchored
+    header `EVIDENCE attempt=<a> artifacts=<;sep> [summary=...]` with exact
+    attempt equality and exact semicolon-delimited artifact membership —
+    never a regex/substring approximation over the whole comment text."""
+
+    def setUp(self):
+        self.store = make_store()
+        self.parent = actor("parent")
+
+    def _seed(self, attempt, artifacts, summary=""):
+        iid = create(self.store, "envelope bead")
+        w = actor("worker")
+        import claims
+        claims.claim(self.store, iid, actor=w, bd_bin=BD_BIN)
+        evidence.WorkerSurface(self.store, actor=w, bd_bin=BD_BIN) \
+            .record_evidence(iid, attempt=attempt, artifacts=artifacts,
+                             summary=summary)
+        return iid, w
+
+    def _close(self, iid, w, *, attempt, artifacts, reason):
+        return evidence.authorized_close(
+            self.store, iid, actor=self.parent, bd_bin=BD_BIN,
+            authorization="parent ok", reason=reason,
+            evidence_actor=w, attempt=attempt, artifacts=artifacts)
+
+    def _assert_refused_untouched(self, iid, before, **kw):
+        with self.assertRaises(evidence.ClosureRefusedError):
+            self._close(iid, **kw)
+        self.assertEqual(show_raw(self.store, iid), before)
+        self.assertEqual(show_dict(self.store, iid)["status"], "in_progress")
+
+    def test_punctuation_flanked_attempt_collision_refused(self):
+        """Parent-found hole: 'a1+final' — '+' is outside the separator
+        class, so attempt=a1 boundary-matched inside attempt=a1+final.
+        Exact attempt-field equality closes this whole punctuation class."""
+        iid, w = self._seed("a1+final", ["tests/test_evidence.py"])
+        before = show_raw(self.store, iid)
+        self._assert_refused_untouched(
+            iid, before, w=w, attempt="a1",
+            artifacts=["tests/test_evidence.py"],
+            reason="done: tests/test_evidence.py")
+
+    def test_artifact_suffix_collision_refused(self):
+        """Parent-found hole: artifacts=['test_evidence.py'] matched as a
+        substring of the recorded 'tests/test_evidence.py'. Artifact
+        entries must match a ';' field entry exactly."""
+        iid, w = self._seed("a1", ["tests/test_evidence.py"])
+        before = show_raw(self.store, iid)
+        self._assert_refused_untouched(
+            iid, before, w=w, attempt="a1",
+            artifacts=["test_evidence.py"],
+            reason="done: test_evidence.py")
+
+    def test_summary_tokens_are_not_fields_refused(self):
+        """A path or attempt token that appears only in the opaque summary
+        tail is not field evidence and must not satisfy a close."""
+        iid, w = self._seed("a1", ["notes/x.md"],
+                            summary="see tests/test_evidence.py for proof")
+        before = show_raw(self.store, iid)
+        self._assert_refused_untouched(
+            iid, before, w=w, attempt="a1",
+            artifacts=["tests/test_evidence.py"],
+            reason="done: tests/test_evidence.py")
+
+    def test_exact_fields_still_close(self):
+        """Positive control: exact attempt + exact artifact entries close
+        even when the summary flanks lookalike tokens."""
+        iid, w = self._seed(
+            "a1", ["tests/test_evidence.py"],
+            summary="decoy attempt=a1+final test_evidence.py noise")
+        rec = self._close(iid, w, attempt="a1",
+                          artifacts=["tests/test_evidence.py"],
+                          reason="Verified: tests/test_evidence.py")
+        self.assertTrue(rec["readback_verified"])
+        self.assertEqual(show_dict(self.store, iid)["status"], "closed")
+
+
 class AuthorizedReopen(unittest.TestCase):
     def test_authorized_reopen_readback_and_refusal(self):
         store = make_store()
