@@ -243,7 +243,11 @@ test("controller executes exactly the bound commands; Tab exits without preventD
 test("conventional tree arrows: Right expands then visits first child, Left collapses in place then visits parent, Home/End jump", () => {
   const f = fixture("hierarchy.json");
   const snap = snapOf(f);
-  const w = createWorkbenchState(snap, { selection: "epic", expanded: new Set(["root", "epic"]) });
+  // NOTE: under the single expansion truth the model's initial.expanded IS
+  // the view (the old tree WeakMap silently overrode it with all-expanded).
+  // The Right-on-expanded-node case needs 'a' in the model's set to state
+  // the same precondition the test's own message asserts.
+  const w = createWorkbenchState(snap, { selection: "epic", expanded: new Set(["root", "epic", "a"]) });
   const c = createTreeController({ snapshot: snap, ui: w });
   const P = (key, extra = {}) => c.press({ key, isComposing: false, target: buttonTarget(), preventDefault: () => {}, ...extra });
   const vis = () => c.visibleIds(); // the tree's presentation view of the rows
@@ -444,6 +448,115 @@ test("1000-row cap: explicit partial-scope + load-more, never silent truncation"
   const last = box.rows.at(-1);
   assert.equal(last.kind, "load-more");
   assert.match(last.label, /1001|more/i, "load-more row states the truth in words");
+});
+
+// ============================================================================
+// E0. Expansion single-truth regressions (independent-review P1/P2/P3/P4/P4b/P6)
+// The tree and the model must share ONE expansion truth: history restore,
+// initial.expanded, ui.toggleExpanded and ui.jump all drive what renders.
+// ============================================================================
+
+const pressFactory = (c) => (key, extra = {}) =>
+  c.press({ key, isComposing: false, target: buttonTarget(), preventDefault: () => {}, ...extra });
+
+test("P1: collapse then Alt+Back/Alt+Forward restores expansion in the RENDERED tree", () => {
+  const snap = snapOf(fixture("hierarchy.json"));
+  const w = createWorkbenchState(snap);
+  const c = createTreeController({ snapshot: snap, ui: w });
+  const P = pressFactory(c);
+  w.jump("deep1", "detail");                      // seed a history entry
+  const expBefore = [...expandedOf(snap, w)].sort();
+  w.jump("a");
+  P("ArrowLeft");                                 // collapse a (cursor in place)
+  assert.ok(!c.visibleIds().includes("mid"), "collapse hid mid");
+  P("ArrowLeft", { altKey: true });               // Alt+Back
+  assert.deepEqual([...expandedOf(snap, w)].sort(), expBefore,
+    "restored bundle's expansion must equal the pre-collapse expansion");
+  assert.ok(c.visibleIds().includes("mid"), "back re-expands the RENDERED tree");
+  P("ArrowRight", { altKey: true });               // Alt+Forward
+  assert.deepEqual([...expandedOf(snap, w)].sort(), expBefore,
+    "forward keeps one expansion truth with the model");
+});
+
+test("P2: model initial.expanded is the tree's starting view (collapsed parents hide descendants, no tail re-emit)", () => {
+  const snap = snapOf(fixture("hierarchy.json"));
+  const w = createWorkbenchState(snap, { selection: "deep1", expanded: new Set(["root"]) });
+  const c = createTreeController({ snapshot: snap, ui: w });
+  const vis = c.visibleIds();
+  assert.ok(!vis.includes("mid") && !vis.includes("deep1") && !vis.includes("a"),
+    "tree view honors initial.expanded: epic collapsed hides its whole subtree");
+  const modelVis = w.visibleRows().map((r) => r.id);
+  assert.ok(!modelVis.includes("mid") && !modelVis.includes("deep1") && !modelVis.includes("a"),
+    "model view honors initial.expanded too: collapsed descendants never re-emit at depth 0");
+  // cursor on a hidden row: tree stays reachable — exactly one tabbable row remains
+  const items = nodesOf(Tree({ snapshot: snap, ui: w })).filter((n) => n.props.role === "treeitem");
+  assert.equal(items.filter((r) => r.props.tabIndex === 0).length, 1,
+    "selection on a hidden descendant must not leave the tree with zero tabbable rows");
+});
+
+test("P3: ui.toggleExpanded (the model's expansion API) drives the rendered tree", () => {
+  const snap = snapOf(fixture("hierarchy.json"));
+  const w = createWorkbenchState(snap);
+  const c = createTreeController({ snapshot: snap, ui: w });
+  assert.ok(c.visibleIds().includes("a"));
+  w.toggleExpanded("epic"); // collapse via the MODEL's documented API
+  assert.ok(!c.visibleIds().includes("a"), "toggleExpanded collapses in the tree view");
+  assert.ok(!w.visibleRows().map((r) => r.id).includes("a"),
+    "tree view and model view agree after toggleExpanded");
+  const el = Tree({ snapshot: snap, ui: w });
+  assert.equal(findById(el, "row:epic").props["aria-expanded"], false,
+    "aria-expanded follows the single truth");
+});
+
+test("P4: ui.jump is a reveal primitive — jumping into a collapsed subtree renders the row", () => {
+  const snap = snapOf(fixture("hierarchy.json"));
+  const w = createWorkbenchState(snap);
+  const c = createTreeController({ snapshot: snap, ui: w });
+  const P = pressFactory(c);
+  w.jump("a");
+  P("ArrowLeft"); // collapse a via controller (model truth)
+  assert.ok(!c.visibleIds().includes("deep1"), "deep1 hidden pre-jump");
+  w.jump("deep1"); // the search lane's reveal path
+  assert.ok(c.visibleIds().includes("deep1"), "jump reveals the ancestor chain");
+  assert.equal(w.selection, "deep1");
+  assert.ok(findById(Tree({ snapshot: snap, ui: w }), "row:deep1"), "jumped row renders");
+});
+
+test("P4b: cursor on a previously-hidden row keeps exactly one tabbable + one aria-selected row", () => {
+  const snap = snapOf(fixture("hierarchy.json"));
+  const w = createWorkbenchState(snap);
+  const c = createTreeController({ snapshot: snap, ui: w });
+  const P = pressFactory(c);
+  w.jump("a");
+  P("ArrowLeft"); // collapse a
+  w.jump("deep1"); // search-style reveal
+  const items = nodesOf(Tree({ snapshot: snap, ui: w })).filter((n) => n.props.role === "treeitem");
+  assert.equal(items.filter((n) => n.props.tabIndex === 0).length, 1, "roving tab stop exists");
+  assert.equal(items.filter((n) => n.props["aria-selected"] === true).length, 1,
+    "the selected row is visible to AT");
+});
+
+test("P6: buildTreeRows renders the same collapsed view as Tree, with per-parent posinset <= setsize", () => {
+  const snap = snapOf(fixture("hierarchy.json"));
+  const w = createWorkbenchState(snap);
+  const c = createTreeController({ snapshot: snap, ui: w });
+  const P = pressFactory(c);
+  w.jump("epic");
+  P("ArrowLeft"); // collapse epic via controller
+  const treeView = c.visibleIds();
+  const box = buildTreeRows(snap, w);
+  const data = box.rows.filter((r) => r.kind !== "load-more");
+  const boxIds = data.map((r) => r.id);
+  assert.deepEqual(boxIds, treeView, "builder rows are exactly the Tree rows");
+  const ordinal = new Map();
+  for (const r of data) {
+    const pk = JSON.stringify(r.parentId);
+    const pos = (ordinal.get(pk) ?? 0) + 1;
+    ordinal.set(pk, pos);
+    assert.equal(r.posinset, pos, `posinset is the per-parent ordinal for ${r.id}`);
+    assert.ok(r.posinset >= 1 && r.posinset <= r.setsize,
+      `posinset<=setsize for ${r.id} (${r.posinset}>${r.setsize})`);
+  }
 });
 
 // ============================================================================

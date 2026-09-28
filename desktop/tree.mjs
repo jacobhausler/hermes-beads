@@ -49,35 +49,41 @@ export function epicProgress(snapshot, id) {
 }
 
 // ---- tree rows: hierarchy only, byte-matching snapshot parents ------------
+// THE row source is treeVisibleRows — the one expansion truth (model's
+// `expanded` via ui). Builder and Tree therefore render identical rows;
+// posinset is the per-parent ordinal among rendered rows, setsize the
+// per-parent sibling count in the loaded set (same rule as Tree).
 export function buildTreeRows(snapshot, ui, opts = {}) {
   const maxRows = opts.maxRows ?? Infinity;
-  const rows = ui.visibleRows();
+  const rows = treeVisibleRows(snapshot, ui);
   const partial = rows.length > maxRows;
   const kept = partial ? rows.slice(0, maxRows) : rows;
-  // setsize = observed siblings in the LOADED set (consistent with what is
-  // rendered), keyed by the parent FIELD value.
-  const byParent = new Map();
-  for (const n of snapshot.nodes.values()) {
-    const k = n.parent == null ? "" : n.parent;
-    byParent.set(k, (byParent.get(k) ?? 0) + 1);
-  }
-  const out = kept.map(({ id, depth }, i) => {
+  const setsizeOf = (id) => {
+    const n = snapshot.nodes.get(id);
+    let k = 0;
+    for (const m of snapshot.nodes.values()) if ((m.parent ?? null) === (n?.parent ?? null)) k += 1;
+    return Math.max(1, k);
+  };
+  const posByParent = new Map(); // 1-based ordinal among rendered siblings
+  const out = kept.map(({ id, depth }) => {
     const node = snapshot.nodes.get(id);
     const rec = snapshot.byId.get(id) ?? {};
-    const pk = node.parent == null ? "" : node.parent;
+    const pk = node?.parent == null ? "" : node.parent;
+    const posinset = (posByParent.get(pk) ?? 0) + 1;
+    posByParent.set(pk, posinset);
     const row = {
       kind: "row", id,
-      parentId: node.parent ?? null, // byte-match of the snapshot parent field
+      parentId: node?.parent ?? null, // byte-match of the snapshot parent field
       depth,
       indentPx: depth * INDENT_PX,
-      statusWord: node.storedStatus ?? "unknown",
-      statusGlyph: statusLabel(node.storedStatus).split(" ")[0],
-      posinset: i + 1,
-      setsize: byParent.get(pk) ?? 1,
+      statusWord: node?.storedStatus ?? "unknown",
+      statusGlyph: statusLabel(node?.storedStatus ?? null).split(" ")[0],
+      posinset,
+      setsize: setsizeOf(id),
       title: typeof rec.title === "string" ? rec.title : id, // verbatim
     };
     if (snapshot.blockedIds?.has(id)) row.blockedWord = "blocked";
-    if (node.derivedBlocked === true && !row.blockedWord) row.blockedWord = "blocked (derived)";
+    if (node?.derivedBlocked === true && !row.blockedWord) row.blockedWord = "blocked (derived)";
     const prog = epicProgress(snapshot, id);
     if (prog) row.epicProgress = `${prog.closed}/${prog.total}`;
     return row;
@@ -137,25 +143,19 @@ export function resolveKey(ev) {
   return null;
 }
 
-// ---- tree-owned presentation state -----------------------------------------
-// The frozen model (model.mjs, reused unchanged) re-emits collapsed-subtree
-// children as depth-0 tail rows (its bounded-orphan honesty) and does not
-// expose `expanded` on its API. The TREE therefore owns presentation
-// expansion, keyed per ui object so the controller and Tree share one view.
-const treeStateFor = new WeakMap();
-function treeState(snapshot, ui) {
-  let st = treeStateFor.get(ui);
-  if (!st) {
-    const expanded = new Set();
-    for (const [id, n] of snapshot.nodes) if (n.childIds.length && !n.cyclic) expanded.add(id);
-    st = { expanded };
-    treeStateFor.set(ui, st);
-  }
-  return st;
+// ---- expansion: ONE truth, owned by the model ------------------------------
+// model.mjs's createWorkbenchState owns `expanded` (visibleRows/toggleExpanded/
+// jump/history bundles all read+write it). The tree renders THAT state and
+// never keeps a parallel copy: the old per-ui WeakMap let model history
+// restore, initial.expanded, ui.toggleExpanded and ui.jump all go unrendered.
+// The model exposes its live set via ui.expanded; expandedOf is the
+// read-only snapshot for tests/assertions.
+function modelExpanded(snapshot, ui) {
+  return ui.expanded;
 }
-// read-only view of the tree's presentation expansion (tests/assertions)
+// read-only view of THE expansion (tests/assertions) — delegates to the model
 export function expandedOf(snapshot, ui) {
-  return new Set(treeState(snapshot, ui).expanded);
+  return new Set(modelExpanded(snapshot, ui));
 }
 
 // Conventional tree traversal over the snapshot's parent FIELD only:
@@ -165,7 +165,7 @@ export function expandedOf(snapshot, ui) {
 // (missing-parent orphans, cycle members) still get exactly one row — never
 // silently hidden — mirroring model.mjs's honesty rule.
 function treeVisibleRows(snapshot, ui) {
-  const { expanded } = treeState(snapshot, ui);
+  const expanded = modelExpanded(snapshot, ui);
   const seenAll = new Set();
   const mark = (id) => {
     const n = snapshot.nodes.get(id);
@@ -241,7 +241,7 @@ export function createTreeController({ snapshot, ui }) {
     if (cmd === "exit-tree") { box.tabExit = true; return cmd; } // Tab exits natively
     ev.preventDefault?.();
     const node = () => snapshot.nodes.get(ui.selection);
-    const exp = () => treeState(snapshot, ui).expanded;
+    const exp = () => modelExpanded(snapshot, ui);
     switch (cmd) {
       case "cursor-up": stepBy(-1); break;
       case "cursor-down": stepBy(1); break;
@@ -373,14 +373,19 @@ export function createRefreshScheduler({ provider, now = () => Date.now(), delay
 // ---- the ARIA tree component -------------------------------------------------
 export function Tree({ snapshot, ui, scheduler }) {
   const rows = treeVisibleRows(snapshot, ui);
-  const { expanded } = treeState(snapshot, ui);
+  const expanded = modelExpanded(snapshot, ui);
   const setsizeOf = (id) => {
     const n = snapshot.nodes.get(id);
     let k = 0;
     for (const m of snapshot.nodes.values()) if ((m.parent ?? null) === (n?.parent ?? null)) k += 1;
     return Math.max(1, k);
   };
-  const selId = ui.selection ?? (rows[0]?.id ?? null);
+  // The roving tab stop must exist: if the model cursor sits on a row the
+  // current expansion hides (e.g. initial.selection deep in a collapsed
+  // subtree), fall back to the first rendered row.
+  const renderedIds = new Set(rows.map((r) => r.id));
+  const selId = (ui.selection != null && renderedIds.has(ui.selection))
+    ? ui.selection : (rows[0]?.id ?? null);
   const focusId = ui.focus;
   const posByParent = new Map(); // 1-based ordinal among visible siblings
   const items = rows.map((r, i) => {
