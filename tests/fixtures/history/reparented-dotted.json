@@ -1,0 +1,11 @@
+{
+  "storeInfo": { "workspace": "/lab/store", "db": "/lab/store/.beads/lab.db" },
+  "issues": [
+    { "id": "branch", "parent": null, "status": "open", "dependencies": [] },
+    { "id": "reparented-from-x", "parent": "branch", "status": "open", "dependencies": [] },
+    { "id": "x.y", "parent": null, "status": "open", "dependencies": [] },
+    { "id": "x.y.z", "parent": "reparented-from-x", "status": "open", "dependencies": [] }
+  ],
+  "ready": ["branch", "reparented-from-x", "x.y", "x.y.z"],
+  "blocked": []
+}
