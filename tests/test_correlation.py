@@ -255,8 +255,9 @@ class CouplingGates(unittest.TestCase):
         self.assertEqual(hits, [], f"runner sources must stay 0-hit: {hits}")
 
     def test_correlation_module_has_no_workflow_import(self):
-        src = open(os.path.join(LANE, "correlation.py"),
-                   encoding="utf-8").read()
+        with open(os.path.join(LANE, "correlation.py"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
         for tok in ("import wf", "from wf", "hermes_workflow",
                     "hermes-workflows", "workflow.runner"):
             self.assertNotIn(tok, src, f"forbidden coupling token: {tok}")
@@ -265,8 +266,9 @@ class CouplingGates(unittest.TestCase):
         importers = []
         for f in os.listdir(LANE):
             if f.endswith(".py") and f != "correlation.py":
-                text = open(os.path.join(LANE, f),
-                            encoding="utf-8", errors="replace").read()
+                with open(os.path.join(LANE, f), encoding="utf-8",
+                          errors="replace") as fh:
+                    text = fh.read()
                 if "import correlation" in text:
                     importers.append(f)
         self.assertEqual(importers, [],
@@ -284,10 +286,6 @@ def _list(store, extra_tokens, include_closed=False):
     assert p.returncode == 0, p.stderr
     rows = json.loads(p.stdout) if p.stdout.strip() else []
     return rows if isinstance(rows, list) else [rows]
-
-
-def _list_supports_extra():
-    return False  # read_model.list_issues has no extra-argv passthrough
 
 
 def _raw_show(store, iid):
