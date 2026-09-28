@@ -1,0 +1,275 @@
+// tests/test_drafts.mjs — hbl-pnu.2.5: draft store keyed by canonical store
+// identity + bead ID, durable-storage-or-honest-warning, capability-proven
+// guarded submission (CONTENT_CAS_SUPPORTED=False ⇒ Save disabled), and
+// diff/reload/cancel never silently discard the draft.
+// Run: node --test tests/test_drafts.mjs   (Node built-in runner, no deps)
+//
+// Purity law (CONTRACTS-v3 C1, bd-expert): this module performs ZERO I/O.
+// Durability comes ONLY through an injected storage adapter — the supported
+// SDK storage surface provided by the host loader. Tests inject an in-memory
+// fake; nothing here touches localStorage/window/DOM or spawns bd.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import path from "node:path";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const draftsMod = await import(pathToFileURL(path.join(here, "..", "desktop", "drafts.mjs")).href);
+const {
+  CONTENT_CAS_SUPPORTED, draftKey, createDraftStore, editDecision,
+  draftLimitationNotice, runContentSave,
+} = draftsMod;
+
+// ---- helpers ----------------------------------------------------------------
+const SI_A = { workspace: "/lab/storeA", db: "/lab/storeA/.beads/lab.db" };
+const SI_B = { workspace: "/lab/storeB", db: "/lab/storeB/.beads/lab.db" };
+
+function fakeStorage(opts = {}) {
+  const map = new Map(opts.seed ?? []);
+  const log = [];
+  return {
+    available: opts.available !== false,
+    failures: opts.failures ?? null, // {method: Error} -> adapter throws
+    map,
+    log,
+    get(key) {
+      log.push(["get", key]);
+      if (this.failures?.get) throw this.failures.get;
+      return map.has(key) ? map.get(key) : null;
+    },
+    set(key, value) {
+      log.push(["set", key]);
+      if (this.failures?.set) throw this.failures.set;
+      map.set(key, value);
+    },
+    remove(key) {
+      log.push(["remove", key]);
+      if (this.failures?.remove) throw this.failures.remove;
+      map.delete(key);
+    },
+    keys() {
+      log.push(["keys"]);
+      return [...map.keys()];
+    },
+  };
+}
+
+const okSave = (beadId, text = "body") => ({ beadId, text, savedAt: "t0" });
+
+// ---- capability truth ---------------------------------------------------------
+test("capability truth: CONTENT_CAS_SUPPORTED is a hard false (docs/content-guard-contract.md owns it)", () => {
+  assert.strictEqual(CONTENT_CAS_SUPPORTED, false);
+  const d = createDraftStore({ storage: fakeStorage() });
+  d.saveDraft(SI_A, "abc", "draft body", { baseText: "orig" });
+  const res = runContentSave(d, SI_A, "abc", {
+    contentCasSupported: false,
+    attemptBlindReplace: () => { throw new Error("blind replace must never be attempted"); },
+    appendSuggestion: () => ({ ok: true }),
+  });
+  assert.equal(res.saved, false);
+  assert.equal(res.reason, "unsupported:no-atomic-content-guard");
+  assert.match(d.draftLimitationNotice().text, /content guard/i);
+});
+
+test("editDecision: Save disabled without proven guard; draft/copy/export/suggestion stay enabled; no fake success", () => {
+  const dec = editDecision({ contentCasSupported: false });
+  assert.equal(dec.saveContent.enabled, false);
+  assert.match(dec.saveContent.disabledReason, /content guard/i);
+  for (const f of ["draft", "copy", "export", "appendSuggestion"]) {
+    assert.equal(dec[f].enabled, true, f);
+  }
+  // positive branch: proven atomic guard would enable Save (not claimed here)
+  assert.equal(editDecision({ contentCasSupported: true }).saveContent.enabled, true);
+});
+
+test("draftLimitationNotice states the missing safe edit as a product limitation", () => {
+  const n = draftLimitationNotice();
+  assert.match(n.text, /NO ATOMIC CONTENT GUARD/i);
+  assert.match(n.text, /append-only/i);
+});
+
+// ---- keying + isolation -------------------------------------------------------
+test("draftKey is canonical store identity + bead ID and isolates every axis", () => {
+  const k = draftKey(SI_A, "abc");
+  assert.notEqual(k, draftKey({ ...SI_A, db: "/elsewhere/lab.db" }, "abc"), "db move must re-key");
+  assert.notEqual(k, draftKey({ ...SI_A, workspace: "/other" }, "abc"), "workspace move must re-key");
+  assert.notEqual(k, draftKey(SI_A, "abd"), "bead must re-key");
+  // key does not depend on incidental storeInfo fields
+  assert.equal(k, draftKey({ ...SI_A, extra: 1 }, "abc"));
+});
+
+test("cross-workspace/reload isolation: drafts never cross store boundaries", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "shared", "A-draft", { baseText: "a" });
+  d.saveDraft(SI_B, "shared", "B-draft", { baseText: "b" });
+  assert.equal(d.getDraft(SI_A, "shared").text, "A-draft");
+  assert.equal(d.getDraft(SI_B, "shared").text, "B-draft");
+  // clear one side, other untouched
+  d.discardDraft(SI_A, "shared");
+  assert.equal(d.getDraft(SI_A, "shared"), null);
+  assert.equal(d.getDraft(SI_B, "shared").text, "B-draft");
+  // same bead id in a store with same workspace-different-db stays isolated
+  const d2 = createDraftStore({ storage: fakeStorage() });
+  d2.saveDraft(SI_A, "x", "one", {});
+  d2.saveDraft({ ...SI_A, db: "/lab/storeA/.beads/other.db" }, "x", "two", {});
+  assert.equal(d2.getDraft(SI_A, "x").text, "one");
+});
+
+// ---- durability: supported storage OR honest warning, never silent loss --------
+test("supported durable storage preserves drafts across simulated reload", () => {
+  const storage = fakeStorage();
+  const d1 = createDraftStore({ storage });
+  d1.saveDraft(SI_A, "abc", "half written", { baseText: "orig" });
+  const d2 = createDraftStore({ storage }); // simulated reload
+  assert.equal(d2.durability(), "durable");
+  const restored = d2.getDraft(SI_A, "abc");
+  assert.equal(restored.text, "half written");
+  assert.equal(restored.baseText, "orig");
+  assert.ok(!Object.isFrozen(restored), "restored draft is a usable copy");
+});
+
+test("no durable adapter: honest memory-only warning, drafts still work in-session", () => {
+  const d = createDraftStore({});
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.warning().kind, "memory-only");
+  assert.match(d.warning().text, /lost on reload/i);
+  d.saveDraft(SI_A, "abc", "volatile", {});
+  assert.equal(d.getDraft(SI_A, "abc").text, "volatile");
+  const reloaded = createDraftStore({});
+  assert.equal(reloaded.getDraft(SI_A, "abc"), null, "memory-only must not pretend durability");
+});
+
+test("adapter declared unavailable: honest warning, not fake success", () => {
+  const d = createDraftStore({ storage: fakeStorage({ available: false }) });
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.warning().kind, "memory-only");
+});
+
+test("adapter throws mid-write: honest storage-error warning + in-session draft survives", () => {
+  const storage = fakeStorage({ failures: { set: new Error("quota deep-six") } });
+  const d = createDraftStore({ storage });
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.warning().kind, "storage-error");
+  d.saveDraft(SI_A, "abc", "still here", {});
+  assert.equal(d.getDraft(SI_A, "abc").text, "still here");
+});
+
+// ---- diff/reload/cancel never silently discard ---------------------------------
+test("diff, reload and cancel preserve the draft; only explicit discard clears it", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "abc", "my draft", { baseText: "their base" });
+  assert.deepEqual(d.diff(SI_A, "abc"), { baseText: "their base", text: "my draft" });
+  const sess = d.openEdit(SI_A, "abc", "their base");
+  sess.cancel();                      // cancel = close editor; keeps draft
+  assert.equal(d.getDraft(SI_A, "abc").text, "my draft");
+  const reloaded = createDraftStore({ storage }); // reload
+  assert.equal(reloaded.getDraft(SI_A, "abc").text, "my draft");
+  reloaded.cancelEdit(SI_A, "abc");   // top-level cancel path also preserves
+  assert.equal(reloaded.getDraft(SI_A, "abc").text, "my draft");
+  // explicit discard is the ONLY clear path (and save-success is the other)
+  reloaded.discardDraft(SI_A, "abc");
+  assert.equal(reloaded.getDraft(SI_A, "abc"), null);
+});
+
+test("Save disabled path never clears the draft (no silent discard on failed submission)", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "abc", "keep me", { baseText: "b" });
+  const res = runContentSave(d, SI_A, "abc", {
+    contentCasSupported: false,
+    attemptBlindReplace: () => { throw new Error("must not run"); },
+    appendSuggestion: () => ({ ok: true }),
+  });
+  assert.equal(res.saved, false);
+  assert.equal(d.getDraft(SI_A, "abc").text, "keep me");
+});
+
+test("append-only suggestion remains usable while Save is disabled", () => {
+  const d = createDraftStore({ storage: fakeStorage() });
+  d.saveDraft(SI_A, "abc", "proposed content", { baseText: "b" });
+  const res = runContentSave(d, SI_A, "abc", {
+    contentCasSupported: false,
+    attemptBlindReplace: () => { throw new Error("must not run"); },
+    appendSuggestion: (draft) => {
+      assert.equal(draft.text, "proposed content");
+      return { ok: true, commentId: "c1" };
+    },
+  });
+  assert.equal(res.saved, false);
+  assert.equal(res.suggestion, "c1");
+  assert.equal(res.channel, "append-only-comment");
+});
+
+test("supported save path clears the draft only after read-back proof", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "abc", "final", { baseText: "b" });
+  const res = runContentSave(d, SI_A, "abc", {
+    contentCasSupported: true,
+    attemptBlindReplace: () => ({ ok: true, readBack: { description: "final" } }),
+    appendSuggestion: () => { throw new Error("should not be needed"); },
+  });
+  assert.equal(res.saved, true);
+  assert.equal(d.getDraft(SI_A, "abc"), null, "save+proof is the only auto-clear");
+});
+
+test("supported save path with missing/failing read-back keeps the draft", () => {
+  const d = createDraftStore({ storage: fakeStorage() });
+  d.saveDraft(SI_A, "abc", "final", { baseText: "b" });
+  const res = runContentSave(d, SI_A, "abc", {
+    contentCasSupported: true,
+    attemptBlindReplace: () => ({ ok: true, readBack: { description: "different" } }),
+    appendSuggestion: () => ({ ok: true }),
+  });
+  assert.equal(res.saved, false);
+  assert.equal(res.reason, "readback-mismatch");
+  assert.equal(d.getDraft(SI_A, "abc").text, "final");
+});
+
+// ---- copy/export + robustness --------------------------------------------------
+test("copyText and exportText hand out content without touching the draft", () => {
+  const d = createDraftStore({ storage: fakeStorage() });
+  d.saveDraft(SI_A, "abc", "copy me\nplease", { baseText: "b" });
+  assert.equal(d.copyText(SI_A, "abc"), "copy me\nplease");
+  const x = JSON.parse(d.exportText(SI_A, "abc"));
+  assert.equal(x.text, "copy me\nplease");
+  assert.equal(x.beadId, "abc");
+  assert.equal(d.getDraft(SI_A, "abc").text, "copy me\nplease");
+});
+
+test("corrupt stored draft is dropped and surfaces null, never a crash", () => {
+  const badKey = draftKey(SI_A, "abc");
+  const storage = fakeStorage({ seed: [[badKey, "{not json"]] });
+  const d = createDraftStore({ storage });
+  assert.equal(d.getDraft(SI_A, "abc"), null);
+  const last = storage.log[storage.log.length - 1];
+  assert.deepEqual(last, ["remove", badKey]);
+});
+
+test("capacity limit: saves beyond maxDrafts are refused, existing drafts intact", () => {
+  const d = createDraftStore({ storage: fakeStorage(), maxDrafts: 2 });
+  assert.ok(d.saveDraft(SI_A, "a", "1", {}));
+  assert.ok(d.saveDraft(SI_A, "b", "2", {}));
+  assert.equal(d.saveDraft(SI_A, "c", "3", {}), null);
+  assert.equal(d.getDraft(SI_A, "a").text, "1");
+  assert.equal(d.getDraft(SI_A, "c"), null);
+});
+
+// ---- purity audit ---------------------------------------------------------------
+test("desktop/drafts.mjs is pure: no fs/child_process/localStorage/window/DOM/bd reach", () => {
+  const src = readFileSync(path.join(here, "..", "desktop", "drafts.mjs"), "utf8");
+  const banned = [
+    "node:fs", "node:child_process", "require(", "localStorage", "sessionStorage",
+    "indexedDB", "document.", "window.", "fetch(", "XMLHttpRequest",
+    "BroadcastChannel", "child_process", "spawn(", "subprocess",
+  ];
+  for (const b of banned) {
+    assert.ok(!src.includes(b), `forbidden reference in desktop/drafts.mjs: ${b}`);
+  }
+  // zero imports at all — the module imports nothing
+  assert.ok(!/^\s*import\s/m.test(src.replace(/^\s*\/\/.*$/gm, "")),
+    "drafts.mjs must import nothing");
+});
