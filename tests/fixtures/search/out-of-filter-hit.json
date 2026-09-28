@@ -1,0 +1,59 @@
+{
+  "storeInfo": {
+    "workspace": "/lab/store",
+    "db": "/lab/store/.beads/lab.db"
+  },
+  "readyPage": [
+    {
+      "id": "hbl-root",
+      "title": "lab root",
+      "status": "open",
+      "issue_type": "epic",
+      "parent": null,
+      "dependencies": []
+    },
+    {
+      "id": "hbl-live",
+      "title": "live worker",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "hbl-root",
+      "dependencies": []
+    }
+  ],
+  "allRows": [
+    {
+      "id": "hbl-root",
+      "title": "lab root",
+      "status": "open",
+      "issue_type": "epic",
+      "parent": null,
+      "dependencies": []
+    },
+    {
+      "id": "hbl-live",
+      "title": "live worker",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "hbl-root",
+      "dependencies": []
+    },
+    {
+      "id": "hbl-mid",
+      "title": "mid branch",
+      "status": "open",
+      "issue_type": "epic",
+      "parent": "hbl-root",
+      "dependencies": []
+    },
+    {
+      "id": "closed-hit",
+      "title": "archived epic outcome",
+      "status": "closed",
+      "issue_type": "task",
+      "parent": "hbl-mid",
+      "dependencies": []
+    }
+  ],
+  "_fact": "snapshot = Ready-filtered page; closed-hit is OUTSIDE the filter (bd search includes closed by default \u2014 FACT: 'was this already filed' must not answer no). Its path resolves via the bounded fallback."
+}

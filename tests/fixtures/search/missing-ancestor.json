@@ -1,0 +1,39 @@
+{
+  "storeInfo": {
+    "workspace": "/lab/store",
+    "db": "/lab/store/.beads/lab.db"
+  },
+  "issues": [
+    {
+      "id": "other",
+      "title": "unrelated row",
+      "status": "open",
+      "parent": null,
+      "dependencies": []
+    },
+    {
+      "id": "mid",
+      "title": "middle stage",
+      "status": "open",
+      "parent": "deep-anc",
+      "dependencies": []
+    },
+    {
+      "id": "orphan",
+      "title": "orphan under invisible chain",
+      "status": "open",
+      "parent": "mid",
+      "dependencies": []
+    }
+  ],
+  "hiddenRows": [
+    {
+      "id": "deep-anc",
+      "title": "deep ancestor",
+      "status": "open",
+      "parent": null,
+      "dependencies": []
+    }
+  ],
+  "_fact": "the bounded page includes orphan+mid but NOT deep-anc: absence from a bounded read is UNKNOWN, never deleted (C1). Fallback resolves deep-anc under budget."
+}
