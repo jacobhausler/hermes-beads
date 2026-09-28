@@ -6,3 +6,4 @@ tests/.homes/
 tests/.fixtures/
 tests/.claims-fixtures/
 .write-fixtures/
+tests/fixtures/evidence-runtime/
