@@ -292,7 +292,8 @@ class CodePathAudit(unittest.TestCase):
         return found
 
     def test_close_reopen_argv_only_in_authorized_functions(self):
-        src = open(os.path.join(os.path.dirname(HERE), "evidence.py")).read()
+        with open(os.path.join(os.path.dirname(HERE), "evidence.py")) as f:
+            src = f.read()
         tree = ast.parse(src)
         calls = self._function_calls(tree)
         self.assertTrue(calls, "no literal run_bd argv found — audit broken")
@@ -310,7 +311,8 @@ class CodePathAudit(unittest.TestCase):
     def test_epic_sweep_verb_never_built(self):
         """close-eligible may appear ONLY paired with --dry-run; a bare
         sweep argv is never constructed; --force never appears."""
-        src = open(os.path.join(os.path.dirname(HERE), "evidence.py")).read()
+        with open(os.path.join(os.path.dirname(HERE), "evidence.py")) as f:
+            src = f.read()
         tree = ast.parse(src)
         for fname, toks, lineno in self._function_calls(tree):
             if "close-eligible" in toks:
