@@ -4,3 +4,4 @@ __pycache__/
 node_modules/
 tests/.homes/
 tests/.fixtures/
+tests/.claims-fixtures/
