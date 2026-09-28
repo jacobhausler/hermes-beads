@@ -20,12 +20,20 @@ class ExactIdentity(unittest.TestCase):
         self.assertEqual(out["intent"], "ask")
         self.assertFalse(out["delivery"])
         self.assertTrue(out["no_dispatch"])
+        # No qualified session door -> typed unqualified, never ok:true.
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["error"], "session_door_unqualified")
 
     def test_refine_routes_session_door_without_authority(self):
         out = interop.submit_request(dict(REQ, intent="refine", session_link=True))
         self.assertEqual(out["route"], "hermes_session_door")
         self.assertTrue(out["session_link"])
         self.assertFalse(out["execution_authority"])
+        # Routing is reported; delivery is an explicit typed unqualified.
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["status"], "unqualified")
+        self.assertEqual(out["error"], "session_door_unqualified")
+        self.assertFalse(out["delivery_qualified"])
 
     def test_session_link_cannot_authorize_work(self):
         out = interop.submit_request(dict(REQ, intent="work", session_link=True))
@@ -199,17 +207,76 @@ class DoorClassification(unittest.TestCase):
         # captured argv+output would be a fabricated claim.
         self.assertEqual(self.ev["qualified_runtime_doors"], [])
 
-    def test_session_door_is_source_observed_not_supported(self):
+    def test_session_door_is_unsupported_not_supported(self):
+        # No qualified open/link door with permission+scope exists in the
+        # installed source; the honest classification is unsupported, and
+        # the evidence must name the observed gap.
         d = self.ev["doors"]["c5_session_door_ask_refine"]
-        self.assertEqual(d["classification"], "source_observed_primitive")
+        self.assertEqual(d["classification"], "unsupported")
         self.assertFalse(d["qualified_for_delivery"])
         probe = d["evidence"]["argv_probe"]
         self.assertTrue(probe["attempted"])
         self.assertEqual(probe["argv"], list(interop.SESSIONS_LIST_ARGV))
+        self.assertIn("observed_gap", d["evidence"])
         # argv evidence is real capture, not a name-based claim
         if probe.get("returncode") is not None:
             self.assertIsInstance(probe["returncode"], int)
             self.assertIn("stdout_excerpt", probe)
+
+    def test_tree_integrity_pair_over_whole_installed_trees(self):
+        """Whole-tree before/after hashes over BOTH installed trees, with
+        the mutable/generated/cache exclusions enumerated explicitly."""
+        ti = self.ev["tree_integrity"]
+        self.assertTrue(ti["whole_trees_unchanged"])
+        self.assertEqual(
+            set(ti["before"]), {str(r) for r in interop._tree_roots()})
+        for bucket in ("before", "after"):
+            for root, rec in ti[bucket].items():
+                self.assertIsNotNone(rec, root)
+                self.assertEqual(len(rec["digest"]), 64, root)
+                self.assertGreater(rec["files_hashed"], 100, root)
+        # exclusions are an explicit enumerated list, never implicit
+        for key in ("dirs", "dir_suffixes", "dir_prefixes", "suffixes",
+                    "names", "name_substrings"):
+            self.assertTrue(ti["exclusions"][key], key)
+        self.assertIn("__pycache__", ti["exclusions"]["dirs"])
+        self.assertIn(".pyc", ti["exclusions"]["suffixes"])
+        # bundled runtimes are excluded as an EXPLICITLY recorded scope
+        self.assertIn("-linux-x64", ti["exclusions"]["dir_suffixes"])
+        self.assertIn("scope_note", ti)
+        self.assertEqual(ti["missing_roots"], [])
+        for bucket in ("before", "after"):
+            for root, rec in ti[bucket].items():
+                self.assertEqual(rec["unreadable_skipped"], 0, root)
+
+    def test_missing_root_never_passes_as_unchanged(self):
+        """A missing/unreadable tree must NOT yield whole_trees_unchanged:true
+        merely because before == after (None == None is not proof)."""
+        real = interop.WORKFLOWS_PLUGIN
+        interop.WORKFLOWS_PLUGIN = pathlib.Path(
+            "/nonexistent/interop-tree-root-xyz")
+        try:
+            before = {str(r): interop._tree_digest(r)
+                      for r in interop._tree_roots()}
+            ti = interop._tree_integrity(before)
+        finally:
+            interop.WORKFLOWS_PLUGIN = real
+        self.assertFalse(ti["whole_trees_unchanged"])
+        self.assertIn("/nonexistent/interop-tree-root-xyz",
+                      ti["missing_roots"])
+
+    def test_symlink_change_flips_digest(self):
+        """Symlinks are in the digest honestly: retargeting one changes the
+        whole-tree digest (they are not silently skipped)."""
+        import tempfile, os as _os
+        with tempfile.TemporaryDirectory() as td:
+            base = pathlib.Path(td)
+            (base / "link").symlink_to("target-a")
+            d1 = interop._tree_digest(base)["digest"]
+            (base / "link").unlink()
+            (base / "link").symlink_to("target-b")
+            d2 = interop._tree_digest(base)["digest"]
+            self.assertNotEqual(d1, d2)
 
     def test_hash_pairs_cover_exact_scope_only(self):
         self.assertTrue(self.ev["hash_pairs_unchanged"])
@@ -235,6 +302,11 @@ class DoorClassification(unittest.TestCase):
         self.assertFalse(out["delivery_qualified"])
         self.assertFalse(out["delivery"])
         self.assertEqual(out["route"], "hermes_session_door")
+        # An ok:true route claim without a qualified open/link door would be
+        # a fabricated delivery; the typed refusal is the only honest shape.
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["status"], "unqualified")
+        self.assertEqual(out["error"], "session_door_unqualified")
 
     def test_evidence_carries_argv_signature_and_body(self):
         """Bounded exact argv + signature + body evidence for inspected
@@ -272,7 +344,10 @@ class Qualification(unittest.TestCase):
         self.assertTrue(q["functions"]["act_run"]["signature"].startswith("def act_run("))
         self.assertTrue(q["functions"]["write_spawn_record"]["signature"].startswith(
             "def write_spawn_record("))
-        self.assertIn("spawn_journal", "".join(q["supported_primitives"]))
+        # Only REAL primitives are ever claimed — no invented names like a
+        # "spawn_journal" API (none exists in the installed source).
+        self.assertNotIn("spawn_journal", "".join(q["supported_primitives"]))
+        self.assertTrue(q["supported_primitives"])
 
 
 if __name__ == "__main__":

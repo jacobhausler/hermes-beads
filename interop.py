@@ -2,9 +2,12 @@
 
 Product boundary:
   - Exact (workspace, bead, intent) is preserved verbatim on every response.
-  - Ask/Refine route to the Hermes session door as a ROUTING decision only;
-    a session link NEVER confers execution authority. Ask/Refine DELIVERY is
-    explicitly UNQUALIFIED here (no live open/link-with-permission probe).
+  - Ask/Refine report the hermes_session_door ROUTING intent, but DELIVERY
+    is an explicit typed refusal (`ok:false, status:unqualified,
+    error:session_door_unqualified`): no qualified supported Hermes session
+    open/link door was found in the inspected installed source, so ok:true
+    would be a fabricated delivery claim. A session link NEVER confers
+    execution authority.
   - Work returns an explicit typed ``unsupported`` until a qualified
     existing Workflow admission receipt is supplied. This module invents
     no scheduler/session API and does not import or dispatch Workflow.
@@ -23,15 +26,22 @@ Qualification model (parent correction, reopened I0):
   presence alone never yields a supported claim.
 
 Integrity: every probe run records before/after SHA-256 of the EXACT files
-it inspected (explicit scope list — never a whole-tree claim from a subset)
-and, where an inspected tree is a git repo, that its tracked diff is
-unchanged; when a tree is not a repo the criterion is reported PARTIAL.
+it inspected (explicit scope list) AND a whole-tree before/after digest pair
+over both installed source trees (`/opt/hermes`, the Workflow plugin dir),
+walked with excluded directories PRUNED during traversal (never hashed-then
+-filtered). Files, symlink targets, and directory entries all enter the
+digest; bundled runtimes / generated artifact caches are excluded as
+non-source and the exact scope is recorded. A missing or unreadable tree
+yields `whole_trees_unchanged:false` — never a vacuous true from
+None == None. Where an inspected tree is a git repo, it also proves its
+tracked diff is unchanged; when a tree is not a repo the criterion is
+reported PARTIAL.
 """
 from __future__ import annotations
 
 import ast
 import hashlib
-import json
+import os
 import pathlib
 import subprocess
 
@@ -85,6 +95,144 @@ CLASSIFICATIONS = ("source_observed_primitive", "qualified_runtime",
 SESSIONS_LIST_ARGV = (str(HERMES_BIN), "sessions", "list", "--limit", "2")
 PROBE_TIMEOUT_S = 25
 
+# Whole installed source trees hashed before/after every probe (read-only).
+# Read lazily so tests that redirect WORKFLOWS_PLUGIN retarget the hash
+# scope honestly (the digest must cover exactly what we inspect, and never
+# silently shrink to an empty scope).
+def _tree_roots() -> tuple:
+    return (WORKFLOWS_PLUGIN, HERMES_ROOT)
+# Exclusions are applied by PRUNING directories during traversal (never
+# hash-then-filter) and are enumerated explicitly in the evidence:
+#   - TREE_EXCL_DIRS: mutable/generated/cache dir names, at any depth
+#   - TREE_EXCL_DIR_SUFFIXES: versioned vendored binary runtimes shipped
+#     under `tools/` (e.g. `ffmpeg-9.0.1-linux-x64`, `node-26.7.0-linux-x64`)
+#     — third-party bundled runtimes, not Hermes/plugin source
+#   - TREE_EXCL_DIR_PREFIXES: generated CI artifact dirs in the plugin tree
+#   - file-level exclusions: compiled/log/lock artifacts
+TREE_EXCL_DIRS = (".git", "node_modules", "__pycache__", ".mypy_cache",
+                  ".pytest_cache", ".ruff_cache", ".venv", "venv",
+                  ".sass-cache", ".terraform", "graphify-out")
+TREE_EXCL_DIR_SUFFIXES = ("-linux-x64",)
+TREE_EXCL_DIR_PREFIXES = ("ci-out",)
+TREE_EXCL_SUFFIXES = (".pyc", ".pyo", ".pyd", ".log", ".lock")
+TREE_EXCL_NAMES = (".DS_Store", "Thumbs.db")
+TREE_EXCL_SUBSTRINGS = (".egg-info", ".install.lock")
+
+
+def _dir_excluded(name: str) -> bool:
+    return (name in TREE_EXCL_DIRS
+            or name.endswith(TREE_EXCL_DIR_SUFFIXES)
+            or name.startswith(TREE_EXCL_DIR_PREFIXES))
+
+
+def _file_excluded(name: str) -> bool:
+    return (name in TREE_EXCL_NAMES or os.path.splitext(name)[1]
+            in TREE_EXCL_SUFFIXES
+            or any(s in name for s in TREE_EXCL_SUBSTRINGS))
+
+
+def _tree_digest(root: pathlib.Path):
+    """Deterministic SHA-256 over a whole-tree pass, pruning excluded
+    directories DURING traversal. Every non-excluded regular file enters as
+    (kind, relpath, bytes); symlinks enter with their target (never silently
+    dropped); directory and special-file entries enter by name so an empty
+    or renamed directory cannot pass unnoticed. Unreadable entries are
+    recorded, never silently dropped. Returns None if the root itself is
+    not a readable directory — the CALLER must treat None as failure."""
+    if not root.is_dir():
+        return None
+    h = hashlib.sha256()
+    counts = {"files_hashed": 0, "symlinks_hashed": 0, "dirs_hashed": 0,
+              "special_hashed": 0, "unreadable_skipped": 0}
+    unreadable = []
+
+    def record(kind: bytes, rel: str, payload: bytes = b"") -> None:
+        h.update(kind + b"\0" + rel.encode("utf-8") + b"\0" + payload)
+
+    def note_unreadable(rel: str, exc: OSError) -> None:
+        counts["unreadable_skipped"] += 1
+        unreadable.append(f"{rel}: {exc.__class__.__name__}")
+
+    def walk(dir_path: str) -> None:
+        try:
+            entries = sorted(os.scandir(dir_path), key=lambda e: e.name)
+        except OSError as exc:
+            note_unreadable(os.path.relpath(dir_path, root), exc)
+            return
+        for e in entries:
+            rel = os.path.relpath(e.path, root)
+            try:
+                if e.is_symlink():
+                    try:
+                        target = os.readlink(e.path)
+                    except OSError as exc:
+                        note_unreadable(rel, exc)
+                        continue
+                    record(b"L", rel, target.encode("utf-8"))
+                    counts["symlinks_hashed"] += 1
+                elif e.is_dir(follow_symlinks=False):
+                    if _dir_excluded(e.name):
+                        continue
+                    record(b"D", rel)
+                    counts["dirs_hashed"] += 1
+                    walk(e.path)
+                elif e.is_file(follow_symlinks=False):
+                    if _file_excluded(e.name):
+                        continue
+                    try:
+                        with open(e.path, "rb") as fh:
+                            data = fh.read()
+                    except OSError as exc:
+                        note_unreadable(rel, exc)
+                        continue
+                    record(b"F", rel, data)
+                    counts["files_hashed"] += 1
+                else:  # fifo/socket/device: presence is part of the tree
+                    record(b"S", rel)
+                    counts["special_hashed"] += 1
+            except OSError as exc:  # stat itself failed (races, permissions)
+                note_unreadable(rel, exc)
+
+    walk(str(root))
+    result = {"root": str(root), "digest": h.hexdigest(),
+              "unreadable_sample": unreadable[:5]}
+    result.update(counts)
+    return result
+
+
+def _tree_integrity(before):
+    """Complete the whole-tree pair: hash the after-pass and compare. The
+    trees are read-only to us; if anything moved during the pass the pair
+    mismatches and the probe's non-interference claim fails loudly. A
+    missing or unreadable root is a FAILURE, never a vacuous
+    `before == after` pass (None == None must not mean 'unchanged')."""
+    roots = _tree_roots()
+    after = {str(r): _tree_digest(r) for r in roots}
+    expected = {str(r) for r in roots}
+    missing = sorted(k for k in expected
+                     if before.get(k) is None or after.get(k) is None)
+    complete = not missing and set(before) == expected and set(after) == expected
+    return {
+        "exclusions": {"dirs": list(TREE_EXCL_DIRS),
+                       "dir_suffixes": list(TREE_EXCL_DIR_SUFFIXES),
+                       "dir_prefixes": list(TREE_EXCL_DIR_PREFIXES),
+                       "suffixes": list(TREE_EXCL_SUFFIXES),
+                       "names": list(TREE_EXCL_NAMES),
+                       "name_substrings": list(TREE_EXCL_SUBSTRINGS)},
+        "scope_note": ("whole installed source trees minus the enumerated "
+                       "exclusions; `-linux-x64` dirs are versioned vendored "
+                       "third-party runtimes, `ci-out*`/`graphify-out` are "
+                       "generated artifacts — all recorded here as explicitly "
+                       "out-of-scope, not silently dropped"),
+        "before": before,
+        "after": after,
+        "missing_roots": missing,
+        "whole_trees_unchanged": bool(complete and before == after),
+        "note": "whole installed source trees hashed before AND after the "
+                "read-only probe; exclusions pruned during traversal and "
+                "enumerated explicitly; no installed write is ever made",
+    }
+
 
 # --------------------------------------------------------------------------
 # evidence primitives
@@ -97,7 +245,7 @@ def _sha256(path: pathlib.Path) -> str | None:
         return None
 
 
-def _func_body(func: str, path: pathlib.Path, max_lines: int = 14):
+def _func_body(func: str, path: pathlib.Path, max_lines: int = 60):
     """Bounded (file, name, lineno, first `max_lines` of body) excerpt."""
     if not path.is_file():
         return None
@@ -175,18 +323,26 @@ def _classify_doors(functions: dict, probe: dict, hashes: dict) -> dict:
 
     # ---- C5: Hermes session door for Ask/Refine -------------------------
     doors["c5_session_door_ask_refine"] = {
-        "classification": "source_observed_primitive",
+        "classification": "unsupported",
         "qualified_for_delivery": False,
         "evidence": {
             "argv_probe": probe,
             "signatures": {"cmd_sessions": sig.get("cmd_sessions"),
                            "get_or_create_session": sig.get("get_or_create_session")},
-            "why_not_qualified_runtime": (
-                "the captured argv probe only LISTS session history read-only; "
-                "no in-run probe opened/linked a live session through a "
-                "permission- and scope-checking door (C5 requires actual "
-                "permission+scope). Ask/Refine delivery stays unqualified; "
-                "no session door is invented or simulated here."),
+            "observed_gap": (
+                "within the inspected scope (get_or_create_session in "
+                "gateway/session.py, cmd_sessions in "
+                "hermes_cli/sessions_cmd.py) the installed source exposes "
+                "only internal store/CLI symbols — a single-flight store "
+                "lookup and a local history lister. Neither is a "
+                "permission- and scope-checked session open/link door, and "
+                "no such door was FOUND in this inspection (this bounds to "
+                "the inspected files; it does not prove such an API exists "
+                "or exists nowhere). Ask/Refine delivery is therefore "
+                "unsupported here. The captured argv probe only LISTS "
+                "session history read-only; it never opened or linked a "
+                "live session. No session door is invented or simulated "
+                "here."),
         },
     }
 
@@ -279,7 +435,11 @@ def _classify_doors(functions: dict, probe: dict, hashes: dict) -> dict:
 def capture_evidence() -> dict:
     """Run the read-only argv probe and read the installed source EXACTLY as
     the enumerated INSPECTED_FILES scope. Never imports or executes plugin
-    code; never dispatches; never writes to the inspected trees."""
+    code; never dispatches; never writes to the inspected trees. Whole-tree
+    integrity pairs bracket the whole pass. Every call captures live
+    evidence fresh — nothing here is cached or replayed from a previous
+    pass, so a test can never read a stale snapshot."""
+    tree_before = {str(r): _tree_digest(r) for r in _tree_roots()}
     probe = {"argv": list(SESSIONS_LIST_ARGV), "attempted": True}
     if HERMES_BIN.is_file():
         try:
@@ -310,6 +470,7 @@ def capture_evidence() -> dict:
     before = {k: _sha256(p) for k, p in INSPECTED_FILES.items()}
     doors = _classify_doors(functions, probe, before)
     after = {k: _sha256(p) for k, p in INSPECTED_FILES.items()}
+    tree = _tree_integrity(tree_before)
 
     git_states = {}
     for k, p in INSPECTED_FILES.items():
@@ -325,6 +486,7 @@ def capture_evidence() -> dict:
         "hash_before": before,
         "hash_after": after,
         "hash_pairs_unchanged": before == after,
+        "tree_integrity": tree,
         "git_tracked_diff": git_states,
         "supported_primitives": sorted(
             d for d, v in doors.items()
@@ -334,7 +496,10 @@ def capture_evidence() -> dict:
             if v["classification"] == "qualified_runtime"),
         "qualified_for_work": False,  # no installed evidence supports admission
         "hash_scope_note": "SHA-256 pairs cover EXACTLY the enumerated "
-                           "INSPECTED_FILES; no whole-tree claim is made",
+                           "INSPECTED_FILES; the whole installed trees are "
+                           "covered separately by tree_integrity (explicit "
+                           "exclusions, pruned during traversal, enumerated "
+                           "there)",
         "note": NOTE,
     }
 
@@ -439,14 +604,27 @@ def submit_request(request) -> dict:
             "delivery": False, "no_dispatch": True}
 
     if intent in ("ask", "refine"):
+        # C5: no qualified supported Hermes session open/link door was found
+        # in the inspected installed source (get_or_create_session/
+        # cmd_sessions are internal store/CLI-history symbols, not a
+        # permission+scope-checked door). Routing intent is reported, but
+        # delivery is refused as an explicit typed unqualified — ok:false,
+        # never a quiet ok:true.
         base.update({
+            "ok": False,
+            "status": "unqualified",
+            "error": "session_door_unqualified",
             "route": "hermes_session_door",
             "session_link": bool(request.get("session_link")),
-            # C5: a session link is navigation only, never execution authority.
+            # A session link is navigation only, never execution authority.
             "execution_authority": False,
-            # The door itself is source-observed only: this is a routing
-            # decision, not a qualified delivery.
             "delivery_qualified": False,
+            "reason": ("Ask/Refine delivery requires a qualified supported "
+                       "Hermes session open/link door with actual permission "
+                       "and scope (C5); installed evidence supports none. "
+                       "Routing is reported, delivery is unavailable; manual "
+                       "session navigation is the honest fallback."),
+            "note": NOTE,
         })
         return base
 
