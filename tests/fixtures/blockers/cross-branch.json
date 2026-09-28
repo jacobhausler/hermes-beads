@@ -1,0 +1,32 @@
+{
+  "reads": {
+    "issues": [
+      { "id": "epicA", "title": "EPIC A", "status": "open", "issue_type": "epic", "parent": null,
+        "dependencies": [ { "depends_on_id": "epicBlocker", "dependency_type": "blocks", "status": "open" } ] },
+      { "id": "epicB", "title": "EPIC B", "status": "open", "issue_type": "epic", "parent": null,
+        "dependencies": [] },
+      { "id": "mid", "title": "A mid", "status": "open", "parent": "epicA", "dependencies": [] },
+      { "id": "victim", "title": "cross-branch victim", "status": "blocked", "parent": "mid",
+        "dependencies": [
+          { "depends_on_id": "liveB1", "dependency_type": "blocks", "status": "open" },
+          { "depends_on_id": "liveB2", "dependency_type": "blocks", "status": "open" },
+          { "depends_on_id": "closedB", "dependency_type": "blocks", "status": "closed" },
+          { "depends_on_id": "bDependent", "dependency_type": "parent-child", "status": "open" }
+        ] },
+      { "id": "other", "title": "A sibling", "status": "open", "parent": "epicA", "dependencies": [] },
+      { "id": "liveB1", "title": "B-side live blocker", "status": "open", "parent": "epicB",
+        "dependencies": [ { "depends_on_id": "weirdRef", "dependency_type": "related", "status": "open" } ] },
+      { "id": "liveB2", "title": "B-side live blocker 2", "status": "open", "parent": "epicB", "dependencies": [] },
+      { "id": "closedB", "title": "B-side closed blocker", "status": "closed", "parent": "epicB", "dependencies": [] },
+      { "id": "claimedB", "title": "stuck claimed blocker", "status": "in_progress", "parent": "epicB",
+        "assignee": "stuck-bot", "lease_expires_at": "2026-09-28T20:10:00Z", "heartbeat_at": "2026-09-28T20:05:00Z",
+        "dependencies": [] },
+      { "id": "epicBlocker", "title": "epic-level blocker", "status": "open", "parent": null, "dependencies": [] },
+      { "id": "weirdRef", "title": "unknown-edge target", "status": "open", "parent": null, "dependencies": [] },
+      { "id": "bDependent", "title": "depended upon", "status": "open", "parent": "epicB", "dependencies": [] },
+      { "id": "bDependent2", "title": "dependent child", "status": "open", "parent": "bDependent", "dependencies": [] }
+    ],
+    "ready": ["epicB", "other", "liveB2", "epicBlocker", "weirdRef", "bDependent", "bDependent2"],
+    "blocked": ["victim", "liveB1", "epicA", "claimedB"]
+  }
+}
