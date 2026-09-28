@@ -139,7 +139,8 @@ test("missing parent from the bounded snapshot renders an explicit ancestor-miss
   const hit = res.hits[0];
   assert.equal(hit.id, "orphan");
   assert.equal(hit.pathStatus, "parent-missing");
-  assert.equal(hit.missing, "gone");
+  assert.equal(hit.missing, "deep-anc",
+    "the unobserved parent ID declared by mid.parent is named — fixture FACT, not a guess");
   assert.ok(hit.flags.includes("ancestor-missing"));
   assert.equal(read.calls.length, 1, "no fallback: zero extra calls");
 });
@@ -182,8 +183,9 @@ test("bounded fallback resolves a missing ancestor: labeled, call-count bounded"
     "fallback rows fill the chain: mid + deep-anc above the bounded page");
   assert.equal(hit.pathStatus, "resolved");
   assert.ok(hit.flags.includes("path-from-bounded-fallback"));
-  assert.equal(calls.length, 1 + 2, "one query + two bounded ancestor lookups");
-  assert.equal(res.fallback.calls, 2);
+  assert.equal(calls.length, 2,
+    "one query + ONE bounded ancestor lookup: mid is already in the snapshot, only deep-anc is beyond the page (a phantom second lookup would be waste, not truth)");
+  assert.equal(res.fallback.calls, 1);
   assert.ok(res.fallback.calls <= MAX_FALLBACK_CALLS);
 });
 
@@ -443,14 +445,28 @@ test("native fallback path: out-of-page ancestor resolved under budget, exhausti
       calls.push([q, bound]);
       return bdRead(st.cwd, "search", q, "--limit", String(bound));
     };
-    const res = searchIssues({ snapshot: snap, query: "kid to find", searchRead, limit: 10 });
+    // show-capable facade: `bd show` is the AUTHORITATIVE row — it carries the
+    // real parent FIELD (probed: search rows never do, even --long). A ROOT's
+    // show row OMITS parent; only here is that normalized to parent:null
+    // (= proven rootage). Search rows with no parent key stay unknown.
+    const showCalls = [];
+    const showRead = (id) => {
+      showCalls.push(id);
+      let arr;
+      try { arr = bdRead(st.cwd, "show", id); } catch { return null; }
+      const row = Array.isArray(arr) ? arr.find((r) => r?.id === id) : null;
+      return row ? { ...row, parent: row.parent ?? null } : null;
+    };
+    const res = searchIssues({ snapshot: snap, query: "kid to find", searchRead, showRead, limit: 10 });
     const hit = res.hits[0];
     assert.equal(hit.id, kid);
     assert.deepEqual(hit.path.map((p) => p.id).filter(Boolean), [anc, mid, kid],
-      "bounded fallback (bd search by ID via the same facade) fills the chain");
+      "bounded bd show fallback fills the chain with real parent FIELDs");
     assert.ok(hit.flags.includes("path-from-bounded-fallback"));
-    assert.ok(calls.length <= 1 + MAX_FALLBACK_CALLS,
-      `call-count bound: ${calls.length} calls, max ${1 + MAX_FALLBACK_CALLS}`);
+    assert.equal(res.fallback.showCalls, 2, "one show per missing hop (mid, anc), cached, no loops");
+    const totalCalls = calls.length + showCalls.length;
+    assert.ok(totalCalls <= 1 + MAX_FALLBACK_CALLS,
+      `call-count bound: ${totalCalls} total native calls (1 query + ${showCalls.length} show + ${calls.length - 1} search), max ${1 + MAX_FALLBACK_CALLS}`);
 
     // exhaustion: same store, facade where only the first call returns anything
     let n = 0;

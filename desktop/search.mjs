@@ -204,7 +204,14 @@ export function resolveHitPath(snapshot, hit, opts = {}) {
 // exactly one fixed-argv `bd search` per call, native rows returned verbatim.
 // Every call is counted; the ancestor fallback reuses the same facade under an
 // explicit budget — callers assert the total via res.nativeCalls.
-export function searchIssues({ snapshot, query, searchRead, limit, maxDepth,
+//
+// showRead(id) (optional) is the AUTHORITATIVE single-row fallback: `bd show`
+// carries the real parent FIELD (probed: `bd search` rows never do, even
+// --long), and a ROOT's show row OMITS parent — which is proven rootage, not
+// ignorance. The facade side normalizes that to an explicit parent:null;
+// a search row with no parent key stays an unknown boundary (rowParent →
+// undefined), never a crowned root. Both channels share the ONE call budget.
+export function searchIssues({ snapshot, query, searchRead, showRead, limit, maxDepth,
   fallback = true, fallbackBudget = MAX_FALLBACK_CALLS } = {}) {
   if (!snapshot || !snapshot.nodes) throw new Error("searchIssues requires an H1 snapshot (model.mjs buildSnapshot)");
   const q = typeof query === "string" ? query.trim() : "";
@@ -230,13 +237,30 @@ export function searchIssues({ snapshot, query, searchRead, limit, maxDepth,
 
   const cache = new Map();
   const fallbackState = { enabled: !!fallback, calls: 0, budget: fallback ? fallbackBudget : 0,
-    error: null, exhausted: false };
+    error: null, exhausted: false, showCalls: 0 };
   const lookup = fallback
     ? (id, queryText) => {
         if (id == null) return null;
         if (queryText != null && id === queryText) return null; // exclusion: no ID-spelling inference
         if (cache.has(id)) return cache.get(id);
         if (fallbackState.calls >= fallbackState.budget) { fallbackState.exhausted = true; return null; }
+        // authoritative channel first: `bd show` carries the real parent FIELD
+        // (search rows never do — probed FACT). A facade-normalized parent:null
+        // from a root's show row proves rootage; the show channel is only
+        // tried when a row is needed, so the warm path stays at zero calls.
+        if (typeof showRead === "function") {
+          fallbackState.calls += 1;
+          let shown = null;
+          try { shown = showRead(id); } catch (err) { fallbackState.error = String(err?.message ?? err); }
+          if (shown && typeof shown === "object") {
+            fallbackState.showCalls += 1;
+            cache.set(id, shown);
+            return shown;
+          }
+          // show miss (no row / deleted id): fall through to the search channel
+          // only while budget remains — still one counted attempt per chain hop.
+          if (fallbackState.calls >= fallbackState.budget) { fallbackState.exhausted = true; return null; }
+        }
         fallbackState.calls += 1;
         let got;
         try {
