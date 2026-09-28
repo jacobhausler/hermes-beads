@@ -18,7 +18,7 @@ const tree = await import("../desktop/tree.mjs");
 const {
   buildTreeRows, statusLabel, epicProgress, ShortcutHelp, KEYMAP,
   resolveKey, createTreeController, tabCommands, refreshOnce,
-  createRefreshScheduler, Tree, INDENT_PX,
+  createRefreshScheduler, Tree, INDENT_PX, expandedOf,
 } = tree;
 
 const fixture = (name) =>
@@ -124,7 +124,7 @@ test("ARIA tree contract: role tree/treeitem, aria-expanded/level/posinset/setsi
     assert.ok(r.props["aria-posinset"] >= 1 && r.props["aria-posinset"] <= r.props["aria-setsize"],
       `posinset within setsize for ${id}`);
     if (node.childIds.length) {
-      assert.equal(r.props["aria-expanded"], w.expanded.has(id),
+      assert.equal(r.props["aria-expanded"], expandedOf(snap, w).has(id),
         `expanded reflects state for ${id}`);
     } else {
       assert.equal(r.props["aria-expanded"], undefined, "leaf has no aria-expanded");
@@ -246,7 +246,7 @@ test("conventional tree arrows: Right expands then visits first child, Left coll
   const w = createWorkbenchState(snap, { selection: "epic", expanded: new Set(["root", "epic"]) });
   const c = createTreeController({ snapshot: snap, ui: w });
   const P = (key, extra = {}) => c.press({ key, isComposing: false, target: buttonTarget(), preventDefault: () => {}, ...extra });
-  const vis = () => w.visibleRows().map((r) => r.id);
+  const vis = () => c.visibleIds(); // the tree's presentation view of the rows
 
   assert.equal(P("ArrowRight"), "expand-or-first-child");
   assert.equal(w.selection, "a", "Right on an expanded node visits its first child");
@@ -269,7 +269,7 @@ test("conventional tree arrows: Right expands then visits first child, Left coll
   P("End");
   assert.equal(w.selection, vis().at(-1), "End jumps to the last visible row");
   P("End");
-  const leaf = w.visibleRows().at(-1).id;
+  const leaf = vis().at(-1);
   assert.equal(w.selection, leaf);
   assert.equal(P("ArrowRight"), "expand-or-first-child", "Right on a leaf is bound but a no-op");
   assert.equal(w.selection, leaf, "leaf Right moved nothing");
@@ -324,7 +324,7 @@ test("tab descriptors reproduce their bd commands verbatim (argv + display strin
     "Browse must not apply ready-work filtering");
 });
 
-test("Browse exposes blocked and unassigned branches (Ready/Mine are not the only navigation)", () => {
+test("Browse exposes blocked and unassigned branches (Ready/Mine are not the only navigation)", async () => {
   const f = fixture("tabs.json");
   const snap = snapOf(f);
   const { createWorkbenchState } = await import("../desktop/model.mjs");

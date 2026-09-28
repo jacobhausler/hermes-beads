@@ -125,7 +125,7 @@ export function resolveKey(ev) {
   // the plain arrows/Enter/Home/End all fall through to the widget.
   if (!mod && isTextTarget(ev.target)) return null;
   for (const b of KEYMAP) {
-    const parts = b.keys.split("+");
+    const parts = b.keys.join("+").split("+");
     const key = parts[parts.length - 1];
     if (key !== ev.key) continue;
     const wantAlt = parts.includes("Alt");
@@ -137,20 +137,102 @@ export function resolveKey(ev) {
   return null;
 }
 
+// ---- tree-owned presentation state -----------------------------------------
+// The frozen model (model.mjs, reused unchanged) re-emits collapsed-subtree
+// children as depth-0 tail rows (its bounded-orphan honesty) and does not
+// expose `expanded` on its API. The TREE therefore owns presentation
+// expansion, keyed per ui object so the controller and Tree share one view.
+const treeStateFor = new WeakMap();
+function treeState(snapshot, ui) {
+  let st = treeStateFor.get(ui);
+  if (!st) {
+    const expanded = new Set();
+    for (const [id, n] of snapshot.nodes) if (n.childIds.length && !n.cyclic) expanded.add(id);
+    st = { expanded };
+    treeStateFor.set(ui, st);
+  }
+  return st;
+}
+// read-only view of the tree's presentation expansion (tests/assertions)
+export function expandedOf(snapshot, ui) {
+  return new Set(treeState(snapshot, ui).expanded);
+}
+
+// Conventional tree traversal over the snapshot's parent FIELD only:
+// roots ordered ready-first (readyIds insertion order, stable) then arrival
+// order, children in childIds order, a subtree rendered only while every
+// ancestor is expanded. Rows never reachable from any rendered root
+// (missing-parent orphans, cycle members) still get exactly one row — never
+// silently hidden — mirroring model.mjs's honesty rule.
+function treeVisibleRows(snapshot, ui) {
+  const { expanded } = treeState(snapshot, ui);
+  const seenAll = new Set();
+  const mark = (id) => {
+    const n = snapshot.nodes.get(id);
+    if (!n || seenAll.has(id)) return;
+    seenAll.add(id);
+    for (const c of n.childIds) mark(c);
+  };
+  const rootIds = [];
+  for (const [id, n] of snapshot.nodes) if (n.parent === null) rootIds.push(id);
+  for (const id of rootIds) mark(id);
+  const rank = new Map();
+  if (snapshot.readyIds) { let i = 0; for (const id of snapshot.readyIds) if (!rank.has(id)) rank.set(id, i++); }
+  const ordered = [...rootIds].sort((a, b) => (rank.get(a) ?? Infinity) - (rank.get(b) ?? Infinity));
+  const out = [];
+  const reached = new Set();
+  const walk = (id, depth) => {
+    const n = snapshot.nodes.get(id);
+    if (!n || reached.has(id)) return;
+    reached.add(id);
+    out.push({ id, depth });
+    if (n.cyclic) return;
+    if (expanded.has(id)) for (const c of n.childIds) walk(c, depth + 1);
+  };
+  for (const id of ordered) walk(id, 0);
+  for (const id of snapshot.nodes.keys()) if (!seenAll.has(id)) out.push({ id, depth: 0 });
+  return out;
+}
+
 // ---- navigation controller ---------------------------------------------------
-// Cursor state lives in model.mjs's createWorkbenchState (reused unchanged):
-// arrow() moves the SELECTION cursor only; enter() is the sole focus promoter;
-// jump()/back()/forward() are the app-level history used by Alt+Arrow.
+// Cursor moves go through model.mjs arrow() ONLY — ui.jump() would promote
+// focus and push app history, which arrows must never do (selection cursor is
+// separated from keyboard focus).
 export function createTreeController({ snapshot, ui }) {
   const box = { helpOpen: false, tabExit: false };
-  const rows = () => ui.visibleRows();
+  const rows = () => treeVisibleRows(snapshot, ui);
   const idxOf = (id) => rows().findIndex((r) => r.id === id);
-  // Cursor moves go through model.mjs arrow()/toggleExpanded() ONLY —
-  // ui.jump() would promote focus and push app history, which arrows must
-  // never do (selection cursor is separated from keyboard focus).
+  // Step the model cursor one row at a time in model order until it lands on
+  // the target, so model-only tail rows are transits, never destinations.
   const slide = (toId) => {
-    let guard = rows().length + 1;
-    while (ui.selection !== toId && guard-- > 0) ui.arrow(idxOf(toId) - idxOf(ui.selection));
+    let guard = ui.visibleRows().length * 2 + 4;
+    while (ui.selection !== toId && guard-- > 0) {
+      const all = ui.visibleRows();
+      const j = all.findIndex((r) => r.id === toId);
+      if (j === -1) break;
+      const i = all.findIndex((r) => r.id === ui.selection);
+      ui.arrow(i === -1 ? 1 : Math.sign(j - i) || 1);
+    }
+  };
+  const stepBy = (d) => {
+    const vis = rows();
+    if (ui.selection == null) {
+      // fresh cursor lands on the ready head of the board (readyIds order);
+      // with no ready rows, the first/last visible row.
+      let t = vis[0];
+      if (d > 0 && snapshot.readyIds?.size) {
+        const rank = new Map();
+        let k = 0;
+        for (const id of snapshot.readyIds) if (!rank.has(id)) rank.set(id, k++);
+        const cands = vis.filter((r) => rank.has(r.id));
+        if (cands.length) t = cands.sort((a, b) => rank.get(a.id) - rank.get(b.id))[0];
+      }
+      if (t) slide(t.id);
+      return;
+    }
+    const i = idxOf(ui.selection);
+    const t = vis[Math.max(0, Math.min(vis.length - 1, i + d))];
+    if (t) slide(t.id);
   };
 
   const press = (ev) => {
@@ -159,22 +241,23 @@ export function createTreeController({ snapshot, ui }) {
     if (cmd === "exit-tree") { box.tabExit = true; return cmd; } // Tab exits natively
     ev.preventDefault?.();
     const node = () => snapshot.nodes.get(ui.selection);
+    const exp = () => treeState(snapshot, ui).expanded;
     switch (cmd) {
-      case "cursor-up": ui.arrow(-1); break;
-      case "cursor-down": ui.arrow(1); break;
+      case "cursor-up": stepBy(-1); break;
+      case "cursor-down": stepBy(1); break;
       case "cursor-first": { const r = rows(); if (r.length) slide(r[0].id); break; }
       case "cursor-last": { const r = rows(); if (r.length) slide(r.at(-1).id); break; }
       case "expand-or-first-child": {
         const n = node();
-        if (n && n.childIds.length) {
-          if (!ui.expanded.has(ui.selection)) ui.toggleExpanded(ui.selection);
+        if (n && n.childIds.length && !n.cyclic) {
+          if (!exp().has(ui.selection)) exp().add(ui.selection);
           else slide(n.childIds[0]); // first child is the next visible row
         }
         break;
       }
       case "collapse-or-parent": {
         const n = node();
-        if (n && n.childIds.length && ui.expanded.has(ui.selection)) ui.toggleExpanded(ui.selection);
+        if (n && n.childIds.length && !n.cyclic && exp().has(ui.selection)) exp().delete(ui.selection);
         else if (n && n.parent != null) slide(n.parent);
         break;
       }
@@ -192,6 +275,7 @@ export function createTreeController({ snapshot, ui }) {
     get tabExit() { return box.tabExit; },
     get selection() { return ui.selection; },
     get focus() { return ui.focus; },
+    visibleIds() { return rows().map((r) => r.id); },
   };
 }
 
@@ -288,7 +372,8 @@ export function createRefreshScheduler({ provider, now = () => Date.now(), delay
 
 // ---- the ARIA tree component -------------------------------------------------
 export function Tree({ snapshot, ui, scheduler }) {
-  const rows = ui.visibleRows();
+  const rows = treeVisibleRows(snapshot, ui);
+  const { expanded } = treeState(snapshot, ui);
   const setsizeOf = (id) => {
     const n = snapshot.nodes.get(id);
     let k = 0;
@@ -297,12 +382,16 @@ export function Tree({ snapshot, ui, scheduler }) {
   };
   const selId = ui.selection ?? (rows[0]?.id ?? null);
   const focusId = ui.focus;
+  const posByParent = new Map(); // 1-based ordinal among visible siblings
   const items = rows.map((r, i) => {
     const n = snapshot.nodes.get(r.id);
     const rec = snapshot.byId.get(r.id) ?? {};
-    const rowLabel = (rec.title ?? r.id) + " " + statusLabel(n?.storedStatus ?? null);
+    let rowLabel = (rec.title ?? r.id) + " " + statusLabel(n?.storedStatus ?? null);
     const prog = epicProgress(snapshot, r.id);
     if (prog) rowLabel += ` epic progress ${prog.closed}/${prog.total}`;
+    const pk = n?.parent == null ? "" : n.parent;
+    const posinset = (posByParent.get(pk) ?? 0) + 1;
+    posByParent.set(pk, posinset);
     const props = {
       role: "treeitem",
       id: `row:${r.id}`,
@@ -310,17 +399,17 @@ export function Tree({ snapshot, ui, scheduler }) {
       "aria-label": `${rowLabel}, level ${(n?.depth ?? 0) + 1}, ` +
         `${r.id === selId ? "selection cursor, " : ""}${r.id === focusId ? "keyboard focus" : ""}`,
       "aria-level": (n?.depth ?? 0) + 1,
-      "aria-posinset": i + 1,
+      "aria-posinset": posinset,
       "aria-setsize": setsizeOf(r.id),
       "aria-selected": r.id === selId,
-      "aria-expanded": n && n.childIds.length ? ui.expanded.has(r.id) : undefined,
+      "aria-expanded": n && n.childIds.length ? expanded.has(r.id) : undefined,
       "data-keyboard-focus": String(r.id === focusId),
       "data-tree-focusable": String(r.id === selId),
       tabIndex: r.id === selId ? 0 : -1, // roving tab stop
       style: { paddingInlineStart: `${(n?.depth ?? 0) * INDENT_PX}px` },
       // glyph AND word as visible text nodes — never glyph-only, never color
       children: [
-        jsx("span", { "data-indent-px": (n?.depth ?? 0) * INDENT_PX, children: rowBox.title }),
+        jsx("span", { "data-indent-px": (n?.depth ?? 0) * INDENT_PX, children: rec.title ?? r.id }),
         statusLabel(n?.storedStatus ?? null),
         ...(prog ? [`epic progress ${prog.closed}/${prog.total}`] : []),
         ...(snapshot.blockedIds?.has(r.id) ? ["blocked"] : []),
