@@ -2,6 +2,7 @@
 
 Run: python3 -m unittest tests.test_interop  (from repo root; stdlib only)
 """
+import ast
 import pathlib
 import sys
 import unittest
@@ -313,8 +314,35 @@ class DoorClassification(unittest.TestCase):
         primitives — the reopened acceptance item (names are not evidence)."""
         f = self.ev["functions"]
         self.assertTrue(f["act_run"]["signature"].startswith("def act_run("))
-        self.assertIn("time.strftime", f["act_run"]["body_excerpt"]
-                      + str(f["act_run"]["signature"]))
+        # Live invariant over the CURRENTLY observed installed code — not a
+        # historic literal. The old pin (`time.strftime` in the excerpt) went
+        # stale when the installed act_run grew to 70 lines and that call
+        # moved into a helper (`_create_run`); no excerpt-cap raise recovers
+        # it, and raising the cap or weakening acceptance to chase an
+        # upstream refactor would be dishonest bounded evidence. What the
+        # acceptance item requires is EXACT body evidence within the bound:
+        # the excerpt must be a byte-exact prefix of the live source body,
+        # capped at the documented bound, with an honest truncated flag.
+        src = pathlib.Path(f["act_run"]["source"]).read_text()
+        tree = ast.parse(src, filename=str(f["act_run"]["source"]))
+        seg = next(ast.get_source_segment(src, n)
+                   for n in ast.walk(tree)
+                   if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                   and n.name == "act_run")
+        seg_lines = seg.splitlines()
+        excerpt = f["act_run"]["body_excerpt"]
+        excerpt_lines = excerpt.splitlines()
+        CAP = 60  # _func_body's bound; growing the excerpt past it is a defect
+        self.assertTrue(0 < len(excerpt_lines) <= CAP)
+        self.assertEqual(
+            excerpt, "\n".join(seg_lines[:len(excerpt_lines)]),
+            "body_excerpt must be a byte-exact prefix of the live function "
+            "body as re-read from the installed source")
+        self.assertEqual(f["act_run"]["body_truncated"], len(seg_lines) > CAP,
+                         "truncated flag must state the truth about the bound")
+        # names are not evidence: the excerpt carries real body lines past
+        # the def line, not a signature echo.
+        self.assertGreater(len(excerpt_lines), 1)
         # Hermes-side door symbols carry the same bounded evidence shape
         for label in ("cmd_sessions", "get_or_create_session",
                       "SubagentLifecycleManager.cancel"):
@@ -326,6 +354,64 @@ class DoorClassification(unittest.TestCase):
         if probe["attempted"] and probe.get("returncode") is not None:
             self.assertEqual(probe["returncode"], 0,
                              "read-only sessions list probe must succeed on this host")
+
+
+class ExcerptAndSignatureFixtures(unittest.TestCase):
+    """Deterministic fixture coverage of the AST excerpt/signature
+    machinery in interop (_func_body / _source_signature) against a
+    synthetic source file — the installed source is read-only and the
+    live-invariant assertions in DoorClassification only observe it."""
+
+    SRC = (
+        "import time\n"
+        "def short(a, b=1, *rest, **kw):\n"
+        "    return a + b\n"
+        "def long(name):\n"
+        + "".join(f"    x{i} = {i}\n" for i in range(70))
+        + "    return time.strftime(name)\n"
+        "class Holder:\n"
+        "    def method(self, x: int) -> int:\n"
+        "        return x\n"
+    )
+
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.TemporaryDirectory()
+        self.path = pathlib.Path(self._tmp.name) / "fixture.py"
+        self.path.write_text(self.SRC)
+        self.addCleanup(self._tmp.cleanup)
+
+    def test_excerpt_within_bound_is_whole_body_not_truncated(self):
+        rec = interop._func_body("short", self.path)
+        self.assertIsNotNone(rec)
+        self.assertFalse(rec["truncated"])
+        self.assertIn("return a + b", rec["excerpt"])
+        self.assertEqual(rec["lineno"], 2)
+
+    def test_excerpt_respects_bound_and_flags_truncated(self):
+        rec = interop._func_body("long", self.path)
+        self.assertIsNotNone(rec)
+        self.assertTrue(rec["truncated"], "73-line body must report truncated")
+        self.assertLessEqual(len(rec["excerpt"].splitlines()), 60)
+        # byte-exact prefix of the real body, not a re-render
+        self.assertTrue(self.SRC.split("def long(name):\n", 1)[1]
+                        .startswith(rec["excerpt"].split("def long(name):\n", 1)[1]))
+        # the call past the bound is honestly NOT in the excerpt
+        self.assertNotIn("time.strftime", rec["excerpt"])
+
+    def test_missing_function_and_missing_file_are_none(self):
+        self.assertIsNone(interop._func_body("nope", self.path))
+        self.assertIsNone(interop._func_body("short", self.path.parent / "absent.py"))
+        self.assertIsNone(interop._source_signature("nope", self.path))
+        self.assertIsNone(interop._source_signature("short", self.path.parent / "absent.py"))
+
+    def test_signature_is_ast_unparsed_not_grep(self):
+        self.assertEqual(interop._source_signature("short", self.path),
+                         "def short(a, b=1, *rest, **kw)")
+        # methods are found too (ast.walk covers class bodies); the
+        # signature is args-only by contract — return annotations excluded.
+        self.assertEqual(interop._source_signature("method", self.path),
+                         "def method(self, x: int)")
 
 
 class Qualification(unittest.TestCase):
