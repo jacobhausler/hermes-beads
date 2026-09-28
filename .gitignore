@@ -5,3 +5,4 @@ node_modules/
 tests/.homes/
 tests/.fixtures/
 tests/.claims-fixtures/
+.write-fixtures/
