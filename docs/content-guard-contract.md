@@ -50,23 +50,16 @@ and `tests/test_content_guard.py` (11 tests, all green against the real binary).
 
 ## Contract rules (binding for this plugin)
 
-- **Do not advertise preflight as CAS.** A read-then-write sequence has a
-  write-write TOCTOU window that bd 1.3.0 cannot close; the test
-  `test_preflight_detects_racing_writer_but_leaves_toctou_window` proves the
-  racing write is silently replaced even when preflight was consulted.
-- **Unsafe blind replacement is DISABLED by default.**
-  `tests/test_content_guard.py:guarded_description_update` refuses to write
-  when the caller's baseline description no longer matches the store
-  (`StaleContentError`), and refuses without a baseline at all
-  (`UnsafeContentReplacementError`). Re-enabling requires the explicit
-  per-call `allow_unsafe_blind_replace=True` — never a config default, never
-  set on a caller's behalf by shared code.
-- **Claim discipline is the only native exclusion for descriptions is not
-  available**: use `bd update --claim` ownership plus single-writer policy,
-  and treat every other description writer as a conflict to surface, not a
-  merge to win.
-- Any future code path that enables blind description replacement without the
-  explicit opt-in violates this contract; the guard tests must fail first.
+- **Preflight is not CAS.** Matching assignee/status or matching description
+  cannot authorize safe replacement; another writer may edit after the read.
+- **No product Save endpoint is implemented or qualified here.** Keep it
+  unavailable until an actual content guard or separately qualified cooperating-
+  writer topology provides the contract. Claim ownership alone does not.
+- The test-only `guarded_description_update` now refuses ALL default writes,
+  including matching baselines. The race-seam regression proves refusal before
+  any competing-write callback or mutation. Its explicit unsafe opt-in exists
+  solely to demonstrate last-writer-wins in isolated fixtures; never export it
+  as a product editing API.
 
 ## Concrete upstream requirement (bd)
 

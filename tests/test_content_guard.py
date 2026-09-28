@@ -90,19 +90,12 @@ def guarded_description_update(store, iid, actor, new_description, *,
                                 expected_description,
                                 allow_unsafe_blind_replace=False,
                                 before_write=None):
-    """Preflight-guarded description update — NOT compare-and-swap.
+    """TEST-ONLY refusal prototype — NOT compare-and-swap.
 
-    Re-reads the description immediately before writing and refuses if it
-    moved since `expected_description` (the baseline the caller read). That
-    closes the read-stale-editor case ONLY; it does NOT close the write-write
-    race, because bd 1.3.0 has no revision-conditional mutation: another
-    process can land between the preflight read and the write and its edit
-    will be silently replaced. Never advertise this as CAS.
-
-    Blind replacement (no baseline, or a moved baseline) raises
-    UnsafeContentReplacementError unless the caller passes the explicit
-    per-call `allow_unsafe_blind_replace=True`. There is no config default
-    for that opt-in and this module must never pass it on the caller's behalf.
+    Always refuse replacement by default, including matching preflight.
+    Never advertise this as CAS. The explicit unsafe opt-in exists only to
+    demonstrate native last-writer-wins in isolated fixtures. No product
+    editor or safe Save capability is implemented by this test helper.
     """
     if not allow_unsafe_blind_replace:
         current = read(store, iid)
@@ -110,6 +103,7 @@ def guarded_description_update(store, iid, actor, new_description, *,
             raise StaleContentError(
                 f"{iid}: description moved since baseline; blind replacement "
                 f"refused (content CAS unsupported in bd 1.3.0)")
+        raise UnsafeContentReplacementError("No native content CAS: matching preflight cannot authorize replacement")
     if before_write:
         before_write()  # test seam: a competing writer lands here
     p = bd(store, ["update", iid, "--description", new_description, "--json"],
@@ -274,14 +268,12 @@ class UnsafeReplacementDisabled(unittest.TestCase):
             bd(self.store, ["update", self.iid, "--description", "RACE",
                             "--json"], actor=self.b)
 
-        row = guarded_description_update(self.store, self.iid, self.a,
-                                         "A-EDIT",
-                                         expected_description="BASELINE",
-                                         before_write=competitor)
-        # The competing write landed after the preflight read and was
-        # silently replaced: proof the preflight is not compare-and-swap.
-        self.assertTrue(raced)
-        self.assertEqual(row["description"], "A-EDIT")
+        with self.assertRaises(UnsafeContentReplacementError):
+            guarded_description_update(self.store, self.iid, self.a,
+                                       "A-EDIT", expected_description="BASELINE",
+                                       before_write=competitor)
+        self.assertFalse(raced)
+        self.assertEqual(read(self.store, self.iid)["description"], "BASELINE")
 
     def test_contract_declares_cas_unsupported_and_not_advertised(self):
         self.assertFalse(CONTENT_CAS_SUPPORTED)
