@@ -2,5 +2,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 node_modules/
-tests/.homes/
-tests/.fixtures/
+.homes/
+.fixtures/
+.fixtures-reads/
