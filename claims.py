@@ -145,6 +145,14 @@ def claim(workspace, issue_id, *, actor, bd_bin="bd"):
     of a conflict."""
     if not actor or not isinstance(actor, str):
         raise ValueError("claim requires an explicit non-empty actor identity")
+    if not ready(workspace, issue_id, bd_bin=bd_bin):
+        current = read_model.show(workspace, issue_id, bd_bin=bd_bin)
+        holder = _holder_from_readback(current, actor)
+        if holder:
+            raise ClaimConflictError(issue_id, holder, "native read-back before claim")
+        if not (current and current.get("assignee") == actor
+                and current.get("status") == "in_progress"):
+            raise ClaimError(f"{issue_id}: absent from bounded native ready frontier; not claimed")
     try:
         native.run_bd(["update", issue_id, "--claim", "--json"],
                       workspace=workspace, bd_bin=bd_bin, actor=actor)
@@ -178,7 +186,8 @@ def claim(workspace, issue_id, *, actor, bd_bin="bd"):
 def inspect_after_claim(workspace, issue_id, *, actor, bd_bin="bd", row=None):
     """Post-claim honesty pass: open blockers + ownership drift.
 
-    Returns (reasons, evidence). reasons empty => claim is plainly workable.
+    Returns (reasons, evidence). Empty reasons mean no blockage/ownership
+    discrepancy was observed, NOT atomic eligibility or execution permission.
     Non-empty reasons mean the eligibility->claim window was raced (a new
     blocker landed or ownership moved); the caller must STOP and report, not
     retry — bd has no atomic claim-if-unblocked primitive to reach back to.
@@ -193,26 +202,13 @@ def inspect_after_claim(workspace, issue_id, *, actor, bd_bin="bd", row=None):
         reasons.append(
             f"ownership drift: assignee={row.get('assignee')!r} "
             f"status={row.get('status')!r} expected {actor!r}/in_progress")
-    edges = native.run_bd(["dep", "list", issue_id, "--json"],
-                          workspace=workspace, bd_bin=bd_bin,
-                          readonly=True)[1] or []
-    if isinstance(edges, dict):  # tolerate a wrapped shape; records stay verbatim
-        edges = edges.get("dependencies") or edges.get("depends_on") or []
-    blockers = []
-    for dep in edges:
-        # Flat array of records; bd also emits flattened "ID: title" strings
-        # in some paths — accept both, keep the raw record in evidence.
-        dep_id = dep.get("id") if isinstance(dep, dict) else str(dep).split(":", 1)[0].strip()
-        dep_type = dep.get("dependency_type") if isinstance(dep, dict) else None
-        if not dep_id or dep_type != "blocks":
-            continue
-        dep_row = read_model.show(workspace, dep_id, bd_bin=bd_bin)
-        if dep_row and dep_row.get("status") != "closed":
-            blockers.append({"id": dep_id, "status": dep_row.get("status"),
-                             "dependency_type": dep_type})
-    if blockers:
-        reasons.append(f"{len(blockers)} open blocker(s) at post-claim inspection")
-    evidence["blockers"] = blockers
+    # Native Beads owns all edge semantics, including inherited blockage.
+    # The read model raises on cap overflow; never treat truncation as clear.
+    blockage = next((r for r in read_model.blocked(workspace, bd_bin=bd_bin)
+                     if r.get("id") == issue_id), None)
+    if blockage is not None:
+        reasons.append("native blocked result includes this claimed issue")
+    evidence["native_blocked"] = blockage
     return reasons, evidence
 
 

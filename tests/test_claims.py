@@ -218,13 +218,38 @@ class RaceHonesty(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         a = actor("race")
         self.assertFalse(claims.ready(self.store, blocked, bd_bin=BD_BIN))
+        # Exercise native claim bypass directly, then idempotent wrapper inspection.
+        native.run_bd(["update", blocked, "--claim", "--json"], workspace=self.store, actor=a, bd_bin=BD_BIN)
         with self.assertRaises(claims.ClaimAmbiguityError) as cm:
             claims.claim(self.store, blocked, actor=a, bd_bin=BD_BIN)
-        self.assertEqual(cm.exception.evidence["blockers"][0]["id"], blocker)
+        self.assertIn(blocker, cm.exception.evidence["native_blocked"]["blocked_by"])
         # honest stop: the claim itself did land (bd's doing) — the error is
         # the disclosure, not a rollback we pretend to own.
         back = read_model.show(self.store, blocked, bd_bin=BD_BIN)
         self.assertEqual(back["assignee"], a)
+
+    def test_inherited_parent_blockage_is_not_plainly_workable(self):
+        blocker = seed(self.store, "ancestor prerequisite")
+        parent = seed(self.store, "parent")
+        child = seed(self.store, "child")
+        for argv in (["dep", blocker, "--blocks", parent], ["update", child, "--parent", parent]):
+            p = subprocess.run([BD_BIN, *argv], cwd=self.store, capture_output=True, text=True)
+            self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertFalse(claims.ready(self.store, child, bd_bin=BD_BIN))
+        a = actor("inherited")
+        native.run_bd(["update", child, "--claim", "--json"], workspace=self.store, actor=a, bd_bin=BD_BIN)
+        with self.assertRaises(claims.ClaimAmbiguityError):
+            claims.claim(self.store, child, actor=a, bd_bin=BD_BIN)
+
+    def test_named_blocked_work_is_refused_before_mutation(self):
+        blocker = seed(self.store, "preexisting blocker")
+        child = seed(self.store, "must remain unclaimed")
+        subprocess.run([BD_BIN, "dep", blocker, "--blocks", child], cwd=self.store, check=True, capture_output=True)
+        with self.assertRaises(claims.ClaimError):
+            claims.claim(self.store, child, actor=actor("preflight"), bd_bin=BD_BIN)
+        back = read_model.show(self.store, child, bd_bin=BD_BIN)
+        self.assertEqual(back["status"], "open")
+        self.assertFalse(back.get("assignee"))
 
     def test_ready_is_advisory_and_absent_after_claim(self):
         issue = seed(self.store, "advisory")
