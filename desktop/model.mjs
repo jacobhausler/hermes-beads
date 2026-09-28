@@ -204,7 +204,7 @@ export function absenceReason(snap, id) {
 export function createWorkbenchState(snapshot, initial = {}) {
   if (!snapshot) throw new Error("snapshot required");
   let exp = initial.expanded ?? new Set();
-  if (exp.size === 0) for (const [id, n] of snapshot.nodes) if (n.childIds.length) exp.add(id);
+  if (exp.size === 0) for (const [id, n] of snapshot.nodes) if (n.childIds.length && !n.cyclic) exp.add(id);
   const st = {
     storeKey: snapshot.storeKey,
     selection: initial.selection ?? null,
@@ -216,17 +216,29 @@ export function createWorkbenchState(snapshot, initial = {}) {
   };
   const visible = () => {
     const out = [];
+    // A row counts as reachable if some root's DESCENDANT CLOSURE covers it,
+    // regardless of expansion: collapsing a parent hides its subtree, it never
+    // re-emits those descendants as depth-0 tail rows. Only rows unreachable
+    // from any root (missing-parent orphans, cycle members) get the honest
+    // single tail row.
     const reached = new Set();
+    const mark = (id) => {
+      if (reached.has(id)) return;
+      reached.add(id);
+      const n = snapshot.nodes.get(id);
+      if (!n) return;
+      for (const c of n.childIds) mark(c);
+    };
     const walk = (id, depth) => {
       const n = snapshot.nodes.get(id);
-      if (!n || reached.has(id)) return;
-      reached.add(id);
+      if (!n || walked.has(id)) return;
+      walked.add(id);
       out.push({ id, depth });
       if (st.expanded.has(id) && !n.cyclic) for (const c of n.childIds) walk(c, depth + 1);
     };
+    const walked = new Set();
+    for (const [id, n] of snapshot.nodes) if (n.parent === null) { mark(id); }
     for (const [id, n] of snapshot.nodes) if (n.parent === null) walk(id, 0);
-    // rows unreachable from roots (missing-parent orphans, cycle members)
-    // still get exactly one row — never silently hidden.
     for (const id of snapshot.nodes.keys()) if (!reached.has(id)) out.push({ id, depth: 0 });
     return out;
   };
@@ -250,6 +262,9 @@ export function createWorkbenchState(snapshot, initial = {}) {
     get focus() { return st.focus; },
     get pane() { return st.pane; },
     get history() { return st.history; },
+    // THE expansion truth: the live set behind visibleRows/toggleExpanded/
+    // jump/history-restore. The tree renders this set; it keeps no copy.
+    get expanded() { return st.expanded; },
     visibleRows: visible,
     arrow(dir) {
       const rows = visible();
@@ -266,6 +281,22 @@ export function createWorkbenchState(snapshot, initial = {}) {
     enter() { if (st.selection != null) { st.focus = st.selection; push(); } },
     jump(id, pane) {
       if (pane && pane !== st.pane) { st.pane = pane; }
+      // jump is the reveal primitive (search-lane Enter path): expand the
+      // target's ancestor chain so the row is rendered, cycle-bounded.
+      const n = snapshot.nodes.get(id);
+      if (n) {
+        const seen = new Set([id]);
+        let p = n.parent;
+        let d = 0;
+        while (p != null && d < snapshot.maxDepth) {
+          if (seen.has(p)) break;
+          seen.add(p);
+          const pn = snapshot.nodes.get(p);
+          if (pn && !pn.cyclic) st.expanded.add(p);
+          p = pn?.parent ?? null;
+          d += 1;
+        }
+      }
       st.selection = id; st.focus = id; push();
     },
     back() { if (st.hIdx > 0) { st.hIdx -= 1; restore(st.history[st.hIdx]); } },
