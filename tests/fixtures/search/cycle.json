@@ -31,5 +31,5 @@
       "parent": "ocyc-a"
     }
   ],
-  "_fact": "parent cycles must terminate with an explicit marker (in-snapshot via model.mjs decorate, out-of-snapshot via the fallback walk's visited set) \u2014 no infinite walk."
+  "_fact": "parent cycles terminate with an explicit marker (in-snapshot via model.mjs decorate; out-of-snapshot via the fallback walk's visited set) \u2014 no infinite walk. outOfSnapshot is a documented data note; the in-snapshot cycle is what resolveHitPath renders."
 }

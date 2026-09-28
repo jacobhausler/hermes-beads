@@ -35,5 +35,5 @@
       "dependencies": []
     }
   ],
-  "_fact": "the bounded page includes orphan+mid but NOT deep-anc: absence from a bounded read is UNKNOWN, never deleted (C1). Fallback resolves deep-anc under budget."
+  "_fact": "the bounded page includes orphan+mid but NOT deep-anc: mid.parent=deep-anc is an unobserved parent \u2014 absence from a bounded read is UNKNOWN, never deleted (C1). Without a fallback the chain marks deep-anc missing with zero extra calls; with the bounded fallback (one lookup) it resolves under budget."
 }

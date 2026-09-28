@@ -24,6 +24,8 @@
 // Purity: no I/O, no bd import, no second readiness engine; sole import is
 // the jsx-runtime the app loader maps (same pattern as history.mjs).
 
+import { jsx } from "react/jsx-runtime";
+
 export const DEFAULT_SEARCH_LIMIT = 25;
 export const HARD_SEARCH_LIMIT = 100; // explicit ceiling: larger requests clamp, visibly
 export const MAX_FALLBACK_CALLS = 3;  // bounded ancestor fallback, never a show loop
@@ -35,6 +37,15 @@ function missingMarker(missing, reason) {
 function cycleMarker() {
   return { id: null, label: "\u27f2 cycle", state: "cycle",
     error: "parent cycle detected \u2014 chain truncated", clickable: false };
+}
+
+// parentage a bounded row DECLARES: explicit null = proven root (bd show of a
+// root omits the field; facades normalize it to null); ABSENT = no parentage
+// info at all (raw `bd search` rows — probed: never carry parent, even
+// --long) — never silently crowned as a root.
+function rowParent(row) {
+  if (!row || typeof row !== "object") return undefined;
+  return "parent" in row ? (row.parent ?? null) : undefined;
 }
 
 // ---- path resolution: parent FIELD chain over the snapshot -------------------
@@ -98,7 +109,7 @@ export function resolveHitPath(snapshot, hit, opts = {}) {
 
   // continue upward from a boundary (missing/deleted parent, depth cap, or an
   // out-of-snapshot hit) until root proven / missing / cycle / depth bound
-  while (parentId !== null) {
+    while (parentId !== null || needLookupForHitParent) {
     if (chain.length - 1 > maxDepth) {
       if (status !== "unknown-hit") status = "depth-truncated";
       flags.push("depth-truncated");
@@ -118,7 +129,15 @@ export function resolveHitPath(snapshot, hit, opts = {}) {
       }
       fallbackUsed = true;
       chain[0] = { id, label: row.title ?? id, state: "fallback" };
-      parentId = row.parent ?? null;
+      const rp = rowParent(row);
+      if (rp === undefined) {
+        // the bounded row carries NO parentage at all — honest boundary,
+        // never silently crowned as a root
+        tail.push(missingMarker(null, "fallback row carries no parent field — ancestry unavailable"));
+        flags.push("ancestor-missing");
+        break;
+      }
+      parentId = rp;
       if (parentId == null) status = "resolved";
       continue;
     }
@@ -161,7 +180,16 @@ export function resolveHitPath(snapshot, hit, opts = {}) {
     }
     fallbackUsed = true;
     chain.unshift({ id: want, label: row.title ?? want, state: "fallback" });
-    parentId = row.parent ?? null;
+    const rp = rowParent(row);
+    if (rp === undefined) {
+      // row carries NO parentage: an honest boundary, never a crowned root
+      status = "parent-missing";
+      missing = null;
+      tail.push(missingMarker(want, "fallback row carries no parent field — ancestry unavailable above it"));
+      flags.push("ancestor-missing");
+      break;
+    }
+    parentId = rp;
     if (parentId == null && status === "unknown-hit") status = "resolved";
   }
 
@@ -191,7 +219,10 @@ export function searchIssues({ snapshot, query, searchRead, limit, maxDepth,
   const clamped = requested > HARD_SEARCH_LIMIT;
   const bound = Math.min(requested, HARD_SEARCH_LIMIT);
 
-  const rows = searchRead(q, bound) ?? []; // query failure PROPAGATES (visible, never faked empty)
+  // ONE native query. Request bound+1 so truncation is PROVEN, not guessed:
+  // native `bd search` drops matches beyond --limit status-blind, so a
+  // response that fills bound+1 means rows were dropped (banner, not silence).
+  const rows = searchRead(q, bound + 1) ?? []; // query failure PROPAGATES (visible, never faked empty)
   if (!Array.isArray(rows)) throw new Error("searchRead must return the native row array verbatim");
   const rawCount = rows.length;
   const truncated = rawCount > bound || rows.truncated === true;
