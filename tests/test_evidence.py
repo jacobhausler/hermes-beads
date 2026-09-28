@@ -102,6 +102,15 @@ def seed_worker(store, prefix="worker"):
     return iid, w, wsurf
 
 
+class EnvelopeRoundTrip(unittest.TestCase):
+    def test_multiline_summary_preserves_exact_fields(self):
+        text = evidence.evidence_comment_text(
+            "a1+final", ["reports/result.json"],
+            summary="first line\nsecond line attempt=a1 artifacts=other.json")
+        self.assertEqual(evidence._parse_envelope_fields(text),
+                         ("a1+final", ["reports/result.json"]))
+
+
 class WorkerSurfaceSeparation(unittest.TestCase):
     def setUp(self):
         self.store = make_store()
@@ -486,7 +495,7 @@ class CodePathAudit(unittest.TestCase):
 if __name__ == "__main__":
     os.makedirs(FIXTURE_ROOT, exist_ok=True)
     try:
-        unittest.main(verbosity=2, exit=False)
+        unittest.main(verbosity=2)
     finally:
         for name in os.listdir(FIXTURE_ROOT):
             shutil.rmtree(os.path.join(FIXTURE_ROOT, name), ignore_errors=True)

@@ -58,7 +58,7 @@ _HEADER_RE = re.compile(
     rf"^{re.escape(EVIDENCE_PREFIX)} "
     rf"attempt=(?P<attempt>\S+) "
     rf"artifacts=(?P<artifacts>[^;\s][^;\s]*(?:;[^;\s][^;\s]*)*)"
-    rf"(?: summary=(?P<summary>.*))?$")
+    rf"(?: summary=(?P<summary>.*))?$", re.DOTALL)
 
 
 def _parse_envelope_fields(text):
