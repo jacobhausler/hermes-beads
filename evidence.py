@@ -35,6 +35,8 @@ Boundary honesty (pinned bd 1.3.0, f45b249ce):
     never a global sweep (the non-dry-run verb is never built anywhere).
 No SQL, no shadow store, no plugin-minted IDs, no --force.
 """
+import re
+
 import claims
 import native
 import read_model
@@ -42,6 +44,24 @@ import write_protocol
 
 EVIDENCE_PREFIX = "EVIDENCE"
 REQUEST_PREFIX = "REQUEST-CLOSURE"
+
+# REVIEW-A: attempt tokens match at their boundary, never as a substring
+# ("attempt=a1" must not match inside "attempt=a1-final").
+# REVIEW-B: an artifact citation must be artifact-shaped (path/URL/ID:
+# separator or dot, min length) — a caller-chosen "e" cites nothing.
+_ATTEMPT_TOKEN_SEP = r"[A-Za-z0-9_.:/@-]"
+MIN_ARTIFACT_LEN = 3
+
+
+def _attempt_token_re(attempt):
+    return re.compile(
+        rf"(?<!{_ATTEMPT_TOKEN_SEP})attempt={re.escape(str(attempt))}"
+        rf"(?!{_ATTEMPT_TOKEN_SEP})")
+
+
+def _artifact_shaped(a):
+    return (isinstance(a, str) and len(a) >= MIN_ARTIFACT_LEN
+            and ("/" in a or "." in a))
 
 CLOSE_REFUSAL = (
     "worker surface never closes: closure is the parent's verified act on "
@@ -90,12 +110,12 @@ def _find_evidence_comment(workspace, issue_id, *, evidence_actor, attempt,
     evidence_actor, contains attempt=<attempt>, cites every artifact.
     Returns the comment or None; a failed comments read raises honestly."""
     rows = read_model.comments(workspace, issue_id, bd_bin=bd_bin)
-    token = f"attempt={attempt}"
+    attempt_re = _attempt_token_re(attempt)
     for c in rows:
         text = c.get("text") or ""
         if (c.get("author") == evidence_actor
                 and text.startswith(EVIDENCE_PREFIX)
-                and token in text
+                and attempt_re.search(text)
                 and all(a in text for a in artifacts)):
             return c
     return None
@@ -154,6 +174,12 @@ def authorized_close(workspace, issue_id, *, actor, authorization, reason,
             "an empty reason; the plugin surface does not)")
     if not artifacts:
         raise ClosureRefusedError("close refused: no artifacts cited")
+    unshaped = [a for a in artifacts if not _artifact_shaped(a)]
+    if unshaped:
+        raise ClosureRefusedError(
+            f"close refused: artifacts must be artifact-shaped tokens "
+            f"(path/URL/ID, >= {MIN_ARTIFACT_LEN} chars, containing '/' or "
+            f"'.'); not citable: {unshaped}")
     missing_cite = [a for a in artifacts if a not in reason]
     if missing_cite:
         raise ClosureRefusedError(

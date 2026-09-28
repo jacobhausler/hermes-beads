@@ -189,6 +189,61 @@ class AuthorizedClosure(unittest.TestCase):
                 artifacts=["tests/test_evidence.py"])
         self.assertEqual(show_raw(self.store, self.iid), before)
 
+    def test_attempt_prefix_collision_refused(self):
+        """REVIEW-A: evidence for attempt 'a1-final' must NOT satisfy a
+        close demanding 'a1' — 'attempt=a1' is a substring of
+        'attempt=a1-final'; the attempt token must match at its boundary."""
+        store = make_store()
+        iid = create(store, "collision bead")
+        w = actor("worker")
+        import claims
+        claims.claim(store, iid, actor=w, bd_bin=BD_BIN)
+        wsurf = evidence.WorkerSurface(store, actor=w, bd_bin=BD_BIN)
+        wsurf.record_evidence(iid, attempt="a1-final",
+                              artifacts=["tests/test_evidence.py",
+                                         "reports/completion-evidence.json"])
+        before = show_raw(store, iid)
+        with self.assertRaises(evidence.ClosureRefusedError):
+            evidence.authorized_close(
+                store, iid, actor=actor("parent"), bd_bin=BD_BIN,
+                authorization="parent ok",
+                reason="done: tests/test_evidence.py "
+                       "reports/completion-evidence.json",
+                evidence_actor=w, attempt="a1",
+                artifacts=["tests/test_evidence.py",
+                           "reports/completion-evidence.json"])
+        self.assertEqual(show_raw(store, iid), before)
+        self.assertEqual(show_dict(store, iid)["status"], "in_progress")
+
+    def test_vacuous_artifact_citation_refused(self):
+        """REVIEW-B: artifacts=['e'] + reason='e' must be refused — an
+        artifact must be an artifact-shaped token (path/URL/ID), and it must
+        appear in BOTH the reason and the evidence comment."""
+        # single-char artifact rejected before any store access
+        before = show_raw(self.store, self.iid)
+        with self.assertRaises(evidence.ClosureRefusedError):
+            evidence.authorized_close(
+                self.store, self.iid, actor=self.parent, bd_bin=BD_BIN,
+                authorization="parent ok", reason="e",
+                evidence_actor=self.w, attempt="a1", artifacts=["e"])
+        self.assertEqual(show_raw(self.store, self.iid), before)
+        # artifact-shaped but absent from the reason -> refused
+        with self.assertRaises(evidence.ClosureRefusedError):
+            evidence.authorized_close(
+                self.store, self.iid, actor=self.parent, bd_bin=BD_BIN,
+                authorization="parent ok", reason="done",
+                evidence_actor=self.w, attempt="a1",
+                artifacts=["tests/test_evidence.py"])
+        self.assertEqual(show_raw(self.store, self.iid), before)
+        # artifact-shaped but absent from the evidence comment -> refused
+        with self.assertRaises(evidence.ClosureRefusedError):
+            evidence.authorized_close(
+                self.store, self.iid, actor=self.parent, bd_bin=BD_BIN,
+                authorization="parent ok", reason="done: phantom/report.log",
+                evidence_actor=self.w, attempt="a1",
+                artifacts=["phantom/report.log"])
+        self.assertEqual(show_raw(self.store, self.iid), before)
+
     def test_wrong_store_scope_refused(self):
         other = make_store()
         iid2 = create(other, "unrelated bead")
