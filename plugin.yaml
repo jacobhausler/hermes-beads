@@ -1,0 +1,13 @@
+name: hermes-beads
+version: 0.1.0
+description: Native Beads (bd) work-graph backend — fixed-argv adapter, scoped ready frontier, claim with read-back, heartbeat
+description_long: |
+  Backend plugin boundary to the bd CLI: explicit canonical workspace + actor,
+  fixed argv (no shell interpolation), honest exit-code map (0/1/13/2), JSON
+  parsing incl. failed rows, named unavailable errors. Native bd alone remains
+  fully sufficient (escape-hatch law); this plugin only reduces agent effort.
+author: "Hermes Agent (beads-lab)"
+license: MIT
+requires_hermes: ">=0.21"
+provides_tools:
+  - beads_smoke
