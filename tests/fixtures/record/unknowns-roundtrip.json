@@ -1,0 +1,34 @@
+{
+  "storeInfo": { "workspace": "/lab/store", "db": "/lab/store/.beads/lab.db" },
+  "issues": [
+    {
+      "id": "wip-1",
+      "title": "custom-status record",
+      "status": "awaiting-review",
+      "issue_type": "spike",
+      "priority": 3,
+      "dependencies": [
+        { "depends_on_id": "wall", "dependency_type": "shadows", "created_by": "lab" },
+        { "depends_on_id": "blk", "type": "blocks", "status": "open" }
+      ],
+      "custom_field": { "kept": ["verbatim", "nesting"] }
+    },
+    { "id": "wall", "status": "hooked", "issue_type": "task" },
+    { "id": "blk", "status": "closed", "issue_type": "task" },
+    {
+      "id": "stale-flag",
+      "title": "manual blocked flag, native says ready",
+      "status": "blocked",
+      "issue_type": "task"
+    },
+    {
+      "id": "badge-liar",
+      "title": "dep-tree badge contradicts frontier truth",
+      "status": "open",
+      "issue_type": "task",
+      "dep_tree_status": "READY"
+    }
+  ],
+  "ready": ["wip-1", "wall", "badge-liar", "stale-flag"],
+  "blocked": []
+}
