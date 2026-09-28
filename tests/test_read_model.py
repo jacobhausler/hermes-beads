@@ -94,7 +94,8 @@ class SimulationReplay(unittest.TestCase):
         # + JSON body on stdout (the pipe-masked failure shape). If a read
         # route ever hits this envelope it must surface as a named error
         # with the envelope preserved — never an empty success.
-        receipts = json.load(open(RECEIPTS))
+        with open(RECEIPTS) as handle:
+            receipts = json.load(handle)
         rec = next(r for r in receipts
                    if r["label"] == "Q3-claim-child-distinct-actor")
         self.assertEqual(rec["exit_code"], 1)
