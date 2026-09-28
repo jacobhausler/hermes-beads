@@ -343,15 +343,20 @@ test("native external close: refresh flips derived badge; focus never auto-jumps
     const stack = createHistoryStack({ storeKey: snap.storeKey });
     const pre = s2Bundle(ui, st);
     stack.push(pre);
+    // provider.run receives the FULL argv (guardedRun passes verb first);
+    // replay it through the real bd helper, which appends --json itself.
     const provider = {
-      run: (verb, ...rest) => (verb === "dep"
-        ? bd(store, "dep", "tree", rest[0])
-        : verb === "show" ? bd(store, "show", rest[0]) : []),
+      run: (verb, ...rest) => (verb === "dep" || verb === "show")
+        ? bd(store, verb, ...rest) : [],
       storeInfo,
     };
     const { card } = B.jumpToBlocker({ snapshot: snap, ui, stack, state: st,
       provider, targetId: ids.b1 });
-    assert.equal(card.badge, "blocked");
+    // CARD BADGE TRUTH: b1 is itself open and unblocked (the one live edge it
+    // had, b2, is closed; victim being blocked does NOT block b1). Native
+    // ready/blocked is the only badge truth — so the card must say "ready",
+    // whatever any dep-tree badge claims (P6d lie covered in synthetic layer).
+    assert.equal(card.badge, "ready");
     assert.equal(ui.focus, ids.b1);
 
     // GENUINE external close by a different actor, straight through real bd:
@@ -360,12 +365,15 @@ test("native external close: refresh flips derived badge; focus never auto-jumps
     execFileSync(BD_BIN, ["close", ids.epicDep, "--reason", "external",
       "--json"], { cwd: store, stdio: ["ignore", "pipe", "pipe"] });
 
+    // Baseline for NO AUTO-JUMP is the POST-jump bundle (the jump legitimately
+    // moved focus; the refresh must not move the operator from WHERE IT PUT THEM).
+    const post = s2Bundle(ui, st);
     snap = readSnap(); // REFRESH
     assert.equal(snap.nodes.get(ids.victim).derivedBlocked, false,
       "after external closes clear the live blockers, refresh flips the badge to ready");
     // NO AUTO-JUMP: the badge flip left the whole context bundle untouched.
-    assert.ok(snapEq(s2Bundle(ui, st), pre),
-      `refresh must not move the operator:\n got ${project(s2Bundle(ui, st))}\nwant ${project(pre)}`);
+    assert.ok(snapEq(s2Bundle(ui, st), post),
+      `refresh must not move the operator:\n got ${project(s2Bundle(ui, st))}\nwant ${project(post)}`);
 
     const card2 = B.buildBlockerCard({ snapshot: snap, targetId: ids.b1,
       depTree: null, records: {} });
