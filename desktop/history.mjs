@@ -53,8 +53,7 @@ export function createHistoryStack(opts = {}) {
   if (!Number.isInteger(capacity) || capacity < 1) {
     throw new Error(`history capacity must be a positive integer, got ${opts.capacity}`);
   }
-  const st = { entries: (opts.initial ?? []).map((b) => cloneBundle({ storeKey, ...b })), idx: -1 };
-  if (st.entries.length) st.idx = st.entries.length - 1;
+  const st = { entries: [], idx: -1 };
 
   const normalize = (raw) => {
     if (raw == null || typeof raw !== "object") {
@@ -68,6 +67,9 @@ export function createHistoryStack(opts = {}) {
     }
     return cloneBundle({ ...raw, storeKey: raw.storeKey ?? storeKey });
   };
+
+  st.entries = (opts.initial ?? []).map(normalize).slice(-capacity);
+  st.idx = st.entries.length - 1;
 
   return {
     get storeKey() { return storeKey; },
@@ -116,12 +118,14 @@ export function trailFromSnapshot(snapshot, id) {
       clickable: false, href: null });
     return out;
   }
-  if (node.parent != null && !node.parentObserved) {
+  const boundary = chain.map(id => snapshot.nodes.get(id))
+    .find(n => n?.parent != null && !n.parentObserved);
+  if (boundary) {
     const filt = snapshot?._reads?.issues?.filter;
     const reason = filt != null && typeof filt !== "function"
       ? "filtered-out of bounded read (absent \u2260 deleted)"
       : "parent absent from bounded read (absent \u2260 deleted)";
-    out.push({ id: null, missing: node.parent, label: "\u2026", reason,
+    out.push({ id: null, missing: boundary.parent, label: "\u2026", reason,
       clickable: false, href: null });
   }
   return out;
@@ -129,8 +133,8 @@ export function trailFromSnapshot(snapshot, id) {
 
 function CrumbDot({ crumb, onNavigate }) {
   if (crumb.clickable) {
-    return jsx("a", {
-      id: `dot:${crumb.id}`, href: crumb.href, className: "crumb",
+    return jsx("button", {
+      type: "button", id: `dot:${crumb.id}`, className: "crumb",
       onClick: () => onNavigate?.(crumb.id), children: crumb.label,
     }, `dot:${crumb.id}`);
   }
@@ -178,8 +182,9 @@ function rowLabel(e) {
 // stack's entries + index; shares no state with the breadcrumb.
 export function HistoryPanel({ entries, index, onRestore }) {
   const rows = entries.map((e, i) =>
-    jsx("li", {
-      id: `history-row-${i}`,
+    jsx("button", {
+      type: "button", "aria-current": i === index ? "true" : undefined,
+      id: `history-row-${i}`, 
       className: i === index ? "history-row active" : "history-row",
       onClick: () => onRestore?.(e),
       children: rowLabel(e),

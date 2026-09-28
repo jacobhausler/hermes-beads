@@ -45,6 +45,18 @@ const FULL_BUNDLE = {
   expanded: ["epic", "root"],
 };
 
+test("initial history rejects foreign workspaces and obeys capacity", () => {
+  assert.throws(() => createHistoryStack({ storeKey: "A", initial: [{storeKey:"B", draft:"private"}] }), /mismatch/);
+  const h = createHistoryStack({storeKey:"A", capacity:1, initial:[{beadId:"old"},{beadId:"new"}]});
+  assert.deepEqual(h.entries().map(e => e.beadId), ["new"]);
+});
+
+test("missing grandparent is contextual, never a clickable invented record", () => {
+  const s = buildSnapshot(baseReads({issues:[{id:"kid",parent:"mid"},{id:"mid",parent:"gone"}]}));
+  const t = trailFromSnapshot(s, "kid");
+  assert.ok(t.some(c => c.missing === "gone" && !c.clickable));
+});
+
 // ---- history stack -----------------------------------------------------------
 test("history stack: push/back/forward index semantics + forward-tail truncation", () => {
   const h = createHistoryStack({ storeKey: "WS-A" });
@@ -172,7 +184,11 @@ test("breadcrumb dots are clickable and jump to exactly the dot's id", () => {
   dots[0].props.onClick();
   dots[2].props.onClick();
   assert.deepEqual(jumped, ["branch", "x.y.z"]);
-  for (const d of dots) assert.match(d.props.href, /^\/bead\//); // SDK nav pairing
+  for (const d of dots) {
+    assert.equal(d.type, "button");
+    assert.equal(d.props.type, "button");
+    assert.equal(d.props.href, undefined); // no invented app route
+  }
 });
 
 test("missing parent stays visible as contextual path with reason; not clickable", () => {
@@ -223,6 +239,7 @@ test("HistoryPanel renders the stack as its own widget, fed only entries+index",
   assert.equal(findById(el, "history-row-1").length, 1);
   assert.ok(textIn(el, "deep1"));
   assert.ok(textIn(el, "tree \u203A detail"), "row names tab \u203A pane");
+  assert.equal(findById(el, "history-row-0")[0].type, "button");
   findById(el, "history-row-0")[0].props.onClick();
   assert.equal(restored.beadId, "root");
 });
@@ -286,10 +303,10 @@ function nativeStore(name) {
 }
 function createNative(cwd, title, parent) {
   const out = bdMutate(cwd, "create", title,
-    ...(parent ? ["--parent", parent] : []), "--allow-empty-description");
-  const m = out.match(/tst-[a-z0-9]+/i);
-  assert.ok(m, `create returned no id: ${out}`);
-  return m[0];
+    ...(parent ? ["--parent", parent] : []), "--allow-empty-description", "--json");
+  const record = JSON.parse(out);
+  assert.equal(typeof record.id, "string");
+  return record.id;
 }
 const snapOf = (st, rows, fetchedAt) =>
   buildSnapshot(baseReads({ issues: rows, storeInfo:
@@ -334,13 +351,13 @@ test("native delete of the parent: dotted ID survives, parent FIELD is truth (no
     const rows = bdRead(st.cwd, "list", "--all", "--limit", "0");
     const s = snapOf(st, rows, 1);
     const kidRow = rows.find((r) => r.id === kid);
-    assert.ok(kid.id.startsWith(`${p1}.`), "native dotted ID implies a deleted parent");
+    assert.ok(kid.startsWith(`${p1}.`), "native dotted ID implies a deleted parent");
     assert.equal(kidRow.parent ?? null, null, "native cleared the parent FIELD");
     const t = trailFromSnapshot(s, kid);
     assert.deepEqual(t.map((c) => c.id), [kid], "trail follows the FIELD, not the spelling");
     assert.ok(!t.some((c) => c.id === p1), "deleted parent must not render as ancestor");
     const el = Breadcrumb({ snapshot: s, id: kid });
-    assert.ok(textIn(el, kid.id), "own dotted ID renders verbatim as a label");
+    assert.ok(textIn(el, kid), "own dotted ID renders verbatim as a label");
   } finally {
     rmSync(FIX, { recursive: true, force: true });
   }
