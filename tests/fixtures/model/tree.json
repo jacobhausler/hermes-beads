@@ -1,0 +1,12 @@
+{
+  "storeInfo": { "workspace": "/lab/store", "db": "/lab/store/.beads/lab.db" },
+  "issues": [
+    { "id": "root", "status": "open", "issue_type": "epic" },
+    { "id": "epic", "parent": "root", "status": "open", "issue_type": "epic" },
+    { "id": "a", "parent": "epic", "status": "open", "issue_type": "task" },
+    { "id": "b", "parent": "root", "status": "open", "issue_type": "task" },
+    { "id": "deep1", "parent": "a", "status": "in_progress", "issue_type": "task" }
+  ],
+  "ready": ["b"],
+  "blocked": []
+}

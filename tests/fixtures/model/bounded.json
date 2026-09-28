@@ -1,0 +1,12 @@
+{
+  "storeInfo": { "workspace": "/lab/store", "db": "/lab/store/.beads/lab.db" },
+  "issues": {
+    "rows": [
+      { "id": "kid", "parent": "gone", "status": "open", "dependencies": [] }
+    ],
+    "truncated": true
+  },
+  "ready": [],
+  "blocked": [],
+  "tombstones": ["dead"]
+}
