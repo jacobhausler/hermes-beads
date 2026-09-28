@@ -1,0 +1,12 @@
+{
+  "storeInfo": { "workspace": "/lab/store", "db": "/lab/store/.beads/lab.db" },
+  "issues": [
+    { "id": "weird", "status": "pinned-zebra", "issue_type": "spaceship",
+      "dependencies": [
+        { "depends_on_id": "other", "dependency_type": "relativistic-entanglement" }
+      ] },
+    { "id": "other", "status": "hooked", "issue_type": "task" }
+  ],
+  "ready": [],
+  "blocked": []
+}

@@ -1,0 +1,23 @@
+{
+  "storeInfo": { "workspace": "/lab/store", "db": "/lab/store/.beads/lab.db" },
+  "issues": [
+    { "id": "top", "status": "open" },
+    { "id": "anc-blocker", "status": "open" },
+    { "id": "mid", "parent": "top", "status": "blocked",
+      "dependencies": [
+        { "depends_on_id": "anc-blocker", "dependency_type": "blocks", "status": "open" }
+      ] },
+    { "id": "leaf", "parent": "mid", "status": "blocked",
+      "dependencies": [
+        { "depends_on_id": "mid", "dependency_type": "parent-child", "status": "open" },
+        { "depends_on_id": "live1", "dependency_type": "blocks", "status": "open" },
+        { "depends_on_id": "live2", "dependency_type": "blocks", "status": "in_progress" },
+        { "depends_on_id": "closed-dep", "dependency_type": "blocks", "status": "closed" }
+      ] },
+    { "id": "live1", "status": "open" },
+    { "id": "live2", "status": "open" },
+    { "id": "closed-dep", "status": "closed" }
+  ],
+  "ready": ["top", "anc-blocker", "live1", "live2"],
+  "blocked": ["mid", "leaf"]
+}
