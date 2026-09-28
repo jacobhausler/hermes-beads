@@ -5,3 +5,4 @@ node_modules/
 .homes/
 .fixtures/
 .fixtures-reads/
+.history-fixtures/
