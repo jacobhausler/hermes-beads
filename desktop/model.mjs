@@ -213,43 +213,68 @@ export function createWorkbenchState(snapshot, initial = {}) {
     expanded: exp,
     history: [],
     hIdx: -1,
+    // transient search-reveal rows: id -> {parent}. NOT snapshot nodes —
+    // an out-of-snapshot hit has no proven row, and the model must never
+    // invent one (fabricated parentage / crowned roots are exclusions).
+    revealed: new Map(),
   };
   const visible = () => {
     const out = [];
     // A row counts as reachable if some root's DESCENDANT CLOSURE covers it,
     // regardless of expansion: collapsing a parent hides its subtree, it never
     // re-emits those descendants as depth-0 tail rows. Only rows unreachable
-    // from any root (missing-parent orphans, cycle members) get the honest
-    // single tail row.
+    // from any root (missing-parent orphans, cycle members, revealed hits
+    // with unknown parentage) get the honest single tail row.
     const reached = new Set();
+    // revealed children hang under their resolved parent like real kids —
+    // transient workbench state, never snapshot nodes (no invented rows).
+    const revealedKids = (id) => {
+      const out2 = [];
+      for (const [rid, r] of st.revealed) if (r.parent === id) out2.push(rid);
+      return out2;
+    };
     const mark = (id) => {
       if (reached.has(id)) return;
       reached.add(id);
       const n = snapshot.nodes.get(id);
-      if (!n) return;
-      for (const c of n.childIds) mark(c);
+      if (n) for (const c of n.childIds) mark(c);
+      for (const c of revealedKids(id)) mark(c);
     };
     const walk = (id, depth) => {
-      const n = snapshot.nodes.get(id);
-      if (!n || walked.has(id)) return;
+      if (walked.has(id)) return;
+      if (!snapshot.nodes.has(id) && !st.revealed.has(id)) return; // unknown id
       walked.add(id);
       out.push({ id, depth });
-      if (st.expanded.has(id) && !n.cyclic) for (const c of n.childIds) walk(c, depth + 1);
+      const n = snapshot.nodes.get(id);
+      if (st.expanded.has(id) && !(n?.cyclic)) {
+        const kids = n ? [...n.childIds, ...revealedKids(id)] : revealedKids(id);
+        for (const c of kids) walk(c, depth + 1);
+      }
     };
     const walked = new Set();
     for (const [id, n] of snapshot.nodes) if (n.parent === null) { mark(id); }
     for (const [id, n] of snapshot.nodes) if (n.parent === null) walk(id, 0);
-    for (const id of snapshot.nodes.keys()) if (!reached.has(id)) out.push({ id, depth: 0 });
+    for (const [id, n] of snapshot.nodes) if (!reached.has(id)) out.push({ id, depth: 0 });
+    // revealed rows never reached from a known parent (unknown parentage, or
+    // a parent outside the page): honest depth-0 boundary rows — never
+    // re-emitted when their parent merely hides them collapsed.
+    for (const [id, r] of st.revealed) {
+      const p = r.parent;
+      const parentKnown = p != null && (snapshot.nodes.has(p) || st.revealed.has(p));
+      if (!parentKnown) out.push({ id, depth: 0 });
+    }
     return out;
   };
   const idxOf = (rows, id) => rows.findIndex((r) => r.id === id);
   const bundle = () => ({
     storeKey: st.storeKey, pane: st.pane, selection: st.selection,
     focus: st.focus, expanded: [...st.expanded].sort(),
+    revealed: [...st.revealed].map(([id, r]) => [id, r.parent ?? null]),
   });
   const restore = (b) => {
     st.selection = b.selection; st.focus = b.focus; st.pane = b.pane;
     st.expanded = new Set(b.expanded);
+    st.revealed = new Map((b.revealed ?? []).map(([id, p]) => [id, { parent: p }]));
   };
   const push = () => {
     st.history = st.history.slice(0, st.hIdx + 1);
@@ -277,6 +302,19 @@ export function createWorkbenchState(snapshot, initial = {}) {
       const n = snapshot.nodes.get(id);
       if (!n || n.cyclic) return;
       if (st.expanded.has(id)) st.expanded.delete(id); else st.expanded.add(id);
+    },
+    // search-reveal API (hbl-pnu.2.6): hang a transient row for an
+    // out-of-snapshot hit so Enter really lands IN the tree. The parent is
+    // caller-resolved (resolveHitPath's parent-FIELD chain) — the model
+    // invents nothing: unknown parentage renders as a depth-0 boundary row,
+    // never a crowned root. In-snapshot ids are refused (model truth only).
+    reveal(id, parent) {
+      if (id == null || snapshot.nodes.has(id)) return false;
+      st.revealed.set(id, { parent: parent ?? undefined });
+      return true;
+    },
+    unreveal(id) {
+      return st.revealed.delete(id);
     },
     enter() { if (st.selection != null) { st.focus = st.selection; push(); } },
     jump(id, pane) {

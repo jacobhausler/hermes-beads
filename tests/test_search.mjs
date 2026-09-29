@@ -345,6 +345,105 @@ test("REVEAL AUDIT (actual model state): Enter on an out-of-snapshot hit expands
   assert.ok(!wb.expanded.has("mid"), "Enter's expansion was really undone");
 });
 
+test("REVEAL ACCEPTANCE (hitVisible): Enter on an out-of-snapshot hit makes the ACTUAL hit row visible with correct ancestry; Back restores visible rows/filter/query/focus/expansion", () => {
+  // Parent repro (exact): rows root(parent null), mid(root), leaf(mid);
+  // the needle's searchRead returns `outside` (real search row: NO parent
+  // key — probed FACT) and showRead returns the authoritative row with the
+  // real parent FIELD {outside, parent:"leaf"}. Observed gap: selection/
+  // focus land on outside but visibleRows() stays root,mid,leaf —
+  // hitVisible FALSE. The REVEAL AUDIT asserted ancestors only; acceptance
+  // additionally demands the hit's OWN row as a real visible row, hung at
+  // its true depth below leaf, and a Back that restores the full pre-search
+  // state: visible rows, filter, query, focus and expansion.
+  const issues = [
+    { id: "root", title: "root epic", status: "open", parent: null },
+    { id: "mid", title: "mid spec", status: "open", parent: "root" },
+    { id: "leaf", title: "leaf task", status: "open", parent: "mid" },
+  ];
+  const snap = buildSnapshot(baseReads({ issues, ready: [], blocked: [] }),
+    { fetchedAt: 1 });
+  const history = createHistoryStack({ storeKey: snap.storeKey });
+  const wb = createWorkbenchState(snap, {});
+  wb.jump("root", "list");
+  history.push({ beadId: "root", focus: "root", selection: "root",
+    pane: "list", tab: "ready", filter: "mine", search: "earlier", scroll: 42,
+    expanded: [...wb.expanded].sort() });
+  const preRows = wb.visibleRows().map((r) => `${r.id}:${r.depth}`);
+  assert.deepEqual(preRows, ["root:0", "mid:1", "leaf:2"], "fixture: full chain visible pre-Enter");
+  const preExpanded = [...wb.expanded].sort();
+  const preFocus = wb.focus;
+
+  const read = fakeSearch([{ id: "outside", title: "outside hit", status: "closed" }]);
+  const showRead = (id) =>
+    id === "outside" ? { id: "outside", title: "outside hit", status: "closed", parent: "leaf" } : null;
+  const res = searchIssues({ snapshot: snap, query: "outside hit", searchRead: read, showRead });
+
+  const nav = enterSearchHit({ results: res, index: 0, snapshot: snap,
+    workbench: wb, history, pane: "tree" });
+
+  // ACTUAL model state, not history claims: the hit itself must be a row.
+  const rows = wb.visibleRows();
+  const ids = rows.map((r) => r.id);
+  const hitVisible = ids.includes("outside");
+  assert.ok(hitVisible, `hitVisible: the ACTUAL hit row must render, got ${ids}`);
+  const li = ids.indexOf("leaf");
+  const oi = ids.indexOf("outside");
+  assert.equal(rows[oi].depth, rows[li].depth + 1,
+    "correct ancestry: the hit row hangs at leaf's child depth");
+  assert.ok(oi > li, "tree order: the hit row reads after its parent");
+  for (const step of ["root", "mid", "leaf"]) {
+    assert.ok(ids.includes(step), `ancestor ${step} stays visible, got ${ids}`);
+  }
+  assert.equal(wb.focus, "outside");
+  assert.equal(wb.selection, "outside");
+
+  // Back: the pre-search state is restored in the ACTUAL model + stack —
+  // visible rows row-for-row (no orphaned hit row left behind), filter,
+  // query, focus and expansion all returned.
+  nav.restore();
+  assert.deepEqual(wb.visibleRows().map((r) => `${r.id}:${r.depth}`), preRows,
+    "Back restores the pre-search visible rows exactly");
+  const b = history.current();
+  assert.equal(b.filter, "mine", "Back restores the pre-search filter");
+  assert.equal(b.search, "earlier", "Back restores the pre-search query");
+  assert.equal(wb.focus, preFocus, "Back restores the pre-search focus");
+  assert.deepEqual([...wb.expanded].sort(), preExpanded, "Back restores the pre-search expansion");
+  // the reveal is pure model state: call-count bound unchanged (1 query + 1 show)
+  assert.equal(res.nativeCalls, 2, "zero native calls for the reveal");
+});
+
+test("REVEAL ACCEPTANCE (unknown parentage): a hit with no authoritative parent still becomes a visible row — never a crowned root, no invented parentage", () => {
+  // Same shape, but the show channel is blind too: only the search row
+  // (no parent key). The hit must STILL be visibly revealed — as an honest
+  // boundary row — while its in-snapshot ancestors stay visible. Absence of
+  // parentage is never rewritten into rootage.
+  const issues = [
+    { id: "root", title: "root epic", status: "open", parent: null },
+    { id: "mid", title: "mid spec", status: "open", parent: "root" },
+    { id: "leaf", title: "leaf task", status: "open", parent: "mid" },
+  ];
+  const snap = buildSnapshot(baseReads({ issues, ready: [], blocked: [] }),
+    { fetchedAt: 1 });
+  const history = createHistoryStack({ storeKey: snap.storeKey });
+  const wb = createWorkbenchState(snap, {});
+  wb.jump("root", "list");
+  history.push({ beadId: "root", focus: "root", selection: "root", pane: "list",
+    expanded: [...wb.expanded].sort() });
+
+  const read = fakeSearch([{ id: "outside", title: "outside hit", status: "closed" }]);
+  const res = searchIssues({ snapshot: snap, query: "outside hit", searchRead: read });
+  assert.equal(res.hits[0].pathStatus, "unknown-hit",
+    "fixture FACT: search rows carry no parent field — parentage stays unknown");
+
+  enterSearchHit({ results: res, index: 0, snapshot: snap,
+    workbench: wb, history, pane: "tree" });
+  const ids = wb.visibleRows().map((r) => r.id);
+  assert.ok(ids.includes("outside"),
+    `an unknown-parentage hit is still revealed as a row, got ${ids}`);
+  assert.ok(!snap.nodes.has("outside"),
+    "the snapshot is untouched: no invented node, no crowned parent");
+});
+
 test("parent cycle terminates with an explicit marker — no infinite walk", () => {
   const f = fixture("cycle.json");
   const snap = buildSnapshot(baseReads({ issues: f.issues, ready: [], blocked: [],
