@@ -1,0 +1,7 @@
+{
+  "id": "liveB1",
+  "ready": true,
+  "badge": "READY",
+  "children": [],
+  "_note": "KNOWN-FALSE badge: the native blocked read says liveB1 is blocked. FACT P6d: the dep-tree READY badge is decoration, never truth."
+}
