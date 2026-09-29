@@ -1,0 +1,174 @@
+<div id="workbench" data-motion="no-preference"><style>
+/* ---- workbench root: layout ------------------------------------------------ */
+#workbench {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  font-family: system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--foreground, CanvasText);
+  background: var(--background, Canvas);
+  align-items: flex-start; /* panels size to content, never stretch to the tree's height */
+}
+#workbench [role="tree"] {
+  flex: 1 1 20rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  border-inline-end: 1px solid var(--border, GrayText);
+  padding-inline-end: 0.75rem;
+}
+#workbench > section,
+#workbench > #bot-panel-slot {
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+#workbench > #bot-panel-slot {
+  display: flex;
+}
+/* wrap the panels under a narrow viewport: everything stacks */
+@media (max-width: 40rem) {
+  #workbench { flex-direction: column; }
+  #workbench [role="tree"] { border-inline-end: 0; padding-inline-end: 0; }
+}
+
+/* ---- focus + selection: visible, never color-only (WCAG 2.4.7) ------------ */
+#workbench [role="treeitem"]:focus-visible,
+#workbench [role="option"]:focus-visible,
+#workbench button:focus-visible,
+#workbench textarea:focus-visible,
+#workbench input:focus-visible {
+  outline: 2px solid var(--accent, Highlight);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+#workbench [role="treeitem"][data-keyboard-focus="true"] {
+  outline: 2px solid var(--accent, Highlight);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+  font-weight: 600;
+}
+#workbench [role="treeitem"][aria-selected="true"] {
+  background: var(--selection-background, Highlight);
+  color: var(--selection-foreground, HighlightText);
+}
+#workbench [role="treeitem"][aria-selected="true"][data-keyboard-focus="true"] {
+  outline: 2px solid var(--accent, Highlight);
+  outline-offset: -2px;
+}
+#workbench [role="option"][aria-selected="true"] {
+  background: var(--selection-background, Highlight);
+  color: var(--selection-foreground, HighlightText);
+}
+@media (prefers-color-scheme: dark) {
+  #workbench { color-scheme: dark; }
+}
+
+/* ---- tree rows: fields separated, never fused (F4) ------------------------- */
+#workbench [role="treeitem"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem;
+  padding-block: 0.125rem;
+  border-radius: 0.25rem;
+}
+#workbench .row-title { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+#workbench .status-chip,
+#workbench .blocked-chip,
+#workbench .progress-chip,
+#workbench .boundary-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.375rem;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+#workbench .status-glyph { font-weight: 700; }
+#workbench .blocked-chip { border: 2px solid var(--danger, #b00020); font-weight: 600; }
+
+/* ---- blocker card (F5) ------------------------------------------------------ */
+#workbench [id^="blocker-card:"] ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#workbench [id^="blocker-dep:"] { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+#workbench .blocker-id {
+  font-family: monospace;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+#workbench [aria-label="Ancestry"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+#workbench .ancestry-sep { color: var(--muted, GrayText); }
+
+/* ---- search hits (F6): id chip, title, path on its own line ---------------- */
+#workbench [role="option"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+#workbench .search-hit-id {
+  font-family: monospace;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+#workbench .search-hit-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+#workbench .search-hit-path {
+  flex: 1 0 100%;
+  font-size: 0.8125rem;
+  color: var(--muted, GrayText);
+}
+
+/* ---- bot panel (F7): labelled group, controls grouped ---------------------- */
+#workbench .bot-action-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  gap: 0.5rem;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+#workbench .bot-action-panel button {
+  font: inherit;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.375rem;
+  background: var(--button-background, ButtonFace);
+  color: var(--button-foreground, ButtonText);
+}
+#workbench .bot-action-panel button[aria-label="Cancel"],
+#workbench .bot-action-panel button:disabled { opacity: 0.6; }
+
+/* ---- motion: the honest default is none; honour the preference ------------- */
+#workbench * { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  #workbench *,
+  #workbench *::before,
+  #workbench *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+</style><div role="tree" aria-label="Beads workbench tree (cursor and keyboard focus are separate; Enter focuses)" data-indent-px="16"><div role="treeitem" id="row:mnt-et6" data-tree-row="mnt-et6" aria-label="<script>alert(&quot;xss&quot;)</script> <img src=x onerror=alert(1)> ‮evil‬ &quot;quoted&quot; ○ open, level 1, selection cursor, " aria-level="1" aria-posinset="1" aria-setsize="11" aria-selected="true" data-keyboard-focus="false" data-tree-focusable="true" tabindex="0" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">&lt;script&gt;alert("xss")&lt;/script&gt; &lt;img src=x onerror=alert(1)&gt; ‮evil‬ "quoted"</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-rni" data-tree-row="mnt-rni" aria-label="move host B ○ open, level 1, " aria-level="1" aria-posinset="2" aria-setsize="11" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">move host B</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-uhl" data-tree-row="mnt-uhl" aria-label="move host A ○ open, level 1, " aria-level="1" aria-posinset="3" aria-setsize="11" aria-selected="false" aria-expanded="true" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">move host A</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-bsb" data-tree-row="mnt-bsb" aria-label="move me ○ open, level 2, " aria-level="2" aria-posinset="1" aria-setsize="1" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 16px;"><span class="row-title" data-indent-px="16">move me</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-2kz" data-tree-row="mnt-2kz" aria-label="direct blocker ○ open, level 1, " aria-level="1" aria-posinset="4" aria-setsize="11" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">direct blocker</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-ujk" data-tree-row="mnt-ujk" aria-label="multi blocker two ○ open, level 1, " aria-level="1" aria-posinset="5" aria-setsize="11" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">multi blocker two</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-xes" data-tree-row="mnt-xes" aria-label="multi blocker one ○ open, level 1, " aria-level="1" aria-posinset="6" aria-setsize="11" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">multi blocker one</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-3so" data-tree-row="mnt-3so" aria-label="inherit gate ○ open, level 1, " aria-level="1" aria-posinset="7" aria-setsize="11" aria-selected="false" aria-expanded="true" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;" data-blocked-word="blocked"><span class="row-title" data-indent-px="0">inherit gate</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span><span class="blocked-chip" aria-label="blocked in native blocked list">blocked</span></div><div role="treeitem" id="row:mnt-j93" data-tree-row="mnt-j93" aria-label="inherited victim ○ open, level 2, " aria-level="2" aria-posinset="1" aria-setsize="1" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 16px;" data-blocked-word="blocked"><span class="row-title" data-indent-px="16">inherited victim</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span><span class="blocked-chip" aria-label="blocked in native blocked list">blocked</span></div><div role="treeitem" id="row:mnt-p74" data-tree-row="mnt-p74" aria-label="dead worker task ○ open, level 1, " aria-level="1" aria-posinset="8" aria-setsize="11" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">dead worker task</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-uz2" data-tree-row="mnt-uz2" aria-label="conflict edit target ○ open, level 1, " aria-level="1" aria-posinset="9" aria-setsize="11" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">conflict edit target</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-78r" data-tree-row="mnt-78r" aria-label="claimed row ◖ in_progress, level 1, " aria-level="1" aria-posinset="10" aria-setsize="11" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">claimed row</span><span class="status-chip" aria-label="status: in_progress"><span class="status-glyph">◖</span><span class="status-word">in_progress</span></span></div><div role="treeitem" id="row:mnt-39e" data-tree-row="mnt-39e" aria-label="Hermes Beads laboratory ○ open epic progress 0/2, level 1, " aria-level="1" aria-posinset="11" aria-setsize="11" aria-selected="false" aria-expanded="true" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 0px;"><span class="row-title" data-indent-px="0">Hermes Beads laboratory</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span><span class="progress-chip" aria-label="epic progress 0/2">epic progress 0/2</span></div><div role="treeitem" id="row:mnt-1wh" data-tree-row="mnt-1wh" aria-label="branch B ○ open, level 2, " aria-level="2" aria-posinset="1" aria-setsize="2" aria-selected="false" aria-expanded="true" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 16px;"><span class="row-title" data-indent-px="16">branch B</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-6p6" data-tree-row="mnt-6p6" aria-label="plain ready task ○ open, level 3, " aria-level="3" aria-posinset="1" aria-setsize="2" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 32px;"><span class="row-title" data-indent-px="32">plain ready task</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-a73" data-tree-row="mnt-a73" aria-label="branch B blocked task ○ open, level 3, " aria-level="3" aria-posinset="2" aria-setsize="2" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 32px;" data-blocked-word="blocked"><span class="row-title" data-indent-px="32">branch B blocked task</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span><span class="blocked-chip" aria-label="blocked in native blocked list">blocked</span></div><div role="treeitem" id="row:mnt-nom" data-tree-row="mnt-nom" aria-label="branch A ○ open, level 2, " aria-level="2" aria-posinset="2" aria-setsize="2" aria-selected="false" aria-expanded="true" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 16px;"><span class="row-title" data-indent-px="16">branch A</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div><div role="treeitem" id="row:mnt-20l" data-tree-row="mnt-20l" aria-label="branch A gate ○ open, level 3, " aria-level="3" aria-posinset="1" aria-setsize="1" aria-selected="false" data-keyboard-focus="false" data-tree-focusable="false" tabindex="-1" style="padding-inline-start: 32px;"><span class="row-title" data-indent-px="32">branch A gate</span><span class="status-chip" aria-label="status: open"><span class="status-glyph">○</span><span class="status-word">open</span></span></div></div><section role="group" aria-label="Draft"><div role="status" data-durability="durable">durability: durable</div><div id="draft-text" data-bead="mnt-uz2">draft under hostile session</div><textarea id="draft-input" aria-label="Draft description">draft under hostile session</textarea><button type="button" id="draft-save" disabled="" aria-disabled="true" title="Save disabled: no N6-proven atomic content guard (docs/content-guard-contract.md). Native assignee/status guards cannot detect a description changed under unchanged owner/status.">Save (disabled)</button><div id="save-limitation" role="note">NO ATOMIC CONTENT GUARD (bd 1.3.0 — see docs/content-guard-contract.md): replacement Save is disabled; two actors can silently lose one description edit. Draft, copy and export stay available; the safe channel is the append-only suggestion/comment.</div></section><div id="bot-panel-slot"><div class="bot-action-panel" role="group" aria-label="Bot actions"><span>Ask: read-only — session_door_unqualified</span><button>Refine</button><button disabled="" title="runner door (hbl-pnu.3.3) not bound">Work</button><span class="work-disabled-reason">runner door (hbl-pnu.3.3) not bound</span><button disabled="" title="no run state to cancel">Cancel</button></div></div></div>
