@@ -8,3 +8,4 @@ node_modules/
 .history-fixtures/
 .compare-runtime/
 .search-fixtures/
+fixtures/handoff-runtime/handoff-*/
