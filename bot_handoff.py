@@ -145,13 +145,29 @@ def refine(workspace, bead, *, proposed_text, bd_bin="bd"):
     return out
 
 
-def run_work(workspace, bead, *, actor, bd_bin="bd"):
-    """Hand a claimed bead to the admitted runner door — only while bound."""
+def run_work(workspace, bead, *, actor, bd_bin="bd", request_key=None):
+    """Hand a claimed bead to the admitted runner door — only while bound.
+
+    request_key is the click's idempotency key: the door replays a
+    duplicate click to the SAME admission (one receipt, one worker). When
+    the bound door exposes a qualification precheck, it runs BEFORE the
+    claim: an unqualified runner never touches the store (no claim, no
+    fake success)."""
     out = _base(workspace, bead, "work")
     if _runner_door is None:
         out.update({"ok": False, "error": "work_surface_disabled",
                     "reason": WORK_DISABLED_REASON})
         return out
+    precheck = getattr(_runner_door, "precheck_error", None)
+    if callable(precheck):
+        try:
+            why = precheck()
+        except Exception as exc:            # a broken door is unqualified
+            why = str(exc)
+        if why:
+            out.update({"ok": False, "error": "runner_unqualified",
+                        "reason": why, "handed_off": False})
+            return out
     import claims
     try:
         row = claims.claim(workspace, bead, actor=actor, bd_bin=bd_bin)
@@ -172,9 +188,18 @@ def run_work(workspace, bead, *, actor, bd_bin="bd"):
     import evidence as _evidence
     payload = {"workspace": workspace, "bead": bead, "actor": actor,
                "row": row, "reasons": reasons,
+               "request_key": request_key,
                "surface": _evidence.WorkerSurface(
                    workspace, actor=actor, bd_bin=bd_bin)}
-    result = _runner_door(payload)
+    try:
+        result = _runner_door(payload)
+    except Exception as exc:
+        # the door refused AFTER the claim: typed refusal, never a fake
+        # success — the claim stands for the human to see (nothing was
+        # dispatched; delivery stays false either way)
+        out.update({"ok": False, "error": "door_refused",
+                    "reason": str(exc), "handed_off": False})
+        return out
     out.update({"ok": True, "error": None,
                 "handed_off": isinstance(result, dict)
                 and bool(result.get("handed_off")),
