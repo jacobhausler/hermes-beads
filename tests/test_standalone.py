@@ -27,7 +27,7 @@ no fixtures faked:
 
   2. foreign-cwd parity. The identical op sequence is driven through the
      stock pinned bd (v1.3.0) as `bd -C <store> --db <store>/.beads/<p>.db`
-     with cwd=/tmp (probed: --db ALONE from a foreign cwd loses config.yaml
+     with cwd=FOREIGN_CWD (a non-repo dir under the gitignored fixture root) (probed: --db ALONE from a foreign cwd loses config.yaml
      discovery — "database not initialized: issue_prefix config is missing";
      both flags together keep stdout clean JSON). The normalized native
      readbacks (show row, claim row, evidence comment, post-close frontier)
@@ -64,6 +64,11 @@ HERMES_ROOT = os.environ.get("HERMES_ROOT", "/opt/hermes")
 VENV_PY = os.environ.get(
     "HERMES_VENV_PY", os.path.join(HERMES_ROOT, ".venv", "bin", "python"))
 FIXTURE_ROOT = os.path.join(HERE, ".standalone-runtime")
+# Foreign cwd must sit OUTSIDE every git repo: bd stamps `owner` from the cwd's
+# git identity, so an in-repo cwd is not "foreign" (probed: owner diverged).
+FOREIGN_CWD = os.path.join(os.path.dirname(os.path.dirname(BD_BIN)),
+                           "fixtures", "standalone-foreign-cwd")
+os.makedirs(FOREIGN_CWD, exist_ok=True)
 ARTIFACTS = ["tests/test_standalone.py"]
 WORKER, PARENT = "sa-worker", "sa-parent"
 NOTE = "standalone: guarded edit"
@@ -160,7 +165,7 @@ def run(*argv, actor, readonly=False, parse=True):
     if readonly:
         full.append("--readonly")
     full += ["--actor", actor] + list(argv)
-    p = subprocess.run(full, cwd="/tmp", capture_output=True, text=True)
+    p = subprocess.run(full, cwd=CFG["foreign"], capture_output=True, text=True)
     if p.returncode != 0:
         print(json.dumps({"loop_ok": False, "argv": list(argv),
                           "rc": p.returncode, "stderr": p.stderr[:400]}))
@@ -253,8 +258,9 @@ def isolated_home():
     return home
 
 
-def run_driver(script, *args, cwd="/tmp", home=None):
-    cfg = {"lane": LANE, "bd": BD_BIN, "w": WORKER, "p": PARENT,
+def run_driver(script, *args, cwd=None, home=None):
+    cwd = cwd or FOREIGN_CWD
+    cfg = {"lane": LANE, "bd": BD_BIN, "foreign": FOREIGN_CWD, "w": WORKER, "p": PARENT,
            "note": NOTE, "att": ATTEMPT, "arts": ARTIFACTS, "reason": REASON,
            "pkg": os.path.join(home, "plugins", "hermes-beads")
            if home else LANE}
