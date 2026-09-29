@@ -42,6 +42,7 @@ RUNNER_ROOT = "/home/hermes/.hermes/plugins/hermes-workflows"
 
 
 def make_store(case):
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT, prefix=f"{case}-{uuid.uuid4().hex[:8]}-")
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)

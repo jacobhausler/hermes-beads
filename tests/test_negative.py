@@ -54,6 +54,7 @@ READONLY_MSG = "Error: operation '{op}' is not allowed in read-only mode"
 
 
 def make_store(prefix="neg"):
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)
@@ -336,6 +337,7 @@ class EmptyVsBackendFailure(unittest.TestCase):
         with self.assertRaises(native.BdNotFoundError) as cm:
             native.ready_frontier(self.store, bd_bin="/nonexistent/bd-bin")
         self.assertIn("/nonexistent/bd-bin", str(cm.exception))
+        os.makedirs(FIXTURE_ROOT, exist_ok=True)
         empty_dir = tempfile.mkdtemp(dir=FIXTURE_ROOT)
         with self.assertRaises(native.WorkspaceError):
             native.ready_frontier(empty_dir, bd_bin=BD_BIN)

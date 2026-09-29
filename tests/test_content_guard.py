@@ -63,6 +63,7 @@ def make_store():
     Without .git the embedded-dolt home resolves to the nearest parent git
     root and the fixture would share the lane repo's databases.
     """
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)

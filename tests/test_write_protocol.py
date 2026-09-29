@@ -43,6 +43,7 @@ os.makedirs(FIXTURE_ROOT, exist_ok=True)
 
 
 def make_store():
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)

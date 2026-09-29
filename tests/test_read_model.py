@@ -42,6 +42,7 @@ def make_store(prefix="rdm"):
     """Fresh disposable store. Independent `git init` + one commit so the
     embedded dolt home binds INSIDE the fixture and can never fall through
     to a parent git-common-dir database."""
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)
