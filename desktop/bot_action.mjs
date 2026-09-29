@@ -118,7 +118,29 @@ export function reopenBotDraft(draftStore, storeInfo, beadId) {
 // present is always true; enabled flips only when the admitted runner door
 // (hbl-pnu.3.3 binding) is bound. The button is presentation-only — this
 // module spawns nothing.
-export function botActionPanel({ ask, work, refineLanded = false } = {}) {
+//
+// hbl-pnu.3.7 truthful run state: `runState` is bot_handoff.work_run_state()
+// verbatim ({state: admitted|running|succeeded|failed|uncertain|
+// cancel_requested|cancelled|unknown|unavailable, ...}) and renders VERBATIM
+// in a role=status element — never 'delivered', never 'done', and no success
+// text unless the state itself is 'succeeded'. The Cancel button is enabled
+// ONLY in admitted/running; a click routes to the injected onCancel (this
+// module keeps spawning nothing and holding no state — the human's request
+// is latched by the host via `cancelRequested:true`, which keeps the
+// display on cancel_requested through a lagging door poll until a LATER
+// state says cancelled; the shipped WorkbenchApp owns that latch).
+const CANCELABLE = new Set(["admitted", "running"]);
+const CANCEL_PHASE = new Set(["admitted", "running", "cancel_requested"]);
+
+export function botActionPanel({ ask, work, refineLanded = false,
+  runState = null, cancelRequested = false, onCancel = null } = {}) {
+  const raw = runState == null ? null
+    : (typeof runState === "string" ? runState : runState.state) ?? null;
+  // truth precedence: an explicit terminal state always wins; the host's
+  // latched request shows cancel_requested through a lagging door read.
+  const shown = raw != null
+    ? (cancelRequested && CANCEL_PHASE.has(raw) ? "cancel_requested" : raw)
+    : (cancelRequested ? "cancel_requested" : null);
   const askText = ask
     ? `Ask: ${ask.readOnly ? "read-only" : "?"} — ${ask.error ?? "ok"}`
     : "Ask: unavailable";
@@ -136,6 +158,26 @@ export function botActionPanel({ ask, work, refineLanded = false } = {}) {
       ...(work && !work.enabled && work.disabledReason
         ? [el("span", { className: "work-disabled-reason", children: work.disabledReason }, "work-reason")]
         : []),
+      // run state: verbatim, live-region semantics, never an invented word
+      ...(shown != null
+        ? [el("span", {
+            role: "status", "data-run-state": shown,
+            className: "work-run-state", "aria-live": "polite",
+            children: shown }, "run-state")]
+        : []),
+      el("button", {
+        children: shown === "cancel_requested" ? "Cancel (requested)" : "Cancel",
+        disabled: !(shown != null && CANCELABLE.has(shown)),
+        title: shown == null ? "no run state to cancel"
+          : CANCELABLE.has(shown) ? "request cancel of the admitted run"
+          : "cancel is only available while the run is admitted or running",
+        onClick: () => {
+          // presentation-only: the host's onCancel owns the request AND the
+          // latch (cancelRequested prop); this module mutates nothing.
+          if (shown != null && CANCELABLE.has(shown)
+              && typeof onCancel === "function") onCancel();
+        },
+      }, "cancel"),
     ],
   }, "bot-action-panel");
 }

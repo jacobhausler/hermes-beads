@@ -221,13 +221,16 @@ const sharedStorage = makeStorage();
 let mountEl = document.getElementById("root");
 let BEFORE_LIST_ALL = null; // captured after the test's own sanctioned native writes
 let root = null;
+let botView = null; // hbl-pnu.3.7: injected bot panel view (runState fixtures)
 async function mount(sessionOpts = {}) {
-  Object.assign(session, sessionOpts);
+  const { botView: bv, ...rest } = sessionOpts;
+  Object.assign(session, rest);
+  botView = bv ?? null; // reset every mount unless the fixture supplies one
   root = createRoot(mountEl);
   await act(async () => {
     root.render(React.createElement(WorkbenchApp, {
       snapshot, ui, controller, stack, session,
-      storeInfo: STORE_INFO, draftBeadId: IDS.conflict,
+      storeInfo: STORE_INFO, draftBeadId: IDS.conflict, botView,
       bindRerender: (fn) => { box.rerender = fn; },
     }));
   });
@@ -661,6 +664,84 @@ test("bot_action: botActionPanel emits REAL jsx and mounts UNCONVERTED with Work
   const refine = buttons.find((b) => b.textContent.startsWith("Refine"));
   eq(refine.disabled, false, "Refine stays enabled (draft path works)");
   await snap("bot-panel", mountEl);
+  await unmount();
+});
+
+// ---- T8 hbl-pnu.3.7: truthful run state + Cancel on the SHIPPED root ---------
+test("bot runState: role=status renders the door state verbatim; Cancel enabled only in admitted/running; no success text unless succeeded", async () => {
+  const VOCAB = ["admitted", "running", "succeeded", "failed", "uncertain",
+    "cancel_requested", "cancelled"];
+  const enabledIn = new Set(["admitted", "running"]);
+  const WORK_ON = { present: true, enabled: true, disabledReason: null };
+  for (const state of VOCAB) {
+    await mount({ showBot: true, draftStore: null,
+      botView: { ask: null, work: WORK_ON, runState: { state } } });
+    const st = mountEl.querySelector('[role="status"]');
+    ok(st, `role=status mounted for state=${state}`);
+    eq(st.textContent.trim(), state, `state=${state} rendered VERBATIM`);
+    const cancel = [...mountEl.querySelectorAll("button")]
+      .find((b) => /^Cancel$|^Cancel \(/.test(b.textContent.trim()));
+    ok(cancel, `Cancel button present for state=${state}`);
+    eq(cancel.disabled, !enabledIn.has(state),
+      `Cancel enabled iff admitted/running (state=${state})`);
+    if (state !== "succeeded") {
+      const html = mountEl.querySelector(".bot-action-panel").innerHTML;
+      ok(!/succeeded/.test(html), `no 'succeeded' text while state=${state}`);
+      ok(!/\bdone\b/.test(html), `no 'done' text while state=${state}`);
+      ok(!/delivered/.test(html), `no 'delivered' text while state=${state}`);
+    } else {
+      ok(mountEl.querySelector('[role="status"]').textContent
+        .includes("succeeded"), "succeeded renders when the door says so");
+    }
+    await snap(`runstate-${state}`, mountEl);
+    await unmount();
+  }
+
+  // Cancel click: the host latches botView.cancelRequested (mirroring
+  // bot_handoff.work_cancel + re-poll); the display shows cancel_requested
+  // even while the door still says running, and keeps showing it until a
+  // LATER state says cancelled.
+  const botView = { ask: null, work: WORK_ON, runState: { state: "running" },
+    cancelRequested: false,
+    onCancel: () => { botView.cancelRequested = true; box.rerender(); } };
+  await mount({ showBot: true, draftStore: null, botView });
+  const cancelBtn = [...mountEl.querySelectorAll("button")]
+    .find((b) => /^Cancel$|^Cancel \(/.test(b.textContent.trim()));
+  await act(async () => { cancelBtn.click(); });
+  eq(mountEl.querySelector('[role="status"]').textContent.trim(),
+    "cancel_requested", "click Cancel -> cancel_requested shown immediately");
+  eq(mountEl.querySelector('.work-run-state[data-run-state="cancel_requested"][role="status"]') != null,
+    true, "status element names the displayed state (data-run-state)");
+  // the door poll may lag: state still 'running' — the latch keeps the truth
+  box.rerender();
+  await act(async () => {});
+  eq(mountEl.querySelector('[role="status"]').textContent.trim(),
+    "cancel_requested", "latched through a lagging door read");
+  // ...until a LATER state confirms the terminal truth
+  botView.runState = { state: "cancelled" };
+  box.rerender();
+  await act(async () => {});
+  eq(mountEl.querySelector('[role="status"]').textContent.trim(),
+    "cancelled", "cancelled renders only once the state says so");
+  // the terminal truth beats even a still-latched request
+  botView.runState = { state: "running" };
+  botView.cancelRequested = true;
+  box.rerender();
+  await act(async () => {});
+  eq(mountEl.querySelector('[role="status"]').textContent.trim(),
+    "cancel_requested", "latched request still shown while pre-terminal");
+  botView.runState = { state: "succeeded" };
+  box.rerender();
+  await act(async () => {});
+  eq(mountEl.querySelector('[role="status"]').textContent.trim(),
+    "succeeded", "a confirmed terminal state beats the latch (no lie)");
+
+  // no runState at all: no fake status element, no enabled Cancel
+  await mount({ showBot: true, draftStore: null,
+    botView: { ask: null, work: WORK_ON } });
+  eq(mountEl.querySelector('#bot-panel-slot [role="status"]') != null, false,
+    "no runState => no role=status element (nothing invented)");
+  await snap("runstate-none", mountEl);
   await unmount();
 });
 

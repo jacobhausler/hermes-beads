@@ -227,3 +227,43 @@ def run_work(workspace, bead, *, actor, bd_bin="bd", request_key=None):
                 and bool(result.get("handed_off")),
                 "door_result": result})
     return out
+
+
+def _run_state_delegate(name, request_key):
+    """Shared delegation for the run-state surface: typed 'unavailable' when
+    no door is bound or the bound door lacks the method — never an
+    exception, never an invented state."""
+    def unavailable(reason):
+        return {"state": "unavailable", "error": "unavailable",
+                "ok": False, "reason": reason}
+    if _runner_door is None:
+        return unavailable("no runner door bound: run state is unavailable")
+    fn = getattr(_runner_door, name, None)
+    if not callable(fn):
+        return unavailable(f"bound door exposes no {name}(): run state is "
+                           "unavailable")
+    try:
+        out = fn(request_key)
+    except Exception as exc:  # a crashing door reads as unavailable, never
+        return unavailable(f"{name} failed: {exc}")
+    if isinstance(out, dict):
+        out.setdefault("ok", False)
+        return out
+    return {"state": str(out), "ok": False}
+
+
+def work_run_state(request_key):
+    """Truthful run state for the render surface — delegates to the bound
+    door's run_state(); typed 'unavailable' when unbound or the door lacks
+    the method. The vocabulary is the door's own (admitted/running/
+    succeeded/failed/uncertain/cancel_requested/cancelled); nothing here
+    renames, upgrades, or invents a state."""
+    return _run_state_delegate("run_state", request_key)
+
+
+def work_cancel(request_key):
+    """Request cancel through the bound door's cancel(); typed 'unavailable'
+    when unbound or the door lacks the method. Truthful two-phase: the door
+    answers cancel_requested while the runner is alive and cancelled only
+    once it confirms terminal."""
+    return _run_state_delegate("cancel", request_key)

@@ -194,6 +194,51 @@ class WorkControl(HandoffTest):
         self.assertEqual(out["holder"], "first-bot")
         self.assertEqual(seen, [])
 
+    # ---- hbl-pnu.3.7: truthful run-state + cancel passthroughs -------------
+    def test_run_state_and_cancel_unavailable_without_a_bound_door(self):
+        st = bot_handoff.work_run_state("k-absent")
+        self.assertIsInstance(st, dict)
+        self.assertEqual(st.get("state"), "unavailable")
+        self.assertEqual(st.get("error"), "unavailable")
+        self.assertFalse(st.get("ok", False))
+        out = bot_handoff.work_cancel("k-absent")
+        self.assertIsInstance(out, dict)
+        self.assertEqual(out.get("state"), "unavailable")
+        self.assertEqual(out.get("error"), "unavailable")
+        self.assertFalse(out["ok"])
+
+    def test_run_state_and_cancel_delegate_to_the_bound_door(self):
+        class FakeDoor:
+            def __call__(self, payload):
+                return {"handed_off": True}
+
+            def run_state(self, request_key):
+                return {"state": "running", "saw": request_key}
+
+            def cancel(self, request_key):
+                return {"ok": True, "state": "cancel_requested",
+                        "saw": request_key}
+
+        bot_handoff.bind_runner_door(FakeDoor())
+        st = bot_handoff.work_run_state("k-1")
+        self.assertEqual(st["state"], "running")
+        self.assertEqual(st["saw"], "k-1")  # delegated with the exact key
+        out = bot_handoff.work_cancel("k-2")
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["state"], "cancel_requested")
+        self.assertEqual(out["saw"], "k-2")
+
+    def test_run_state_and_cancel_unavailable_when_door_lacks_methods(self):
+        # a plain callable door (test double in the Work-half legacy tests)
+        # has no run_state/cancel — the surface must be typed 'unavailable',
+        # never an exception and never an invented state.
+        bot_handoff.bind_runner_door(lambda payload: {"handed_off": True})
+        st = bot_handoff.work_run_state("k-x")
+        self.assertEqual(st.get("state"), "unavailable")
+        out = bot_handoff.work_cancel("k-x")
+        self.assertEqual(out.get("state"), "unavailable")
+        self.assertFalse(out["ok"])
+
     def test_injection_point_is_single_and_reversible(self):
         seen = []
         bot_handoff.bind_runner_door(seen.append)
