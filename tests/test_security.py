@@ -71,8 +71,13 @@ HOSTILE = {
     "bell_backspace": "a\x07b\x08c\x0bd\x0ce",
 }
 
-HOSTILE_IDS = ("--db=/etc/x", "../../x", ";rm", "a\nb", "--readonly",
-               "--actor=evil", "-n", "-", "--", "x\n", "a\r\nb")
+# Flag-shaped ids: bd would parse these as flags -> refused before any spawn.
+HOSTILE_IDS = ("--db=/etc/x", "--readonly", "--actor=evil", "-n", "-", "--",
+               "-C/etc", "--sandbox")
+# Non-flag hostile ids: no shell and bd ids are DB keys, not paths, so they are
+# inert. They DO spawn; proof = bd reports not-found and the store is unchanged.
+INERT_HOSTILE_IDS = ("../../x", ";rm", "a\nb", "x\n", "a\r\nb", "$(id)",
+                     "`id`", "../../../etc/passwd")
 
 
 def make_store(prefix="sec"):
@@ -90,9 +95,21 @@ def actor(prefix="sec"):
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 
+def raw_list(store):
+    p = subprocess.run([BD_BIN, "--readonly", "list", "--all", "--json"],
+                       cwd=store, capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr
+    return sorted((r["id"], r["status"], r.get("title")) for r in json.loads(p.stdout))
+
+
+TITLE_MAX = 500  # native bd 1.3.0 validation cap (probed: 501 -> "title must be 500 characters or less")
+
+
 def raw_create(store, title, description, a):
-    p = subprocess.run([BD_BIN, "-C", store, "--actor", a, "create", title,
-                        "--description", description, "--json"],
+    title = title[:TITLE_MAX]  # the 64KB payload rides in the description
+    p = subprocess.run([BD_BIN, "-C", store, "--actor", a, "create",
+                        "--title", title, "--description", description,
+                        "--json"],
                        capture_output=True, text=True)
     assert p.returncode == 0, p.stderr
     rows = json.loads(p.stdout)
@@ -120,7 +137,7 @@ class HostileContentReadModel(unittest.TestCase):
                 row = read_model.show(self.store, self.ids[name],
                                        bd_bin=BD_BIN)
                 self.assertIsNotNone(row, name)
-                self.assertEqual(row.get("title"), payload,
+                self.assertEqual(row.get("title"), payload[:TITLE_MAX],
                                  f"{name}: title not verbatim")
                 self.assertEqual(row.get("description"), payload,
                                  f"{name}: description not verbatim")
@@ -134,7 +151,7 @@ class HostileContentReadModel(unittest.TestCase):
         for name, iid in self.ids.items():
             with self.subTest(name):
                 self.assertIn(iid, by_id)
-                self.assertEqual(by_id[iid]["title"], HOSTILE[name])
+                self.assertEqual(by_id[iid]["title"], HOSTILE[name][:TITLE_MAX])
 
     def test_control_would_catch_truncation(self):
         """Negative control: a truncated/normalised value IS caught by the
@@ -246,7 +263,7 @@ class ArgvInjection(unittest.TestCase):
                           bd_bin=BD_BIN, readonly=True, actor=self.a)
             argv = spy.calls[0]
             self.assertEqual(argv[0], BD_BIN)
-            self.assertEqual(argv[1:5], ["--readonly", "--actor", self.a])
+            self.assertEqual(argv[1:4], ["--readonly", "--actor", self.a])
             self.assertEqual(argv.count("--actor"), 1)
             self.assertEqual(argv.count("--readonly"), 1)
 
@@ -294,89 +311,77 @@ class ArgvInjection(unittest.TestCase):
                 self.assertEqual(argv[i + 1], a)
                 self.assertEqual(argv.count("--actor"), 1)
 
-    # ---- shape-gate canaries ---------------------------------------------
+    # ---- gate canaries ---------------------------------------------------
 
-    def test_run_bd_wires_the_shape_gate(self):
-        """Canary: the gate is WIRED into run_bd, not dead code — if the
-        call disappears the suite goes red."""
+    def test_run_bd_wires_the_gate(self):
+        """Canary: the gate is WIRED into run_bd, not dead code."""
         src = inspect.getsource(native.run_bd)
-        self.assertIn("_shape_ok(", src)
-        self.assertTrue(callable(getattr(native, "_shape_ok", None)))
+        self.assertIn("_argv_ok(", src)
+        self.assertLess(src.index("_argv_ok("), src.index("subprocess.run("))
 
-    def test_legit_shape_corpus_covers_shipped_call_sites(self):
-        """Canary for the shape table: every legitimate fixed-argv shape the
-        plugin builds must be accepted by the pure gate. If run_bd grows a
-        new call-site shape, add it here AND to _FIXED_ARGV_SHAPES together
-        (this test failing = the table and the call sites drifted)."""
-        ok = native._shape_ok
-        V, ID = "@value", "@id"
-        corpus = [
-            ["ready", "--json", "--exclude-type=epic", "-n", V, "--max-rows", V],
-            ["ready", "--json", "--exclude-type=epic", "-n", V, "--max-rows", V,
-             "--label", V],
-            ["show", ID, "--json"],
-            ["list", "--json", "-n", V, "--max-rows", V],
-            ["list", "--json", "-n", V, "--max-rows", V, "--status", V],
-            ["list", "--json", "-n", V, "--max-rows", V, "--label", V],
-            ["list", "--json", "-n", V, "--max-rows", V, "--parent", V],
-            ["list", "--json", "-n", V, "--max-rows", V, "--all"],
-            ["list", "--json", "--parent", V, "--status", "all",
-             "-n", V, "--max-rows", V],
-            ["query", f"parent={V}", "--json", "-n", V],
-            ["blocked", "--json"],
-            ["blocked", "--json", "--label", V],
-            ["blocked", "--json", "--parent", V],
-            ["comments", ID, "--json"],
-            ["comments", "add", ID, V],
-            ["history", ID, "--json", "--limit", V],
-            ["info", "--json"],
-            ["update", ID, "--claim", "--json"],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json"],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--priority", V],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--notes", V],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--due", V],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--estimate", V],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--external-ref", V],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--defer", V],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--title", V],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--description", V],
-            ["update", ID, "--if-assignee", V, "--if-status", V, "--json",
-             "--notes", V, "--due", V, "--estimate", V],
-            ["heartbeat", ID, "--json"],
-            ["unclaim", ID, "--if-assignee", V, "--json"],
-            ["close", ID, "--reason", V, "--json"],
-            ["reopen", ID, "--reason", V, "--json"],
-            ["epic", "status", ID, "--json"],
-            ["epic", "close-eligible", "--dry-run", "--json"],
-            ["list", "--json", "--metadata-field", V],
-            ["list", "--json", "--metadata-field", V, "--all"],
-        ]
-        for shape in corpus:
-            with self.subTest(shape[0] + " " + shape[1]):
-                self.assertTrue(ok(shape), f"legit shape refused: {shape}")
-        # and the same corpus with ONE hostile token must be refused
-        for shape in corpus:
-            with self.subTest("hostile " + shape[0]):
-                poisoned = list(shape)
-                poisoned_tok = False
-                for i, t in enumerate(poisoned):
-                    if t in (V, ID):
-                        poisoned[i] = ";rm"
-                        poisoned_tok = True
-                        break
-                if not poisoned_tok:
-                    poisoned.append(";rm")  # shape without value slots:
-                    # an extra token is equally off-table
-                self.assertFalse(ok(poisoned), f"hostile accepted: {poisoned}")
+    def test_inert_hostile_ids_spawn_but_change_nothing(self):
+        before = raw_list(self.store)
+        for tok in INERT_HOSTILE_IDS:
+            with self.subTest(tok):
+                with self.assertRaises(native.BdCommandError) as cm:
+                    native.run_bd(["show", tok, "--json"], workspace=self.store,
+                                  bd_bin=BD_BIN, readonly=True)
+                self.assertIn("not found", cm.exception.stderr)
+        self.assertEqual(raw_list(self.store), before, "store changed")
 
+    def test_every_plugin_flag_is_known_to_the_gate(self):
+        """Drift canary: every dash-literal the shipped modules pass to run_bd
+        is in the gate's flag sets (else a legit call would be refused)."""
+        import ast
+        known = native._VALUE_FLAGS | native._BOOL_FLAGS
+        for mod in ("native", "read_model", "claims", "write_protocol",
+                    "evidence", "correlation", "interop", "bot_handoff"):
+            path = os.path.join(LANE, mod + ".py")
+            if not os.path.exists(path):
+                continue
+            for node in ast.walk(ast.parse(open(path, encoding="utf-8").read())):
+                if isinstance(node, (ast.List, ast.Tuple)):
+                    for el in node.elts:
+                        if (isinstance(el, ast.Constant) and isinstance(el.value, str)
+                                and el.value.startswith("--")
+                                and el.value not in ("--readonly", "--actor", "--stat",
+                                                     "--prefix", "--db", "--version", "--")):
+                            with self.subTest(mod=mod, flag=el.value):
+                                self.assertIn(el.value, known)
+
+    def test_flag_named_id_cannot_redirect_a_close(self):
+        """Confused deputy: id "--reason" would bind the reason slot and
+        close the issue named by the reason text. Refused before spawn."""
+        with _SpawnSpy() as spy:
+            with self.assertRaises(ValueError):
+                native.run_bd(["close", "--reason", "--reason", self.iid,
+                               "--json"], workspace=self.store, bd_bin=BD_BIN)
+            self.assertEqual(spy.calls, [])
+
+    def test_dash_leading_comment_is_stored_verbatim(self):
+        """Regression (probed bd 1.3.0): a bare "--db=/x" positional comment
+        was parsed as a flag. append_comment now passes text after "--"."""
+        text = "--db=/etc/x must be data"
+        rows = write_protocol.append_comment(self.store, self.iid,
+                                             actor=self.a, bd_bin=BD_BIN,
+                                             text=text)
+        self.assertTrue(any(c.get("text") == text for c in rows))
+
+    def test_control_gate_without_check_would_spawn(self):
+        """Negative control: with the gate bypassed, a flag-shaped id reaches
+        subprocess.run -- proving the refusal test above can fail."""
+        orig = native._argv_ok
+        native._argv_ok = lambda argv: True
+        try:
+            with _SpawnSpy() as spy:
+                try:
+                    native.run_bd(["show", "--db=/etc/x", "--json"],
+                                  workspace=self.store, bd_bin=BD_BIN)
+                except Exception:
+                    pass
+                self.assertTrue(spy.calls, "control failed: nothing spawned")
+        finally:
+            native._argv_ok = orig
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
