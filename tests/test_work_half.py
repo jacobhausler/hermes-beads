@@ -212,6 +212,49 @@ class WorkHalf(unittest.TestCase):
             self.assertIn(why, out["reason"])
             self.assertIs(out.get("claimed"), False)
 
+    # ---- hbl-pnu.3.7: rendered run state + cancel THROUGH bot_handoff ------
+    def test_panel_run_state_cancel_sequence_through_the_passthrough(self):
+        # The click -> truthful-state -> cancel -> confirmed-cancelled loop
+        # goes EXCLUSIVELY through bot_handoff.work_run_state / work_cancel
+        # (the render surface's only door access), never d.status/d.cancel.
+        s = trb.make_store("wh-panel")
+        i = trb.create(s, "panel worker")
+        trb.cred("wh-panel", s, [i])
+        d = self.door(s, goal_prefix="SLEEP 20 ", node_timeout=60)
+        r = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
+                                 request_key="k-panel")
+        self.assertTrue(r["ok"], r)
+        # observed states: every one from the truthful vocabulary; the
+        # early states the panel may show are admitted|running, and no
+        # success text may EVER appear before the ledger says succeeded.
+        early = bot_handoff.work_run_state("k-panel")
+        self.assertIn(early["state"], ("admitted", "running"), early)
+        end = time.time() + 60
+        while d.spawn_count(request_key="k-panel") < 1 and time.time() < end:
+            st = bot_handoff.work_run_state("k-panel")
+            self.assertIn(st["state"], work_door.STATE_VOCAB, st)
+            time.sleep(0.2)
+        st = bot_handoff.work_run_state("k-panel")
+        self.assertEqual(st["state"], "running", st)
+        # Cancel through the passthrough: truthful two-phase — while the
+        # runner is alive the truth is cancel_requested, never cancelled.
+        c = bot_handoff.work_cancel("k-panel")
+        self.assertTrue(c["ok"], c)
+        self.assertEqual(c["state"], "cancel_requested")
+        self.assertTrue(c["runner_alive"])
+        again = bot_handoff.work_run_state("k-panel")
+        self.assertEqual(again["state"], "cancel_requested", again)
+        # cancelled ONLY after the runner process confirms terminal
+        confirmed = d.wait_terminal(request_key="k-panel", timeout=90)
+        final = bot_handoff.work_run_state("k-panel")
+        self.assertEqual(final["state"], "cancelled", final)
+        self.assertEqual(confirmed["state"], "cancelled")
+        self.assertFalse(d.runner_alive(request_key="k-panel"))
+        # the state JSON never smuggles a success word while not succeeded
+        for st in (early, st, again, final):
+            self.assertNotIn("succeeded", json.dumps(st))
+            self.assertNotIn("delivered", json.dumps(st))
+
     # ---- 5: unqualified => typed unavailable, never fake success -----------
     def test_unqualified_door_is_visible_unavailable(self):
         s = trb.make_store("wh-unq")
