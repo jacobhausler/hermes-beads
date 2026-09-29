@@ -54,7 +54,7 @@ INTENT_ALLOWED_EXTRA = {
     "work": ("workflow_admission",),
 }
 
-WORKFLOWS_PLUGIN = pathlib.Path("/home/hermes/.hermes/plugins/hermes-workflows")
+WORKFLOWS_PLUGIN = pathlib.Path(os.environ.get("HERMES_HOME", pathlib.Path.home() / ".hermes")) / "plugins" / "hermes-workflows"
 HERMES_ROOT = pathlib.Path("/opt/hermes")
 HERMES_BIN = HERMES_ROOT / "bin" / "hermes"
 

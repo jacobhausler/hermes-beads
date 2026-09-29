@@ -226,7 +226,9 @@ def append_comment(workspace, issue_id, *, actor, bd_bin="bd", text):
     One bd command, text passed as its own argv token."""
     if not text or not text.strip():
         raise ValueError("empty comment text")
-    native.run_bd([WRITE_COMMENTS_ADD, "add", issue_id, text],
+    # "--": text is positional even when it starts with a dash (probed bd 1.3.0:
+    # a bare "--db=/x" comment was parsed as a flag and refused).
+    native.run_bd([WRITE_COMMENTS_ADD, "add", issue_id, "--", text],
                   workspace=workspace, bd_bin=bd_bin, actor=actor,
                   expect_json=False)
     rows = read_model.comments(workspace, issue_id, bd_bin=bd_bin)

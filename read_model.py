@@ -36,7 +36,7 @@ exit 2 (CircuitBreakerError), exit 13 (GuardMismatchError), nonzero exit, and
 exit-0 bodies carrying failed[]/error (JsonParseError). Exceptions carry
 argv/exit_code/stderr/stdout so the caller sees the untouched envelope —
 including the pipe-masked exit-1 receipts where stdout mixes prose+JSON and
-refuses to parse (tests replay these from reports/interop-receipts.json).
+refuses to parse (tests replay these from recorded interop receipts).
 
 No cache, no readiness reconstruction (that is bd's GetReadyWork semantics),
 no direct DB/SQL, no plugin-minted IDs, no Workflow imports.

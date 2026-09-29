@@ -25,6 +25,67 @@ import subprocess
 
 DEFAULT_TIMEOUT = 30
 
+# ---- fixed-argv security boundary (hbl-pnu.4.4) -----------------------------
+# run_bd is the single spawn point. There is no shell, so shell metachars,
+# "../" and newlines are inert inside a token. The only injection path left is
+# a caller VALUE that bd parses as a FLAG (e.g. an id "--db=/x" or "-C/etc").
+# Rule: a dash-leading token must be a known plugin flag, or the value slot
+# right after a value-taking flag (pflag binds that slot as the value, never as
+# a flag). Gateway-owned globals (--actor, --readonly, --db, -C ...) are not in
+# either set, so a prefix can never carry them.
+_VALUE_FLAGS = frozenset({
+    "-n", "--max-rows", "--limit", "--label", "--status", "--parent",
+    "--reason", "--if-assignee", "--if-status", "--priority", "--notes",
+    "--append-notes", "--title", "--description", "--due", "--estimate",
+    "--external-ref", "--defer", "--metadata-field", "--set-metadata",
+    "--unset-metadata"})
+_BOOL_FLAGS = frozenset({"--json", "--all", "--claim", "--dry-run",
+                         "--exclude-type=epic"})
+
+
+_ID_AT = {"show": 1, "update": 1, "close": 1, "reopen": 1, "heartbeat": 1,
+          "unclaim": 1, "history": 1, "query": 1, "children": 1, "comments": 1}
+
+
+def _argv_ok(argv_prefix):
+    """True iff no caller token can be parsed by bd as an unintended flag.
+
+    * first token is a bare verb (never dash-leading);
+    * every dash-leading token is a known plugin flag, except the one slot
+      right after a value-taking flag (pflag binds it as that flag's value);
+    * after a literal "--" everything is positional text (bd stops flag parsing).
+    Pure: no I/O. Refusal happens before any subprocess.run."""
+    if not argv_prefix or not isinstance(argv_prefix[0], str) \
+            or argv_prefix[0].startswith("-"):
+        return False
+    # id slot never dash-leading: `close <id=--reason> --reason Y` would
+    # otherwise bind the reason and close issue Y (confused deputy).
+    verb = argv_prefix[0]
+    at = _ID_AT.get(verb)
+    if verb in ("comments", "epic") and len(argv_prefix) > 1 \
+            and argv_prefix[1] in ("add", "status"):
+        at = 2
+    if at is not None and (len(argv_prefix) <= at
+                           or not isinstance(argv_prefix[at], str)
+                           or argv_prefix[at].startswith("-")):
+        return False
+    expect_value = False
+    positional_only = False
+    for tok in argv_prefix:
+        if not isinstance(tok, str) or "\x00" in tok:
+            return False
+        if expect_value or positional_only:
+            expect_value = False
+            continue
+        if tok == "--":
+            positional_only = True
+        elif tok.startswith("-"):
+            if tok in _VALUE_FLAGS:
+                expect_value = True
+            elif tok not in _BOOL_FLAGS:
+                return False
+    return not expect_value
+
 
 class NativeError(Exception):
     """Base class for every named failure the boundary can raise."""
@@ -98,7 +159,13 @@ def run_bd(argv_prefix, *, workspace, bd_bin="bd", readonly=False, actor=None,
     """
     if not isinstance(argv_prefix, list) or not all(isinstance(t, str) for t in argv_prefix):
         raise ValueError("argv_prefix must be a list of str tokens (fixed argv)")
+    if not _argv_ok(argv_prefix):
+        # refused before any subprocess.run: no partial exec, no side effect
+        raise ValueError(f"argv refused by fixed-argv gate: {argv_prefix!r}")
     _workspace_check(workspace)
+    if actor is not None and (not actor or actor.startswith("-")
+                              or any(c in actor for c in "\x00\n\r")):
+        raise ValueError(f"actor token refused by fixed-argv gate: {actor!r}")
 
     argv = [bd_bin]
     if readonly:
