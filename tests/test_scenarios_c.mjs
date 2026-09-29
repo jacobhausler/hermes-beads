@@ -145,8 +145,10 @@ test("S2: x-jump to the cross-branch blocker card, Esc restores the bundle byte-
 
   // press Esc → the app-back gesture resolves to ONE history-back and the
   // full bundle comes back byte-identical
-  assert.equal(resolveKey({ key: "Escape" }), null,
-    "Escape is unbound in the KEYMAP: the mapping to app-back is the app's");
+  // hbl-pnu.2.9: Escape is now bound to close-help (overlay dismissal); the
+  // app-back-on-Esc mapping below remains the app's own gesture choice.
+  assert.equal(resolveKey({ key: "Escape" }), "close-help",
+    "Escape is bound in the KEYMAP to close-help");
   const mapped = { key: "ArrowLeft", altKey: true }; // Esc handler maps to app-back
   assert.equal(resolveKey(mapped), "history-back");
   const back = B.appBack({ stack, ui, state: st });
