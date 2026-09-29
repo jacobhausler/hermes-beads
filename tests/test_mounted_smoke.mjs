@@ -348,6 +348,27 @@ test("keyboard: arrows move the cursor, Enter promotes focus, collapse/expand vi
     "true", "ArrowRight re-expanded");
   ok(mountEl.querySelector(`[data-tree-row="${IDS.taskB}"]`), "subtree rows return");
 
+  // hbl-pnu.4.6 acceptance: app-back + help exercised on the SHIPPED root.
+  // Two pushes with a cursor move between them make Back observable.
+  await press("Enter");                      // push bundle A (focus on cursor)
+  const backTarget = ui.focus;
+  await press("ArrowDown");                  // move cursor somewhere else
+  ok(ui.selection !== backTarget, "cursor moved off the app-back target");
+  await press("Enter");                      // push bundle B
+  await press("ArrowLeft", { altKey: true }); // Alt+ArrowLeft = history-back
+  eq(ui.focus, backTarget, "Alt+ArrowLeft (app-back) restored the prior keyboard focus");
+  await press("ArrowRight", { altKey: true }); // and forward re-applies bundle B
+  ok(ui.focus !== backTarget || ui.selection != null,
+    "Alt+ArrowRight (app-forward) moved focus again");
+  // '?' opens the shortcut overlay through the shipped root's binding
+  await press("?");
+  const dlg = mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]');
+  ok(dlg, "? opened the shortcut help overlay on the shipped root");
+  ok(dlg.textContent.includes("cursor-down"), "overlay lists the bound commands");
+  await press("?");
+  ok(mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]') == null,
+    "? again closes the overlay");
+
   // x and Esc: NOT bound in the v1 keymap — must be INERT (no state change).
   const before = { sel: ui.selection, focus: ui.focus, exp: [...ui.expanded].sort().join() };
   await press("x");
