@@ -955,6 +955,115 @@ test("REAL door success: a normal run renders 'succeeded' only when the ledger s
   await unmount();
 });
 
+// ---- T10 hbl-pnu.2.10: shipped stylesheet, visible focus, separated fields ----
+test("visual layer (F1-F7): one shipped <style> with :focus-visible; roving document focus; separated card/row fields", async () => {
+  const cardJump = B.jumpToBlocker({ snapshot, ui, stack, state: {}, provider,
+    targetId: IDS.taskB, pane: "tree" });
+  const blockerId = cardJump.card.blockers[0]?.id;
+  ok(blockerId != null, "taskB has at least one blocker to assert on");
+  const blockerTitle = snapshot.byId.get(blockerId)?.title ?? null;
+  session.card = cardJump.card;
+  session.searchResults = searchIssues({
+    snapshot, query: "blocked", searchRead: nativeSearch, showRead: nativeShow, limit: 25,
+  });
+  session.showBot = true;
+  session.draftStore = createDraftStore({ storage: sharedStorage });
+  await mount();
+
+  // F1: exactly ONE <style> rendered at the root, carrying the shipped stylesheet.
+  const styles = [...mountEl.querySelectorAll("style")];
+  eq(styles.length, 1, "the shipped root renders exactly one <style> (F1)");
+  const css = styles[0].textContent;
+  ok(css.includes(":focus-visible"), "stylesheet styles :focus-visible (F2)");
+  ok(css.includes("(prefers-reduced-motion: reduce)"), "stylesheet honours prefers-reduced-motion (F1)");
+  ok(/var\(--foreground\s*,\s*CanvasText\)/.test(css), "theme var --foreground with CanvasText fallback");
+  ok(/var\(--accent\s*,\s*Highlight\)/.test(css), "theme var --accent with Highlight fallback");
+  ok(/var\(--border\s*,\s*GrayText\)/.test(css), "theme var --border with GrayText fallback");
+  ok(/2px\s+solid/.test(css) && /outline-offset/.test(css), "2px solid focus ring with offset (F2)");
+  ok(/40rem/.test(css), "layout wraps under 40rem (responsive)");
+  ok(/aria-selected="true"/.test(css), "selected rows styled distinctly from the stylesheet (F2)");
+  assert.ok(!/width\s*:\s*\d+(\.\d+)?px/.test(css), "stylesheet declares no fixed px widths");
+
+  // F3: the keyboard-focus marker carries DOCUMENT focus (roving focus).
+  await press("ArrowDown");                 // cursor onto a row
+  ok(ui.selection != null, "ArrowDown moved the cursor");
+  await press("Enter");                     // marker follows the cursor
+  let marker = mountEl.querySelector('[data-keyboard-focus="true"]');
+  ok(marker, "one row carries data-keyboard-focus=true");
+  eq(document.activeElement, marker,
+    "document.activeElement IS the data-keyboard-focus row after Enter (F3)");
+  await press("ArrowDown");                 // cursor advances: DOM focus follows the tab stop
+  const stop = mountEl.querySelector('[role="treeitem"][tabindex="0"]');
+  eq(stop.getAttribute("data-tree-row"), ui.selection, "tab stop is the cursor row");
+  eq(document.activeElement, stop,
+    "after ArrowDown document.activeElement is the cursor row (roving tabindex; ring paints where the arrows went)");
+  const before = ui.selection;
+  await press("ArrowUp");                   // (cursor may sit on the last row)
+  ok(ui.selection !== before, "the next arrow moves the cursor (no swallowed keypress)");
+  eq(document.activeElement.getAttribute("data-tree-row"), ui.selection,
+    "focus tracks every arrow press");
+  await press("Enter");                     // marker MOVES; focus must move with it
+  marker = mountEl.querySelector('[data-keyboard-focus="true"]');
+  eq(document.activeElement, marker,
+    "after the marker moves, document.activeElement follows it (F3)");
+
+  // F4: tree row fields are separate elements (title, status chip, chips).
+  const row = mountEl.querySelector(`[data-tree-row="${IDS.taskB}"]`);
+  ok(row, "blocked task row mounted");
+  const chip = row.querySelector(".status-chip");
+  ok(chip, "row renders a .status-chip element (F4)");
+  ok((chip.getAttribute("aria-label") ?? "").startsWith("status:"),
+    "status chip carries its own aria-label 'status: X' (F4)");
+  ok(chip.textContent !== row.textContent,
+    "status chip text is only a part of the row (fields not fused) (F4)");
+  if (row.getAttribute("data-blocked-word")) {
+    ok(row.querySelector('[data-blocked-word]') === row
+        || row.querySelectorAll(".status-chip, .blocked-chip, .progress-chip").length >= 2,
+      "blocked rows render separate chip elements (F4)");
+  }
+
+  // F5: blocker card items show 'title (id)' and a separated ancestor path.
+  const cardEl = document.getElementById(`blocker-card:${IDS.taskB}`);
+  ok(cardEl, "blocker card mounted");
+  const items = [...cardEl.querySelectorAll("li")];
+  ok(items.some((li) => li.textContent.includes(`(${blockerId})`)),
+    `a blocker item lists its id in parens: ${blockerId} (F5)`);
+  if (blockerTitle && blockerTitle !== blockerId) {
+    ok(items.some((li) => li.textContent.includes(blockerTitle)),
+      "a blocker item lists the blocker's TITLE, not only the id (F5)");
+  }
+  const anc = cardEl.querySelector('[aria-label="Ancestry"]');
+  ok(anc, "ancestry nav present");
+  ok(anc.textContent.includes("\u203A"),
+    "ancestor path is separated with ' \u203A ' (F5)");
+
+  // F6: search hit = id chip + title + path on its own line, path separated.
+  const panel = mountEl.querySelector('#search-panel[role="listbox"]');
+  ok(panel, "search panel mounted");
+  const opts = [...panel.querySelectorAll('[role="option"]')];
+  ok(opts.length > 0, "search hits mounted");
+  ok(opts.some((o) => (o.querySelector(".search-hit-path")?.textContent ?? "")
+        .includes("\u203A")),
+    "a search hit path uses the ' \u203A ' separator (F6)");
+  ok(opts.some((o) => {
+    const idEl = o.querySelector(".search-hit-id");
+    const tEl = o.querySelector(".search-hit-title");
+    const pEl = o.querySelector(".search-hit-path");
+    return idEl && tEl && pEl && idEl !== o && tEl !== o && pEl !== o;
+  }), "each hit renders id/title/path as separate child elements (F6)");
+
+  // F7: bot panel is a labelled group.
+  const bot = mountEl.querySelector(".bot-action-panel");
+  ok(bot, "bot panel mounted");
+  eq(bot.getAttribute("role"), "group", "bot panel is a role=group (F7)");
+  eq(bot.getAttribute("aria-label"), "Bot actions", "bot panel is labelled 'Bot actions' (F7)");
+
+  await snap("visual-layer", mountEl);
+  session.card = null;
+  session.searchResults = null;
+  await unmount();
+});
+
 // final native readback proof the surface never wrote the store
 test("mounted session never mutated the store (before/after list_all JSON equality)", () => {
   CHECKS++;

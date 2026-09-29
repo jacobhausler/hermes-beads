@@ -156,21 +156,42 @@ export function resolveReturnKey(ev) {
 export function appBack(opts) { return returnFromCard(opts); }
 
 // ---- component (evidence: rendered structure only — no mount/usability claim)
-function BlockerRow({ b }) {
+// hbl-pnu.2.10 (F5): blocker items are 'title (id)', never a bare id, and the
+// ancestor path is rendered as separated elements with a ' › ' connector —
+// the failure mode was ids painting fused ("shot-janshot-32xshot-0q6").
+function BlockerRow({ b, snapshot }) {
+  const title = snapshot?.byId?.get(b.id)?.title ?? null;
   return jsx("li", {
     id: `blocker-dep:${b.id}`,
-    children: `${b.id}${b.inherited ? ` (inherited via ${b.source} from ${b.via?.join("/") ?? "?"})` : ""}`,
+    children: [
+      jsx("span", { className: "blocker-title", children: title ?? "(title not loaded)" }, `t:${b.id}`),
+      jsx("span", { className: "blocker-id", "aria-label": `blocker id: ${b.id}`,
+        children: `(${b.id})` }, `i:${b.id}`),
+      ...(b.inherited
+        ? [jsx("span", { className: "blocker-inherited",
+            "aria-label": `inherited via ${b.source} from ${b.via?.join("/") ?? "?"}`,
+            children: `(inherited via ${b.source} from ${b.via?.join("/") ?? "?"})` },
+          `inh:${b.id}`)]
+        : []),
+    ],
   }, `blocker-dep:${b.id}`);
 }
 
-export function BlockerCard({ card, onReturn }) {
+export function BlockerCard({ card, onReturn, snapshot = null }) {
   return jsx("section", {
     role: "complementary", "aria-label": "Blocker card",
     id: `blocker-card:${card.targetId}`,
     children: [
       jsx("header", { children: card.targetId }, "hdr"),
       jsx("nav", { "aria-label": "Ancestry",
-        children: card.ancestry.map((a, i) => jsx("span", { id: `ancestry:${a}`, children: a }, `anc:${i}:${a}`)) },
+        children: card.ancestry.flatMap((a, i) => {
+          const t = snapshot?.byId?.get(a)?.title ?? null;
+          const node = jsx("span", { id: `ancestry:${a}`,
+            children: t ? `${t} (${a})` : a }, `anc:${i}:${a}`);
+          return i === 0 ? [node]
+            : [jsx("span", { className: "ancestry-sep", "aria-hidden": "true",
+                children: " \u203A " }, `sep:${i}`), node];
+        }) },
         "anc"),
       jsx("div", { id: "blocker-status",
         children: `${card.statusWord}${card.badge ? ` · ${card.badge}` : " · readiness unknown"}` }, "st"),
@@ -179,7 +200,7 @@ export function BlockerCard({ card, onReturn }) {
             children: "dep-tree badge says READY — not trusted; native reads are truth" }, "note")
         : null,
       jsx("ul", { "aria-label": "Blockers",
-        children: card.blockers.map((b) => jsx(BlockerRow, { b }, `b:${b.id}`)) }, "deps"),
+        children: card.blockers.map((b) => jsx(BlockerRow, { b, snapshot }, `b:${b.id}`)) }, "deps"),
       card.lease
         ? jsx("div", { id: "blocker-lease",
             children: `held by ${card.lease.holder} · lease ${card.lease.leaseExpiresAt ?? "?"} · heartbeat ${card.lease.heartbeatAt ?? "?"}` },

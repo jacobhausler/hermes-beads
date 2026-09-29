@@ -1,0 +1,199 @@
+// desktop/workbench_css.mjs — hbl-pnu.2.10: THE shipped stylesheet (F1).
+//
+// The mounted evidence showed the workbench rendering with zero CSS:
+// browser-default serif text, no visible focus (WCAG 2.4.7 fail), fused
+// fields everywhere (visual-layer findings F1–F7). DOM
+// assertions passed because they checked attributes, not paint.
+//
+// This module is the single source of truth for the visual layer. It is a
+// pure string constant — no fs, no fetch — so the purity law holds (desktop
+// modules keep I/O at zero) and ANY host that mounts WorkbenchApp gets the
+// styles for free: the root renders jsx('style', {children: WORKBENCH_CSS})
+// exactly once. desktop/workbench.css is the byte-identical copy for
+// hosts that prefer a file; the packaging suite keeps them in lockstep.
+//
+// Laws encoded here:
+//  - theme integration with fallbacks: var(--foreground, CanvasText),
+//    var(--accent, Highlight), var(--border, GrayText) — a host theme wins,
+//    the browser system colors answer when no token exists;
+//  - rem sizing, no fixed px widths (320px reflow survives);
+//  - :focus-visible ring = 2px solid accent + offset (never color-only:
+//    the text markers data-keyboard-focus / aria-selected stay);
+//  - [aria-selected='true'] gets a distinct background (selection cursor
+//    is visible, not just an attribute);
+//  - flex layout, tree left / panels right, wrapping under 40rem;
+//  - @media (prefers-reduced-motion: reduce) disables every transition.
+export const WORKBENCH_CSS = `
+/* ---- workbench root: layout ------------------------------------------------ */
+#workbench {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  font-family: system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--foreground, CanvasText);
+  background: var(--background, Canvas);
+  align-items: flex-start; /* panels size to content, never stretch to the tree's height */
+}
+#workbench [role="tree"] {
+  flex: 1 1 20rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  border-inline-end: 1px solid var(--border, GrayText);
+  padding-inline-end: 0.75rem;
+}
+#workbench > section,
+#workbench > #bot-panel-slot {
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+#workbench > #bot-panel-slot {
+  display: flex;
+}
+/* wrap the panels under a narrow viewport: everything stacks */
+@media (max-width: 40rem) {
+  #workbench { flex-direction: column; }
+  #workbench [role="tree"] { border-inline-end: 0; padding-inline-end: 0; }
+}
+
+/* ---- focus + selection: visible, never color-only (WCAG 2.4.7) ------------ */
+#workbench [role="treeitem"]:focus-visible,
+#workbench [role="option"]:focus-visible,
+#workbench button:focus-visible,
+#workbench textarea:focus-visible,
+#workbench input:focus-visible {
+  outline: 2px solid var(--accent, Highlight);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+#workbench [role="treeitem"][data-keyboard-focus="true"] {
+  outline: 2px solid var(--accent, Highlight);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+  font-weight: 600;
+}
+#workbench [role="treeitem"][aria-selected="true"] {
+  background: var(--selection-background, Highlight);
+  color: var(--selection-foreground, HighlightText);
+}
+#workbench [role="treeitem"][aria-selected="true"][data-keyboard-focus="true"] {
+  outline: 2px solid var(--accent, Highlight);
+  outline-offset: -2px;
+}
+#workbench [role="option"][aria-selected="true"] {
+  background: var(--selection-background, Highlight);
+  color: var(--selection-foreground, HighlightText);
+}
+@media (prefers-color-scheme: dark) {
+  #workbench { color-scheme: dark; }
+}
+
+/* ---- tree rows: fields separated, never fused (F4) ------------------------- */
+#workbench [role="treeitem"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem;
+  padding-block: 0.125rem;
+  border-radius: 0.25rem;
+}
+#workbench .row-title { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+#workbench .status-chip,
+#workbench .blocked-chip,
+#workbench .progress-chip,
+#workbench .boundary-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.375rem;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+#workbench .status-glyph { font-weight: 700; }
+#workbench .blocked-chip { border: 2px solid var(--danger, #b00020); font-weight: 600; }
+
+/* ---- blocker card (F5) ------------------------------------------------------ */
+#workbench [id^="blocker-card:"] ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#workbench [id^="blocker-dep:"] { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+#workbench .blocker-id {
+  font-family: monospace;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+#workbench [aria-label="Ancestry"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+#workbench .ancestry-sep { color: var(--muted, GrayText); }
+
+/* ---- search hits (F6): id chip, title, path on its own line ---------------- */
+#workbench [role="option"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+#workbench .search-hit-id {
+  font-family: monospace;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+#workbench .search-hit-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+#workbench .search-hit-path {
+  flex: 1 0 100%;
+  font-size: 0.8125rem;
+  color: var(--muted, GrayText);
+}
+
+/* ---- bot panel (F7): labelled group, controls grouped ---------------------- */
+#workbench .bot-action-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  gap: 0.5rem;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+#workbench .bot-action-panel button {
+  font: inherit;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--border, GrayText);
+  border-radius: 0.375rem;
+  background: var(--button-background, ButtonFace);
+  color: var(--button-foreground, ButtonText);
+}
+#workbench .bot-action-panel button[aria-label="Cancel"],
+#workbench .bot-action-panel button:disabled { opacity: 0.6; }
+
+/* ---- motion: the honest default is none; honour the preference ------------- */
+#workbench * { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  #workbench *,
+  #workbench *::before,
+  #workbench *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+`;

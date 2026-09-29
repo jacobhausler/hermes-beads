@@ -214,12 +214,21 @@ export function createTreeController({ snapshot, ui }) {
     const t = vis[Math.max(0, Math.min(vis.length - 1, i + d))];
     if (t) slide(t.id);
   };
+  // The rendered tab stop falls back to the first row while the model cursor
+  // is null; a keyboard user who Tabs in is ON that row, so the first arrow
+  // must move FROM it (not merely initialise the cursor onto it).
+  const seedFromTabStop = (ev) => {
+    if (ui.selection != null) return;
+    const id = ev?.target?.getAttribute?.("data-tree-row");
+    if (id && idxOf(id) !== -1) slide(id);
+  };
 
   const press = (ev) => {
     const cmd = resolveKey(ev);
     if (cmd === null) return null;
     if (cmd === "exit-tree") { box.tabExit = true; return cmd; } // Tab exits natively
     ev.preventDefault?.();
+    if (cmd.startsWith("cursor-")) seedFromTabStop(ev);
     const node = () => snapshot.nodes.get(ui.selection);
     const children = () => rowChildren(snapshot, ui, ui.selection);
     const exp = () => modelExpanded(snapshot, ui);
@@ -407,11 +416,28 @@ export function Tree({ snapshot, ui, scheduler }) {
       tabIndex: r.id === selId ? 0 : -1, // roving tab stop
       style: { paddingInlineStart: `${r.depth * INDENT_PX}px` },
       children: [
-        jsx("span", { "data-indent-px": r.depth * INDENT_PX, children: rec.title ?? r.id }),
-        statusLabel(status),
-        ...(boundary ? [boundary] : []),
-        ...(prog ? [`epic progress ${prog.closed}/${prog.total}`] : []),
-        ...(snapshot.blockedIds?.has(r.id) ? ["blocked"] : []),
+        // hbl-pnu.2.10 (F4): every field is its OWN element — the gap and
+        // borders come from the shipped stylesheet, so no field ever paints
+        // fused against its neighbour ("title○ open" was the failure).
+        jsx("span", { className: "row-title", "data-indent-px": r.depth * INDENT_PX,
+          children: rec.title ?? r.id }, `title:${r.id}`),
+        jsx("span", { className: "status-chip", "aria-label": `status: ${status ?? "unknown"}`,
+          children: (() => {
+            const lbl = statusLabel(status);
+            const sp = lbl.indexOf(" ");
+            return sp === -1
+              ? [jsx("span", { children: lbl }, "w")]
+              : [jsx("span", { className: "status-glyph", children: lbl.slice(0, sp) }, "g"),
+                 jsx("span", { className: "status-word", children: lbl.slice(sp + 1) }, "w")];
+          })() }, `status:${r.id}`),
+        ...(boundary ? [jsx("span", { className: "boundary-chip", role: "status",
+          children: boundary }, `boundary:${r.id}`)] : []),
+        ...(prog ? [jsx("span", { className: "progress-chip",
+          "aria-label": `epic progress ${prog.closed}/${prog.total}`,
+          children: `epic progress ${prog.closed}/${prog.total}` }, `prog:${r.id}`)] : []),
+        ...(snapshot.blockedIds?.has(r.id) ? [jsx("span", { className: "blocked-chip",
+          "aria-label": "blocked in native blocked list", children: "blocked" },
+          `blocked:${r.id}`)] : []),
       ],
     };
     if (snapshot.blockedIds?.has(r.id)) props["data-blocked-word"] = "blocked";

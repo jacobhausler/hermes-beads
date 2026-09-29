@@ -677,3 +677,15 @@ test("native parity: Ready tab rows === `bd ready --exclude-type=epic`, Mine tab
     rmSync(FIX, { recursive: true, force: true });
   }
 });
+
+test("hbl-pnu.2.10: Tab onto the fallback tab stop, first ArrowDown moves FROM that row (real-Chrome finding: first arrow was swallowed)", () => {
+  const f = fixture("hierarchy.json");
+  const snap = snapOf(f);
+  const w = createWorkbenchState(snap);
+  const c = createTreeController({ snapshot: snap, ui: w });
+  const vis = w.visibleRows().map((r) => r.id);
+  assert.equal(w.selection, null, "fresh model: no cursor yet (tab stop falls back to the first row)");
+  const onFirst = { tagName: "LI", getAttribute: (k) => (k === "data-tree-row" ? vis[0] : null) };
+  c.press({ key: "ArrowDown", isComposing: false, target: onFirst, preventDefault() {} });
+  assert.equal(w.selection, vis[1], "first ArrowDown lands on the SECOND row, not the one already focused");
+});
