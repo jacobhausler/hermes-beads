@@ -155,7 +155,14 @@ export function resolveHitPath(snapshot, hit, opts = {}) {
       const upper = Array.isArray(anc.path) && anc.path.length ? anc.path : [want];
       const stopAt = upper.indexOf(chain[0].id); // drop what's already in chain
       const upperOnly = stopAt >= 0 ? upper.slice(0, stopAt) : upper;
-      for (const pid of upperOnly) chain.unshift({ id: pid, label: labelIn(pid), state: "snapshot" });
+      // prepend the block ROOT-FIRST: forward iteration unshifts the whole
+      // chain one entry at a time and REVERSES it (root→hit becomes hit-side
+      // first); reverse iteration lands upperOnly in root→hit order at the
+      // head of the chain.
+      for (let k = upperOnly.length - 1; k >= 0; k--) {
+        const pid = upperOnly[k];
+        chain.unshift({ id: pid, label: labelIn(pid), state: "snapshot" });
+      }
       if (anc.pathStatus === "cycle") { status = "cycle"; tail.push(cycleMarker()); break; }
       const top = snapshot.nodes.get(upper[0]);
       if (top?.parent != null && !top.parentObserved) { parentId = top.parent; continue; }

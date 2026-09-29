@@ -239,6 +239,112 @@ test("hit absent from the snapshot is revealed as unknown-hit via the fallback, 
   assert.ok(textIn(el, "closed-hit"));
 });
 
+test("REGRESSION: out-of-snapshot hit whose ancestors are ALL in the snapshot resolves root→hit (unshift-order bug)", () => {
+  // snapshot root -> mid -> leaf; the hit is OUTSIDE with authoritative
+  // lookup returning {id:"outside", parent:"leaf"}. The upward-reuse loop
+  // used to chain.unshift the in-snapshot upper chain once per hop, which
+  // REVERSED it: [leaf, mid, root, outside]. Correct order is root→hit.
+  const issues = [
+    { id: "root", title: "root epic", status: "open", parent: null },
+    { id: "mid", title: "mid spec", status: "open", parent: "root" },
+    { id: "leaf", title: "leaf task", status: "open", parent: "mid" },
+  ];
+  const snap = buildSnapshot(baseReads({ issues, ready: [], blocked: [] }),
+    { fetchedAt: 1 });
+  const outsideRow = { id: "outside", title: "outside hit", status: "closed", parent: "leaf" };
+  const got = resolveHitPath(snap, { id: "outside" }, {
+    lookup: (id) => (id === "outside" ? outsideRow : null),
+  });
+  assert.equal(got.pathStatus, "resolved");
+  assert.deepEqual(got.path.map((p) => p.id ?? p.state),
+    ["root", "mid", "leaf", "outside"],
+    "resolved ancestor chain reads root→hit, never the unshift-reversed leaf→root tail");
+});
+
+test("out-of-snapshot hit's OWN parent comes from the authoritative showRead row", () => {
+  // search channel is blind (never resolves rows by id); only `bd show`
+  // carries the real parent FIELD. The hit itself is outside the snapshot:
+  // its row — and its parent pointer — must come from showRead, and the
+  // in-snapshot upper chain must still be reused root→hit with zero extra
+  // calls for those hops.
+  const issues = [
+    { id: "root", title: "root epic", status: "open", parent: null },
+    { id: "mid", title: "mid spec", status: "open", parent: "root" },
+    { id: "leaf", title: "leaf task", status: "open", parent: "mid" },
+  ];
+  const snap = buildSnapshot(baseReads({ issues, ready: [], blocked: [] }),
+    { fetchedAt: 1 });
+  // the native query DOES surface the hit (that's bd search's job) — but the
+  // row is a real search row: NO parent key at all (probed FACT), so the
+  // parent can only come from the authoritative show channel below.
+  const read = fakeSearch([{ id: "outside", title: "outside hit", status: "closed" }]);
+  const shown = [];
+  const showRead = (id) => {
+    shown.push(id);
+    if (id === "outside") return { id: "outside", title: "outside hit", status: "closed", parent: "leaf" };
+    return null;
+  };
+  const res = searchIssues({ snapshot: snap, query: "outside hit", searchRead: read, showRead });
+  const hit = res.hits[0];
+  assert.equal(hit.id, "outside");
+  assert.ok(hit.flags.includes("hit-outside-snapshot"));
+  assert.deepEqual(hit.path.map((p) => p.id ?? p.state),
+    ["root", "mid", "leaf", "outside"],
+    "show-read parent (leaf) joins the in-snapshot chain in root→hit order");
+  assert.equal(hit.pathStatus, "resolved");
+  assert.equal(hit.path[3].state, "fallback", "the hit's own row came from the authoritative show channel");
+  assert.deepEqual(shown, ["outside"], "exactly ONE show: the hit's own row; ancestors are snapshot truth");
+  assert.equal(res.fallback.showCalls, 1);
+  assert.equal(res.nativeCalls, 2, "1 query + 1 show — ancestors cost zero calls");
+});
+
+test("REVEAL AUDIT (actual model state): Enter on an out-of-snapshot hit expands the real workbench, not just history claims", () => {
+  // audit against the ACTUAL model state (wb.visibleRows()/expanded), never
+  // only the pushed history bundle: with mid collapsed pre-Enter, Enter must
+  // really expand mid so the full root→leaf chain becomes visible rows, and
+  // restore must really collapse what Enter expanded.
+  const issues = [
+    { id: "root", title: "root epic", status: "open", parent: null },
+    { id: "mid", title: "mid spec", status: "open", parent: "root" },
+    { id: "leaf", title: "leaf task", status: "open", parent: "mid" },
+    { id: "sib", title: "sibling leaf", status: "open", parent: "mid" },
+  ];
+  const snap = buildSnapshot(baseReads({ issues, ready: [], blocked: [] }),
+    { fetchedAt: 1 });
+  const history = createHistoryStack({ storeKey: snap.storeKey });
+  // ACTUAL pre-Enter model state: mid collapsed (leaf + sib hidden rows)
+  const wb = createWorkbenchState(snap, { expanded: new Set(["root"]) });
+  const preRows = wb.visibleRows().map((r) => `${r.id}:${r.depth}`);
+  assert.deepEqual(preRows, ["root:0", "mid:1"], "fixture starts collapsed at mid");
+  wb.jump("root", "list");
+  history.push({ beadId: "root", focus: "root", selection: "root",
+    pane: "list", tab: "ready", filter: "mine", search: null, scroll: 0,
+    expanded: [...wb.expanded].sort() });
+
+  const read = fakeSearch([{ id: "outside", title: "outside hit", status: "closed" }]);
+  const showRead = (id) =>
+    id === "outside" ? { id: "outside", title: "outside hit", status: "closed", parent: "leaf" } : null;
+  const res = searchIssues({ snapshot: snap, query: "outside hit", searchRead: read, showRead });
+  const nav = enterSearchHit({ results: res, index: 0, snapshot: snap,
+    workbench: wb, history, pane: "tree" });
+
+  // actual state: focus is the hit AND the chain rows really render
+  assert.equal(wb.focus, "outside");
+  const ids = wb.visibleRows().map((r) => r.id);
+  for (const step of ["root", "mid", "leaf"]) {
+    assert.ok(ids.includes(step), `${step} must be a REAL visible row after Enter, got ${ids}`);
+  }
+  assert.ok(wb.expanded.has("mid"), "mid is REALLY expanded in the live model");
+  assert.equal(history.current().beadId, "outside");
+
+  // restore: real collapse — leaf is no longer a visible row, focus returns
+  nav.restore();
+  assert.equal(wb.focus, "root");
+  assert.deepEqual(wb.visibleRows().map((r) => `${r.id}:${r.depth}`), preRows,
+    "row-for-row back to the actual collapsed pre-Enter state");
+  assert.ok(!wb.expanded.has("mid"), "Enter's expansion was really undone");
+});
+
 test("parent cycle terminates with an explicit marker — no infinite walk", () => {
   const f = fixture("cycle.json");
   const snap = buildSnapshot(baseReads({ issues: f.issues, ready: [], blocked: [],
