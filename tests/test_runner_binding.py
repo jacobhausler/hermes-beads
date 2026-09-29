@@ -441,6 +441,91 @@ class RunnerBindingTests(unittest.TestCase):
                             run_root=str(run), bd_bin=BD)
         self.assertEqual(out["receipt"]["beads"], [A])
 
+    def test_r2h_parent_symlink_hardlink_and_swap_refused(self):
+        """Reviewer rereview2: symlinked beads dir, a hardlink of a self-minted
+        0600 file, and a check/read swap each admitted an out-of-set bead."""
+        s = make_store("r2h")
+        A = create(s, "A")
+        C = create(s, "C")
+        p = pathlib.Path(rb.credential_path())
+        if p.exists() or p.is_symlink():
+            p.unlink()
+        host_secret = rb.provision_credential("lab-human", [A], s)
+        evil_dir = FIXTURES / "creds" / "r2h-evil"
+        shutil.rmtree(evil_dir, ignore_errors=True)
+        evil_dir.mkdir(parents=True, mode=0o700)
+        own = "c" * 64
+        evil = evil_dir / "admission-credential.json"
+        evil.write_text(json.dumps({"principal": "lab-human", "secret": own,
+                                    "approved_beads": [A, C],
+                                    "store": os.path.realpath(s)}))
+        os.chmod(evil, 0o600)
+        req = request(s, [A, C], "r2hk")
+        ctx = {"principal": "lab-human",
+               "signature": rb.sign_request(own, req, "lab-human")}
+
+        def attempt(tag):
+            run = FIXTURES / "runs" / f"r2h-{tag}"
+            shutil.rmtree(run, ignore_errors=True)
+            run.mkdir(parents=True)
+            with self.assertRaises(rb.BindingRefusal, msg=tag):
+                rb.admit_work(req, authenticated_context=ctx,
+                              run_root=str(run), bd_bin=BD)
+            self.assertFalse(os.path.exists(rb._run_paths(run)["grant"]), tag)
+
+        # (1) hardlink of the self-minted file at the derived path
+        saved = p.with_name("host.json")
+        os.replace(p, saved)
+        os.link(evil, p)
+        try:
+            attempt("hardlink")
+        finally:
+            p.unlink()
+        # (2) swap between provenance check and read: leaf replaced by a
+        # symlink the moment the door stats it (simulated via lstat hook)
+        os.replace(saved, p)
+        real_lstat, real_stat, fired = os.lstat, os.stat, []
+
+        def swap(path, *a, **k):
+            r = (real_lstat if swap.kind == "l" else real_stat)(path, *a, **k)
+            if str(path) == str(p) and not fired:
+                fired.append(1)
+                os.replace(p, saved)
+                p.symlink_to(evil)
+            return r
+        for kind, name in (("l", "lstat"), ("s", "stat")):
+            swap.kind = kind
+            fired.clear()
+            orig = getattr(rb.os, name)
+            setattr(rb.os, name, swap)
+            try:
+                attempt(f"toctou-{name}")
+            finally:
+                setattr(rb.os, name, orig)
+                if p.is_symlink():
+                    p.unlink()
+                    os.replace(saved, p)
+        # (3) symlinked beads dir pointing at the attacker's 0700 dir
+        beads = p.parent
+        held = beads.with_name("beads.host")
+        os.replace(beads, held)
+        beads.symlink_to(evil_dir)
+        try:
+            attempt("parent-symlink")
+        finally:
+            beads.unlink()
+            os.replace(held, beads)
+        # host credential still admits exactly its approved set
+        run = FIXTURES / "runs" / "r2h-ok"
+        shutil.rmtree(run, ignore_errors=True)
+        run.mkdir(parents=True)
+        okreq = request(s, [A], "r2hok")
+        out = rb.admit_work(okreq, authenticated_context={
+            "principal": "lab-human",
+            "signature": rb.sign_request(host_secret, okreq, "lab-human")},
+            run_root=str(run), bd_bin=BD)
+        self.assertEqual(out["receipt"]["beads"], [A])
+
     def test_r2d_credential_never_inherited_by_child(self):
         s = make_store("r2d")
         A = create(s, "A")

@@ -13,19 +13,25 @@ only read and hash-pinned before/after.
   (fixture child), including after runner-only death (R1: a verified live
   orphan is adopted via the runner's own `_adopt_child`; the solo path never
   Popen's a second child).
-- Admission is authenticated: the ONLY credential consulted lives at
+- Admission is authenticated: the only credential consulted lives at
   `$HERMES_HOME/beads/admission-credential.json` (`credential_path()`), created
-  once by the host via `provision_credential()` with a fresh 64-hex secret.
-  The door refuses unless the file is a regular file (no symlink), mode 0600,
-  owned by the runner uid, in an owner-only directory. There is no
-  caller-pointable path: a self-minted file elsewhere, even with its own
-  secret, is never read (reviewer bypass F2s; `test_r2f`, `test_r2g`). Every
-  admission/stop is verified by HMAC-SHA256 (`sign_request`/`sign_stop`) over
-  the exact request body; unsigned or forged requests are refused.
+  by the host via `provision_credential()` with a fresh 64-hex secret. The door
+  opens the beads dir and the file with `O_NOFOLLOW` and checks the SAME fds
+  (`fstat`): dir owner-only and not a symlink; file regular, runner-owned,
+  mode 0600, exactly one link. Check and read are one open, so a swap, a
+  symlinked dir, or a hardlinked self-minted file is refused (`test_r2f`,
+  `test_r2g`, `test_r2h`). Every admission/stop carries an HMAC-SHA256
+  (`sign_request`/`sign_stop`) over the exact request body.
+- Trust boundary, stated plainly: `HERMES_HOME` is trusted host config and
+  the runner uid is inside the boundary. A process that controls the runner's
+  environment or runs as the runner uid can re-provision (`rotate=True`) or
+  read the 0600 secret file — a file-secret scheme cannot stop that; it needs
+  a different-uid host signer (production gate hbl-pnu.3.6). The per-call env
+  pointer that let a request aim the door at any file is gone. Children do
+  not receive the secret in env or argv; a same-uid child can still read the
+  file.
 - The approved-set ceiling is mandatory: no `approved_beads` in the
   credential = refusal, so omission can never mean "everything in the store".
-- The child never inherits the credential: the runner prelude pops
-  `BEADS_ADMISSION_CREDENTIAL_FILE` from the child env before Popen.
 - External-close causality needs a runner-held random nonce
   (`secrets.token_hex(16)`) recorded in the run-dir launch intent BEFORE the
   claim. A native close reason must carry `nonce=<value>` verbatim AND the

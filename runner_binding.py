@@ -148,8 +148,11 @@ def _sign(secret, message):
 
 def credential_path():
     """The ONE place an admission credential may live: the host's own Hermes
-    state dir. Not caller-pointable (the old env-var pointer let any process
-    mint a file with its own secret and aim the door at it)."""
+    state dir, derived from HERMES_HOME. HERMES_HOME is TRUSTED host config:
+    a caller that controls the runner's environment or runs as the runner
+    uid is inside the trust boundary (it could equally rewrite this file).
+    The removed per-call env pointer let an in-boundary-looking request aim
+    the door at any self-minted file; this path cannot be chosen per call."""
     home = os.environ.get("HERMES_HOME") or os.path.join(
         os.path.expanduser("~"), ".hermes")
     return os.path.join(home, *CRED_RELPATH)
@@ -184,23 +187,50 @@ def provision_credential(principal, approved_beads, store, *, rotate=False):
     return secret
 
 
-def _credential_provenance_ok(path):
-    """Owner-only file, not a symlink, in an owner-only parent directory."""
-    try:
-        st = os.lstat(path)
-        pst = os.stat(os.path.dirname(path))
-    except OSError:
-        return "no host credential provisioned"
-    if not stat.S_ISREG(st.st_mode):
-        return "credential is not a regular file (symlinks refused)"
+def _read_host_credential(path):
+    """Owner-only regular file with a single link, not a symlink, in an
+    owner-only directory that is itself not a symlink. Checks and read are
+    bound to the SAME open fds (openat + O_NOFOLLOW + fstat), so a swap
+    between check and read, a symlinked beads dir, or a same-uid hardlink
+    of a self-minted file is refused. Returns (cred, problem)."""
     uid = os.geteuid()
-    if st.st_uid != uid or pst.st_uid != uid:
-        return "credential or its directory is not owned by the runner uid"
-    if st.st_mode & 0o077:
-        return "admission credential file must be mode 0600"
-    if pst.st_mode & 0o022:
-        return "credential directory is group/world-writable"
-    return None
+    try:
+        dfd = os.open(os.path.dirname(path),
+                      os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError:
+        return None, "no host credential provisioned (or its dir is a symlink)"
+    try:
+        dst = os.fstat(dfd)
+        if dst.st_uid != uid:
+            return None, "credential directory is not owned by the runner uid"
+        if dst.st_mode & 0o077:
+            return None, "credential directory must be owner-only (0700)"
+        try:
+            fd = os.open(os.path.basename(path), os.O_RDONLY | os.O_NOFOLLOW,
+                         dir_fd=dfd)
+        except OSError:
+            return None, ("no host credential provisioned "
+                          "(or it is a symlink — refused)")
+        try:
+            st = os.fstat(fd)
+            if not stat.S_ISREG(st.st_mode):
+                return None, "credential is not a regular file"
+            if st.st_uid != uid:
+                return None, "credential is not owned by the runner uid"
+            if st.st_mode & 0o077:
+                return None, "admission credential file must be mode 0600"
+            if st.st_nlink != 1:
+                return None, "credential has extra hard links (refused)"
+            with os.fdopen(os.dup(fd), "rb") as f:
+                raw = f.read(65536)
+        finally:
+            os.close(fd)
+    finally:
+        os.close(dfd)
+    try:
+        return json.loads(raw), None
+    except ValueError:
+        return None, "credential file is not valid JSON"
 
 
 def _verify_credential(authenticated_context, message=None):
@@ -215,12 +245,13 @@ def _verify_credential(authenticated_context, message=None):
     signature = authenticated_context.get("signature") or ""
     cred_path = credential_path()
     problem = None if principal else "missing principal"
-    problem = problem or _credential_provenance_ok(cred_path)
+    cred = None
+    if not problem:
+        cred, problem = _read_host_credential(cred_path)
     if problem:
         raise BindingRefusal(
             f"workflow_admission_unqualified: {problem} ({cred_path}); Work "
             "remains unavailable — caller-claimed identity is never authority")
-    cred = _jload(cred_path)
     if not isinstance(cred, dict) or cred.get("principal") != principal:
         raise BindingRefusal(
             "principal mismatch against the host credential file "
