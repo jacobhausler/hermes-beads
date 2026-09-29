@@ -49,13 +49,23 @@ def bind_runner_door(door):
 
 
 def work_status():
-    """Render-facing state: present, but enabled only while a door is bound."""
-    return {
-        "present": True,
-        "enabled": _runner_door is not None,
-        "disabledReason": None if _runner_door is not None
-        else WORK_DISABLED_REASON,
-    }
+    """Render-facing state: present, but enabled only while a door is bound
+    AND its qualification precheck passes — an unqualified door is visibly
+    unavailable with its typed reason, never a button that fails on click."""
+    if _runner_door is None:
+        return {"present": True, "enabled": False,
+                "disabledReason": WORK_DISABLED_REASON}
+    precheck = getattr(_runner_door, "precheck_error", None)
+    why = None
+    if callable(precheck):
+        try:
+            why = precheck()
+        except Exception as exc:  # a crashing precheck is unqualified
+            why = f"runner qualification check failed: {exc}"
+    if why:
+        return {"present": True, "enabled": False,
+                "disabledReason": f"runner_unqualified: {why}"}
+    return {"present": True, "enabled": True, "disabledReason": None}
 
 
 def _base(workspace, bead, intent):

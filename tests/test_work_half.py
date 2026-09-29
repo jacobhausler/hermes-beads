@@ -88,6 +88,7 @@ class WorkHalf(unittest.TestCase):
                                   request_key="k-dup")
         r2 = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
                                   request_key="k-dup")
+        self.assertTrue(bot_handoff.work_status()["enabled"])  # qualified
         self.assertTrue(r1["ok"], r1)
         self.assertTrue(r1["handed_off"])
         self.assertTrue(r2["ok"], r2)
@@ -206,6 +207,11 @@ class WorkHalf(unittest.TestCase):
         self.assertEqual(out["error"], "runner_unqualified")
         self.assertFalse(out["handed_off"])
         self.assertIn("credential", out["reason"])
+        # the panel state shows it BEFORE any click: bound-but-unqualified
+        # door is disabled with the typed reason (not a live-looking button)
+        ws = bot_handoff.work_status()
+        self.assertFalse(ws["enabled"])
+        self.assertTrue(ws["disabledReason"].startswith("runner_unqualified"))
         # precheck ran BEFORE the claim: nothing was claimed
         row = read_model.show(str(s), i, bd_bin=BD)
         self.assertFalse(row.get("assignee") or None)
