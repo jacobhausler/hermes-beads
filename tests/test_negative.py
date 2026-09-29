@@ -45,6 +45,7 @@ import evidence          # noqa: E402
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, "fixtures", "negative-runtime")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 DOCS = os.path.join(os.path.dirname(HERE), "docs", "negative-qualification.md")
 
 VOLATILE = {"updated_at", "lease_expires_at", "heartbeat_at"}
@@ -53,6 +54,7 @@ READONLY_MSG = "Error: operation '{op}' is not allowed in read-only mode"
 
 
 def make_store(prefix="neg"):
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)
@@ -335,6 +337,7 @@ class EmptyVsBackendFailure(unittest.TestCase):
         with self.assertRaises(native.BdNotFoundError) as cm:
             native.ready_frontier(self.store, bd_bin="/nonexistent/bd-bin")
         self.assertIn("/nonexistent/bd-bin", str(cm.exception))
+        os.makedirs(FIXTURE_ROOT, exist_ok=True)
         empty_dir = tempfile.mkdtemp(dir=FIXTURE_ROOT)
         with self.assertRaises(native.WorkspaceError):
             native.ready_frontier(empty_dir, bd_bin=BD_BIN)

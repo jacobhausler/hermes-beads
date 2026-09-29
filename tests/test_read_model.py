@@ -34,6 +34,7 @@ import read_model    # noqa: E402
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, ".fixtures-reads")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 RECEIPTS = "/home/hermes/.hermes/work/beads-lab/reports/interop-receipts.json"
 
 
@@ -41,6 +42,7 @@ def make_store(prefix="rdm"):
     """Fresh disposable store. Independent `git init` + one commit so the
     embedded dolt home binds INSIDE the fixture and can never fall through
     to a parent git-common-dir database."""
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)
