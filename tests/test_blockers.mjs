@@ -383,3 +383,54 @@ test("native external close: refresh flips derived badge; focus never auto-jumps
     rmSync(store, { recursive: true, force: true });
   }
 });
+
+// ============================================================================
+// hbl-pnu.2.11 — the user-reachable door (JSX shim: structure only). The card
+// was host-injectable only; a human now opens it via the row door, and the
+// Return button must actually invoke onReturn (the shipped bug wired
+// onReturn=rerender at the root, which never cleared the card).
+// ============================================================================
+test("BlockersDoor: renders on blocked rows, absent on clean rows, disabled-with-reason without the provider, and clicks reach onOpen", () => {
+  const f = fixture("cross-branch.json");
+  const snap = buildSnapshot(baseReads(f.reads));
+  const opened = [];
+  const door = (id, providerReady) =>
+    walk(B.BlockersDoor({ snapshot: snap, id, providerReady,
+      onOpen: (x) => opened.push(x) })).filter((n) => typeof n === "object");
+  // blocked row => a visible 'blockers' button (victim: direct liveB1/liveB2)
+  const blockedNodes = door("victim", true);
+  const btn = blockedNodes.find((n) => n.props?.id === "blockers-open:victim");
+  assert.ok(btn && btn.type === "button", "blocked row renders a real button");
+  assert.equal(btn.props.disabled, false, "enabled when the provider facade is present");
+  assert.equal(blockedNodes.find((n) => n.props?.id === "blockers-disabled-reason"), undefined,
+    "no disabled-reason when the door is armed");
+  btn.props.onClick();
+  assert.deepEqual(opened, ["victim"], "click delegates the row id to onOpen");
+  // clean row => no door at all (nothing invented for unblocked beads)
+  assert.equal(door("liveB1", true).find((n) => n.props?.id === "row-doors"), undefined,
+    "unblocked rows render no door");
+  // missing facade => present-but-disabled with a VISIBLE reason, never a throw
+  const offNodes = door("victim", false);
+  const offBtn = offNodes.find((n) => n.props?.id === "blockers-open:victim");
+  assert.ok(offBtn, "button still PRESENT without the facade (present-but-disabled)");
+  assert.equal(offBtn.props.disabled, true, "disabled without the provider facade");
+  const reason = offNodes.find((n) => n.props?.id === "blockers-disabled-reason");
+  assert.ok(reason && /provider/i.test(walk(reason).filter((s) => typeof s === "string").join("")),
+    "a visible reason names the missing read provider");
+  assert.doesNotThrow(() => offBtn.props.onClick(), "a disabled door click is an honest no-op, never a throw");
+  assert.deepEqual(opened, ["victim"], "the disabled click reached nobody");
+});
+
+test("hbl-pnu.2.11 Return law: the card's ONLY affordance calls onReturn (root wires returnFromCard, not rerender)", () => {
+  const f = fixture("cross-branch.json");
+  const snap = buildSnapshot(baseReads(f.reads));
+  const card = B.buildBlockerCard({ snapshot: snap, targetId: "liveB1",
+    depTree: { tree: { id: "liveB1", children: [] } }, records: {} });
+  let returns = 0;
+  const tree = walk(B.BlockerCard({ card, onReturn: () => { returns += 1; }, snapshot: snap }));
+  const ret = tree.find((n) => typeof n === "object" && n.props?.id === "blocker-return");
+  assert.ok(ret, "Return button rendered");
+  ret.props.onClick();
+  assert.equal(returns, 1, "clicking Return invokes onReturn exactly once " +
+    "(the shipped root passed onReturn=rerender, which left the card mounted — defect 1)");
+});

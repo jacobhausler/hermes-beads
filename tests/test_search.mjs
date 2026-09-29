@@ -737,3 +737,63 @@ test("native fallback path: out-of-page ancestor resolved under budget, exhausti
     rmSync(FIX, { recursive: true, force: true });
   }
 });
+
+// ============================================================================
+// hbl-pnu.2.11 — SearchPanel gains a roving cursor: ArrowUp/ArrowDown move
+// aria-selected AND document focus together (RED against the pinned-cursor
+// component: onKeyDown undefined + no focus() call).
+// ============================================================================
+test("hbl-pnu.2.11 SearchPanel: ArrowDown/ArrowUp move the cursor AND focus the hit; onKeyDown is wired", async () => {
+  const { createWorkbenchState } = await import("../desktop/model.mjs");
+  const snapshot = buildSnapshot(baseReads({ issues: [
+    { id: "root", parent: null }, { id: "mid", parent: "root" },
+    { id: "leaf", parent: "mid" },
+  ] }));
+  void createWorkbenchState; // model untouched; panel is caller-cursor driven
+  let nativeFocusCalls = [];
+  const fakeFocusable = () => ({ tagName: "DIV", contains: () => false });
+  const results = { query: "q", hits: [
+    { id: "mid", path: [{ id: "root" }, { id: "mid" }], pathStatus: "resolved", flags: [], row: { id: "mid" } },
+    { id: "leaf", path: [{ id: "root" }, { id: "mid" }, { id: "leaf" }], pathStatus: "resolved", flags: [], row: { id: "leaf" } },
+  ] };
+  // The caller owns the cursor: each render carries the current one (the
+  // shim can't re-render on its own, so the legs hand cursor 0 / cursor 1 in
+  // the exact state a live parent would hold after the previous move).
+  const seen = [];
+  const optsFor = (cur) => walk(SearchPanel({ results, cursor: cur,
+    onCursor: (i) => seen.push(i), focusHit: (i) => nativeFocusCalls.push(i),
+    onActivate: () => {} })).filter((n) => typeof n === "object" && n.props?.role === "option");
+  const panel = optsFor(0);
+  assert.equal(panel.length, 2, "two options rendered");
+  const kd0 = panel[0].props.onKeyDown;
+  const kd1 = optsFor(1)[1].props.onKeyDown;
+  assert.equal(typeof kd0, "function", "option 0 wires onKeyDown (roving cursor needs it)");
+  assert.equal(typeof kd1, "function", "option 1 wires onKeyDown");
+  // ArrowDown FROM hit 1 asks the caller to move the cursor to hit 2 AND
+  // moves document focus to hit 2 through the focusHit delegate
+  nativeFocusCalls = [];
+  let prevented = 0;
+  kd0({ key: "ArrowDown", target: fakeFocusable(), preventDefault: () => { prevented += 1; } });
+  assert.deepEqual(seen, [1], "ArrowDown on the selected hit advances the cursor to hit 2");
+  assert.deepEqual(nativeFocusCalls, [1], "ArrowDown focuses hit 2 (document focus follows aria-selected)");
+  assert.ok(prevented >= 1, "ArrowDown is preventDefault-ed (never reaches the tree)");
+  prevented = 0;
+  nativeFocusCalls = [];
+  // FOCUS law: keydown arrives on the DOCUMENT-FOCUSED option — after the
+  // ArrowDown above, that is hit 2, so the ArrowUp is dispatched from it.
+  optsFor(1)[1].props.onKeyDown({ key: "ArrowUp", target: fakeFocusable(), preventDefault: () => { prevented += 1; } });
+  assert.deepEqual(seen, [1, 0], "ArrowUp on the selected hit retreats the cursor to hit 1");
+  assert.deepEqual(nativeFocusCalls, [0], "ArrowUp focuses hit 1");
+  assert.ok(prevented >= 1, "ArrowUp is preventDefault-ed");
+  // edges clamp (no wrap, no throw, no phantom focus move)
+  nativeFocusCalls = [];
+  optsFor(1)[1].props.onKeyDown({ key: "ArrowDown", target: fakeFocusable(), preventDefault: () => {} });
+  assert.deepEqual(seen, [1, 0], "ArrowDown at the last selected hit moves nothing (clamped)");
+  assert.deepEqual(nativeFocusCalls, [], "no focus churn at the clamp");
+  // the cursor moves aria-selected AND tabIndex together
+  const sel = (cur) => walk(SearchPanel({ results, cursor: cur, onActivate: () => {} }))
+    .filter((n) => typeof n === "object" && n.props?.role === "option")
+    .map((n) => [String(n.props["aria-selected"]), String(n.props.tabIndex)]);
+  assert.deepEqual(sel(1), [["false", "-1"], ["true", "0"]],
+    "cursor=1: hit 2 is aria-selected AND the only tab stop (roving tabIndex)");
+});
