@@ -155,6 +155,32 @@ export function resolveReturnKey(ev) {
 }
 export function appBack(opts) { return returnFromCard(opts); }
 
+// hbl-pnu.2.11: the visible door a human uses to OPEN a card. Rendered by
+// WorkbenchApp beside the tree for the selected row when that row has open
+// blockers. Without the injected read provider the control is present-but-
+// DISABLED with a visible reason — never a throw, never an invisible key.
+export function BlockersDoor({ snapshot, id, providerReady, onOpen }) {
+  const hasBlockers = id != null && snapshot?.nodes?.has(id)
+    ? blockersFor(snapshot, id).length > 0 : false;
+  if (!hasBlockers) return null;
+  return jsx("div", {
+    id: "row-doors", role: "group", "aria-label": "Row doors",
+    children: [
+      jsx("button", {
+        type: "button", id: `blockers-open:${id}`,
+        disabled: !providerReady,
+        onClick: () => { if (providerReady) onOpen?.(id); },
+        children: "blockers",
+      }, `bo:${id}`),
+      !providerReady
+        ? jsx("p", { id: "blockers-disabled-reason",
+            children: "the blocker card needs an injected read provider " +
+              "(reads.provider) — door disabled, nothing hidden" }, "bdr")
+        : null,
+    ].filter(Boolean),
+  }, `row-doors:${id}`);
+}
+
 // ---- component (evidence: rendered structure only — no mount/usability claim)
 // hbl-pnu.2.10 (F5): blocker items are 'title (id)', never a bare id, and the
 // ancestor path is rendered as separated elements with a ' › ' connector —

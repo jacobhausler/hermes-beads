@@ -104,6 +104,12 @@ export const KEYMAP = [
   { keys: ["Tab"], command: "exit-tree", desc: "Leave the tree (never intercepted)" },
   { keys: ["Alt+ArrowLeft"], command: "history-back", desc: "App back" },
   { keys: ["Alt+ArrowRight"], command: "history-forward", desc: "App forward" },
+  // hbl-pnu.2.11 user doors (app commands: the workbench root resolves them,
+  // the tree controller ignores them). Modifier combos only — the bare-letter
+  // law keeps plain '/' and 'b' OUT of this table; the root's app-gesture
+  // pass resolves those under the same isTextTarget swallow.
+  { keys: ["Ctrl+/"], command: "focus-search", desc: "Focus the search box" },
+  { keys: ["Ctrl+b"], command: "open-blockers", desc: "Open the blocker card for the selected row" },
   { keys: ["?"], command: "toggle-help", desc: "Shortcut help overlay" },
   { keys: ["Escape"], command: "close-help", desc: "Close the help overlay, focus back to the prior row" },
 ];

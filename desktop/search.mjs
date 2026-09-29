@@ -316,11 +316,15 @@ function pathLabel(hit) {
   return hit.path.map((p) => p.label ?? p.id ?? "?").join(" \u203A ");
 }
 
-// SearchPanel({ results, cursor, onActivate }) — one row per enriched hit;
-// truncation and unavailable ancestry are explicit visible banners (owner:
-// visible state, not a show loop). Selection (cursor) ≠ focus: activation is
-// delegated to onActivate → enterSearchHit.
-export function SearchPanel({ results, cursor = -1, onActivate }) {
+// SearchPanel({ results, cursor, onActivate, onCursor, focusHit }) — one row
+// per enriched hit; truncation and unavailable ancestry are explicit visible
+// banners (owner: visible state, not a show loop). Selection (cursor) ≠
+// focus: activation is delegated to onActivate → enterSearchHit.
+// hbl-pnu.2.11: ArrowUp/ArrowDown move the roving cursor through onCursor AND
+// move DOCUMENT focus through the focusHit delegate (F3 law for the listbox:
+// aria-selected and document focus never diverge). The panel keeps no cursor
+// of its own — the caller (WorkbenchApp) owns the cursor state.
+export function SearchPanel({ results, cursor = -1, onActivate, onCursor, focusHit }) {
   if (!results || !Array.isArray(results.hits)) {
     throw new Error("SearchPanel requires searchIssues() results");
   }
@@ -331,6 +335,16 @@ export function SearchPanel({ results, cursor = -1, onActivate }) {
       children: `showing ${results.hits.length} of ${results.rawCount}+ hits \u2014 bounded at ${results.bound}, extra rows dropped status-blind (refine the query)`,
     }, "search-truncated"));
   }
+  const n = results.hits.length;
+  const moveCursor = (ev, j) => {
+    // the root keymap never sees listbox arrows, even at the honest edge
+    ev.preventDefault?.();
+    ev.stopPropagation?.();
+    const to = Math.max(0, Math.min(n - 1, j)); // clamp: no wrap, honest edge
+    if (to === cursor) return;                   // edge: nothing moves
+    onCursor?.(to);
+    focusHit?.(to);        // document focus follows aria-selected
+  };
   results.hits.forEach((h, i) => {
     const inner = [
       jsx("span", { className: "search-hit-id", children: h.id }, `id:${h.id}`),
@@ -359,6 +373,9 @@ export function SearchPanel({ results, cursor = -1, onActivate }) {
       // hbl-pnu.4.6: roving tabIndex + Enter/Space activate through the
       // SAME entry as click (onActivate -> enterSearchHit). Keyboard hits
       // are activatable, not click-only.
+      // hbl-pnu.2.11: ArrowUp/ArrowDown drive the roving cursor here
+      // (onCursor + focusHit); without them non-first hits were unreachable
+      // (tabIndex -1, no arrows — defect 4).
       tabIndex: i === cursor ? 0 : -1,
       onClick: () => onActivate?.(h, i),
       onKeyDown: (ev) => {
@@ -366,6 +383,11 @@ export function SearchPanel({ results, cursor = -1, onActivate }) {
           ev.preventDefault();
           ev.stopPropagation();
           onActivate?.(h, i);
+          return;
+        }
+        if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+          const base = cursor >= 0 ? cursor : i;
+          moveCursor(ev, base + (ev.key === "ArrowDown" ? 1 : -1));
         }
       },
       children: inner,

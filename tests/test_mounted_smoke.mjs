@@ -225,9 +225,11 @@ let BEFORE_LIST_ALL = null; // captured after the test's own sanctioned native w
 let root = null;
 let botView = null; // hbl-pnu.3.7: injected bot panel view (runState fixtures)
 async function mount(sessionOpts = {}) {
-  const { botView: bv, world = null, ...rest } = sessionOpts;
+  const { botView: bv, world = null, reads: rd, ...rest } = sessionOpts;
   Object.assign(session, rest);
   botView = bv ?? null; // reset every mount unless the fixture supplies one
+  // hbl-pnu.2.11: `reads` is a Prop, never session state — it arrives
+  // separately and lands on the shipped root's reads facade slot.
   // hbl-pnu.3.7: an injected `world` lets the real-door smoke mount the
   // SHIPPED root against its own disposable store without disturbing the
   // browse world's no-mutation guarantee.
@@ -237,12 +239,20 @@ async function mount(sessionOpts = {}) {
   await act(async () => {
     root.render(React.createElement(WorkbenchApp, {
       ...w, session, botView,
+      ...(rd !== undefined ? { reads: rd } : {}),
       bindRerender: (fn) => { box.rerender = fn; },
     }));
   });
 }
 async function unmount() {
-  await act(async () => { root.unmount(); });
+  // A door test that FAILED midway may have thrown out of React's commit
+  // with a pending focus effect: a normal unmount then throws and cascades
+  // (every later mount hits the stale root). Dismount defensively so each
+  // door test fails on ITS OWN assertions, never on a sibling's wreckage.
+  try { await act(async () => { root.unmount(); }); }
+  catch {
+    try { root.unmount(); } catch { /* the tree is gone; the container is reusable */ }
+  }
   root = null;
 }
 async function press(key, opts = {}, targetSel = null) {
@@ -1061,6 +1071,197 @@ test("visual layer (F1-F7): one shipped <style> with :focus-visible; roving docu
   await snap("visual-layer", mountEl);
   session.card = null;
   session.searchResults = null;
+  await unmount();
+});
+
+// ============================================================================
+// hbl-pnu.2.11 — user doors: search box, user-opened blocker card, working
+// Return, roving listbox cursor. RED first: every assertion below fails on the
+// pre-bead root (onReturn=rerender, cursor pinned 0, both surfaces
+// host-injected only).
+// ============================================================================
+const READS211 = { searchRead: nativeSearch, showRead: nativeShow, provider };
+
+// harness cursor-walk (the controller's own slide pattern): steps the model
+// cursor toward the target in model order — placement, never an assertion.
+async function walkCursorTo(id) {
+  const all = ui.visibleRows();
+  const t = all.findIndex((r) => r.id === id);
+  ok(t !== -1, `row ${id} visible for cursor walk`);
+  let guard = all.length * 2 + 4;
+  while (ui.selection !== id && guard-- > 0) {
+    const i = ui.visibleRows().findIndex((r) => r.id === ui.selection);
+    ui.arrow(i === -1 ? 1 : Math.sign(t - i) || 1);
+  }
+  box.rerender();               // the DOM must catch up with the cursor
+  await act(async () => {});
+  eq(ui.selection, id, `cursor walked to ${id}`);
+}
+
+test("doors: type query into the search input -> listbox; ArrowDown moves aria-selected AND document focus to hit 2; Enter lands IN the tree; letters in the input never reach the tree keymap", async () => {
+  session.card = null; session.searchResults = null; session.showBot = false;
+  session.draftStore = null; session.compare = null;
+  await mount({ reads: READS211 });
+  const input = mountEl.querySelector("#search-input");
+  ok(input && input.tagName === "INPUT", "shipped root renders a real search INPUT");
+  eq(input.disabled, false, "input enabled when the reads facade is injected");
+  ok((input.getAttribute("aria-label") ?? "").toLowerCase().includes("search"),
+    "the search input is labelled");
+  const treeSelBefore = ui.selection;
+  // text-target law: keys typed in the input are swallowed, never tree commands
+  await press("ArrowDown", {}, "#search-input");
+  await press("k", {}, "#search-input");
+  await press("?", {}, "#search-input");
+  eq(ui.selection, treeSelBefore, "arrows/letters/? typed in the search input never move the tree cursor");
+  eq(controller.helpOpen, false, "? typed in the search input did not open help");
+  // type + Enter runs searchIssues through the injected facade
+  await act(async () => { input.value = "multi blocker"; });
+  await press("Enter", {}, "#search-input");
+  const panel = mountEl.querySelector('#search-panel[role="listbox"]');
+  ok(panel, "Enter ran the search through the facade: listbox mounted");
+  const opts = [...panel.querySelectorAll('[role="option"]')];
+  ok(opts.length >= 2, `at least two hits to walk (got ${opts.length})`);
+  eq(opts[0].getAttribute("aria-selected"), "true", "hit 1 starts aria-selected (roving cursor at 0)");
+  eq(document.activeElement, opts[0], "running the search moves DOCUMENT focus into the listbox (hit 1)");
+  // roving cursor: ArrowDown moves aria-selected AND document focus together
+  await press("ArrowDown"); // dispatched on document.activeElement === hit 1
+  eq(opts[1].getAttribute("aria-selected"), "true", "ArrowDown moved aria-selected to hit 2");
+  eq(document.activeElement, opts[1], "ArrowDown moved DOCUMENT focus to hit 2 (roving focus, not tabIndex-only)");
+  await press("ArrowUp");
+  eq(opts[0].getAttribute("aria-selected"), "true", "ArrowUp moved aria-selected back to hit 1");
+  eq(document.activeElement, opts[0], "ArrowUp moved DOCUMENT focus back to hit 1");
+  eq(ui.selection, treeSelBefore, "listbox arrows never move the tree cursor");
+  await press("ArrowDown"); // back onto hit 2 for the Enter leg
+  const hit2id = session.searchResults.hits[1].id;
+  await press("Enter");
+  eq(ui.focus, hit2id, "Enter on hit 2 lands in the tree focused on THAT hit");
+  eq(ui.selection, hit2id, "and the cursor sits on the hit row");
+  ok(mountEl.querySelector(`[data-tree-row="${hit2id}"][data-keyboard-focus="true"]`),
+    "the hit row carries the keyboard-focus marker after activation");
+  eq(mountEl.querySelector("#search-panel") != null, false,
+    "activation closes the listbox (navigation entry, not a parallel world)");
+  await snap("user-search-door", mountEl);
+  await unmount();
+});
+
+test("doors: '/' and Ctrl+/ focus the search input from the tree; ShortcutHelp lists the new bindings", async () => {
+  session.card = null; session.searchResults = null; session.showBot = false;
+  session.draftStore = null; session.compare = null;
+  await mount({ reads: READS211 });
+  await press("ArrowDown");
+  ok(ui.selection != null, "tree cursor is on a row");
+  await press("/"); // plain app gesture from a tree row
+  eq(document.activeElement, mountEl.querySelector("#search-input"),
+    "'/' focuses the search input");
+  // the same door through its KEYMAP binding (listed in ShortcutHelp)
+  const row = mountEl.querySelector('[data-tree-focusable="true"]');
+  await act(async () => { row.focus(); });
+  await press("/", { ctrlKey: true });
+  eq(document.activeElement, mountEl.querySelector("#search-input"),
+    "Ctrl+/ (the keymap row) focuses the search input");
+  // '?' inside the input must NOT open help; from a tree row it must, and the
+  // overlay must list the new commands (hbl-pnu.2.11: no invisible keys)
+  await press("?", {}, "#search-input");
+  eq(controller.helpOpen, false, "? inside the search input is swallowed");
+  const treeRow = mountEl.querySelector('[data-tree-focusable="true"]');
+  await act(async () => { treeRow.focus(); });
+  await press("?");
+  const dlg = mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]');
+  ok(dlg, "? opened the shortcut help overlay");
+  ok(dlg.textContent.includes("focus-search"), "help lists focus-search");
+  ok(dlg.textContent.includes("open-blockers"), "help lists open-blockers");
+  await press("?");
+  await snap("user-search-keys", mountEl);
+  await unmount();
+});
+
+test("doors: blocked row shows a visible blockers button AND Ctrl+b opens the card; Return button and Alt+ArrowLeft each clear the card and restore origin selection/focus (one press = one step)", async () => {
+  session.card = null; session.searchResults = null; session.showBot = false;
+  session.draftStore = null; session.compare = null;
+  await mount({ reads: READS211 });
+  // park keyboard focus on the ready row, cursor on the blocked row
+  await walkCursorTo(IDS.ready);
+  await press("Enter");                       // focus follows the cursor
+  eq(ui.focus, IDS.ready, "ready row is the keyboard-focus row");
+  const origin = { selection: IDS.ready, focus: IDS.ready };
+  await walkCursorTo(IDS.taskB);
+  eq(ui.focus, origin.focus, "cursor travel did not move keyboard focus");
+  // (a) the visible button on the blocked row
+  const btn = document.getElementById(`blockers-open:${IDS.taskB}`);
+  ok(btn, "blocked row offers a visible 'blockers' button");
+  eq(btn.disabled, false, "button enabled when the provider facade is injected");
+  await act(async () => { btn.click(); });
+  ok(document.getElementById(`blocker-card:${IDS.taskB}`),
+    "the USER button opened the blocker card (no host injection)");
+  ok(session.card, "the button path populated session.card via jumpToBlocker");
+  eq(ui.focus, IDS.taskB, "the jump moved focus to the blocker context");
+  // (b) Return button: ONE press clears the card AND restores the origin bundle
+  const ret = document.getElementById("blocker-return");
+  ok(ret, "Return button rendered on the card");
+  await act(async () => { ret.click(); });
+  eq(document.getElementById(`blocker-card:${IDS.taskB}`) ?? null, null,
+    "Return cleared the card (negative control: onReturn=rerender alone fails here)");
+  eq(session.card, null, "Return cleared the session view box");
+  eq(ui.focus, origin.focus, "Return restored the origin keyboard focus");
+  eq(ui.selection, IDS.taskB, "cursor stays on the blocked row the card was opened from");
+  const af = document.activeElement;
+  eq(af?.getAttribute?.("data-tree-row") ?? null, origin.focus,
+    "document focus returned to the tree (origin row), not the dead button/body");
+  // (c) the key door: Ctrl+b for the selected row (cursor on taskB, focus on ready)
+  await walkCursorTo(IDS.ready);
+  await press("Enter", {});
+  await walkCursorTo(IDS.taskB);
+  eq(ui.focus, origin.focus, "focus still parked on the origin row before the key door");
+  await press("b", { ctrlKey: true });
+  ok(document.getElementById(`blocker-card:${IDS.taskB}`),
+    "Ctrl+b opened the blocker card for the selected blocked row");
+  eq(ui.focus, IDS.taskB, "Ctrl+b jumped through the same model truth");
+  // (d) Alt+ArrowLeft with the card open: ONE press clears it + one stack step
+  await press("ArrowLeft", { altKey: true });
+  eq(document.getElementById(`blocker-card:${IDS.taskB}`) ?? null, null,
+    "Alt+ArrowLeft cleared the card (negative control: controller pass-through fails — the card would stay mounted)");
+  eq(session.card, null, "Alt+ArrowLeft cleared session.card");
+  eq(ui.focus, origin.focus, "Alt+ArrowLeft restored the origin keyboard focus");
+  await snap("user-blocker-door", mountEl);
+  await unmount();
+});
+
+test("doors: missing facade => controls present-but-disabled with a visible reason, never a throw; host-injected card Return still clears", async () => {
+  session.card = null; session.searchResults = null; session.showBot = false;
+  session.draftStore = null; session.compare = null;
+  await mount(); // no reads prop at all
+  const input = mountEl.querySelector("#search-input");
+  ok(input, "search input is PRESENT without the facade");
+  eq(input.disabled, true, "search input DISABLED when reads.searchRead is absent");
+  const reason = mountEl.querySelector("#search-disabled-reason");
+  ok(reason != null, "a visible reason element accompanies the disabled search door");
+  ok(/search/i.test(reason?.textContent ?? ""), "the reason names the search read facade");
+  await press("Enter", {}, "#search-input");  // must not throw, must not search
+  eq(mountEl.querySelector("#search-panel") != null, false,
+    "the disabled door never runs searchIssues (present-but-disabled, never a throw)");
+  // the blocked-row button is present-but-disabled with its own reason
+  await walkCursorTo(IDS.taskB);
+  await press("Enter", {});
+  const btn = document.getElementById(`blockers-open:${IDS.taskB}`);
+  ok(btn != null, "blockers button PRESENT on the blocked row without the facade");
+  eq(btn.disabled, true, "blockers button DISABLED without the provider facade");
+  const breason = mountEl.querySelector("#blockers-disabled-reason");
+  ok(breason != null && /blocker/i.test(breason.textContent),
+    "a visible reason explains the disabled blockers door");
+  await press("b", { ctrlKey: true });        // honest no-op, never a throw
+  ok(document.getElementById(`blocker-card:${IDS.taskB}`) == null,
+    "Ctrl+b with no facade opens nothing (disabled truth)");
+  // host-injected surfaces keep working (zero-I/O law preserved)
+  const jump = B.jumpToBlocker({ snapshot, ui, stack, state: {}, provider,
+    targetId: IDS.taskB, pane: "tree" });
+  session.card = jump.card;
+  box.rerender();
+  await act(async () => {});
+  ok(document.getElementById(`blocker-card:${IDS.taskB}`), "host-injected card still mounts");
+  await act(async () => { document.getElementById("blocker-return").click(); });
+  eq(document.getElementById(`blocker-card:${IDS.taskB}`) ?? null, null,
+    "Return clears even a host-injected card");
+  await snap("missing-facade-disabled", mountEl);
   await unmount();
 });
 

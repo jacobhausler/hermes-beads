@@ -15,3 +15,4 @@ security-runtime/
 .mounted-evidence/
 .flake-l/
 fixtures/runner-runtime/
+.mounted-evidence-red/
