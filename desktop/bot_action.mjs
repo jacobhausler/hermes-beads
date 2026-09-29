@@ -129,11 +129,15 @@ export function reopenBotDraft(draftStore, storeInfo, beadId) {
 // is latched by the host via `cancelRequested:true`, which keeps the
 // display on cancel_requested through a lagging door poll until a LATER
 // state says cancelled; the shipped WorkbenchApp owns that latch).
+// hbl-pnu.3.7 (mounted smoke): a Work click routes to the injected
+// host `onWork(bead)` — same law as onCancel: the component calls, the
+// host owns all door I/O (work_bridge.py); this module spawns nothing.
 const CANCELABLE = new Set(["admitted", "running"]);
 const CANCEL_PHASE = new Set(["admitted", "running", "cancel_requested"]);
 
 export function botActionPanel({ ask, work, refineLanded = false,
-  runState = null, cancelRequested = false, onCancel = null } = {}) {
+  runState = null, cancelRequested = false, onCancel = null,
+  onWork = null, bead = null } = {}) {
   const raw = runState == null ? null
     : (typeof runState === "string" ? runState : runState.state) ?? null;
   // truth precedence: an explicit terminal state always wins; the host's
@@ -154,6 +158,11 @@ export function botActionPanel({ ask, work, refineLanded = false,
         children: workLabel,
         disabled: !(work && work.enabled),
         title: work && work.enabled ? "runner door bound" : (work?.disabledReason ?? "work state unavailable"),
+        onClick: () => {
+          // presentation-only: the host's onWork owns the door call; this
+          // module mutates nothing and spawns nothing.
+          if (work && work.enabled && typeof onWork === "function") onWork(bead);
+        },
       }, "work"),
       ...(work && !work.enabled && work.disabledReason
         ? [el("span", { className: "work-disabled-reason", children: work.disabledReason }, "work-reason")]

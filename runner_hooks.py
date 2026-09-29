@@ -82,7 +82,7 @@ def install(wf_path, lane_root):
     any anchor moved (fail-closed — never patch blind)."""
     with open(wf_path, encoding="utf-8") as f:
         src = f.read()
-    if "_beads_gate(" in src:
+    if "hbl-pnu.3.3 beads runner hooks" in src:
         return "already-patched"
 
     a1 = ("            proc = subprocess.Popen(cmd, stdout=logf, "
