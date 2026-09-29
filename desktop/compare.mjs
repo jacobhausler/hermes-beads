@@ -210,9 +210,12 @@ export function SplitCompare({ panes, side, diff, confirmed = null, breadcrumb =
     kids.push(jsx("div", { className: "diff-move", "data-kind": "moved",
       children: diff.movedLine(m.id) }, `mv:${m.id}`));
   }
-  if (s.focus != null && (diff?.moved ?? []).some((m) => m.id === s.focus)) {
+  // the focused row's parent chain moved if it, OR any ancestor in the CURRENT
+  // snapshot's chain, was reparented (a descendant's own parent field is unchanged).
+  const curPath = s.snapshot.nodes.get(s.focus)?.path ?? null;
+  if (s.focus != null && (diff?.moved ?? []).some((m) => m.id === s.focus || curPath?.includes(m.id))) {
     kids.push(jsx("div", { role: "alert", className: "churn-banner",
-      children: `banner: focused ${s.focus} moved — breadcrumb re-resolved: ${bc ? bc(s.focus) : ""}` },
+      children: `banner: focused ${s.focus} moved — breadcrumb re-resolved: ${bc ? bc(s.focus) : (curPath ?? []).join(" / ")}` },
       `banner:${s.focus}`));
   }
   if (s.focus != null && s.focusGone) {
