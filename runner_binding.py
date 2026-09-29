@@ -40,6 +40,7 @@ import json
 import os
 import re
 import secrets
+import stat
 import time
 
 import claims
@@ -48,7 +49,8 @@ import native
 import read_model
 
 BINDING_DIR = "beads"           # run-dir namespace owned by this binding
-CRED_ENV = "BEADS_ADMISSION_CREDENTIAL_FILE"
+CRED_ENV = "BEADS_ADMISSION_CREDENTIAL_FILE"  # legacy name; popped from child env, NEVER trusted
+CRED_RELPATH = ("beads", "admission-credential.json")
 MIN_SECRET_LEN = 32                 # host-generated secret; not restatable
 _LEDGER_STATES = ("closed_verified", "rejected", "quarantined",
                   "external_closed_unknown", "blocked", "failed")
@@ -144,25 +146,112 @@ def _sign(secret, message):
                     hashlib.sha256).hexdigest()
 
 
-def _verify_credential(authenticated_context, message):
-    """The door: the request must carry an HMAC the request-body cannot
-    mint, verified against the host-held secret in the 0600 credential file
-    under the runner's own state dir. A file that only restates the
-    principal is NOT a credential (P3a)."""
+def credential_path():
+    """The ONE place an admission credential may live: the host's own Hermes
+    state dir, derived from HERMES_HOME. HERMES_HOME is TRUSTED host config:
+    a caller that controls the runner's environment or runs as the runner
+    uid is inside the trust boundary (it could equally rewrite this file).
+    The removed per-call env pointer let an in-boundary-looking request aim
+    the door at any self-minted file; this path cannot be chosen per call."""
+    home = os.environ.get("HERMES_HOME") or os.path.join(
+        os.path.expanduser("~"), ".hermes")
+    return os.path.join(home, *CRED_RELPATH)
+
+
+def provision_credential(principal, approved_beads, store, *, rotate=False):
+    """Host-side, once: create the credential with a fresh random secret.
+    Returns the secret for the host's signer. Refuses to overwrite unless
+    rotate=True (rotation invalidates every outstanding signature)."""
+    if not principal or not approved_beads:
+        raise BindingRefusal("provisioning needs a principal and a non-empty "
+                             "approved_beads ceiling")
+    path = credential_path()
+    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    os.chmod(os.path.dirname(path), 0o700)
+    secret = secrets.token_hex(32)
+    body = json.dumps({"principal": principal, "secret": secret,
+                       "approved_beads": list(approved_beads),
+                       "store": os.path.realpath(store)}).encode()
+    tmp = path + ".new"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        os.write(fd, body)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    if os.path.lexists(path) and not rotate:
+        os.unlink(tmp)
+        raise BindingRefusal(f"credential already provisioned at {path}; "
+                             "pass rotate=True to replace it")
+    os.replace(tmp, path)
+    return secret
+
+
+def _read_host_credential(path):
+    """Owner-only regular file with a single link, not a symlink, in an
+    owner-only directory that is itself not a symlink. Checks and read are
+    bound to the SAME open fds (openat + O_NOFOLLOW + fstat), so a swap
+    between check and read, a symlinked beads dir, or a same-uid hardlink
+    of a self-minted file is refused. Returns (cred, problem)."""
+    uid = os.geteuid()
+    try:
+        dfd = os.open(os.path.dirname(path),
+                      os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError:
+        return None, "no host credential provisioned (or its dir is a symlink)"
+    try:
+        dst = os.fstat(dfd)
+        if dst.st_uid != uid:
+            return None, "credential directory is not owned by the runner uid"
+        if dst.st_mode & 0o077:
+            return None, "credential directory must be owner-only (0700)"
+        try:
+            fd = os.open(os.path.basename(path), os.O_RDONLY | os.O_NOFOLLOW,
+                         dir_fd=dfd)
+        except OSError:
+            return None, ("no host credential provisioned "
+                          "(or it is a symlink — refused)")
+        try:
+            st = os.fstat(fd)
+            if not stat.S_ISREG(st.st_mode):
+                return None, "credential is not a regular file"
+            if st.st_uid != uid:
+                return None, "credential is not owned by the runner uid"
+            if st.st_mode & 0o077:
+                return None, "admission credential file must be mode 0600"
+            if st.st_nlink != 1:
+                return None, "credential has extra hard links (refused)"
+            with os.fdopen(os.dup(fd), "rb") as f:
+                raw = f.read(65536)
+        finally:
+            os.close(fd)
+    finally:
+        os.close(dfd)
+    try:
+        return json.loads(raw), None
+    except ValueError:
+        return None, "credential file is not valid JSON"
+
+
+def _verify_credential(authenticated_context, message=None):
+    """The door: the request must carry an HMAC the request body cannot
+    mint, verified against the secret in the host credential at
+    credential_path() (fixed location, owner-only, provisioned by
+    provision_credential). A file elsewhere is never consulted."""
     if not isinstance(authenticated_context, dict):
         raise BindingRefusal("authenticated_context must be supplied by the "
                              "host, never by the request body")
     principal = authenticated_context.get("principal")
     signature = authenticated_context.get("signature") or ""
-    cred_path = os.environ.get(CRED_ENV, "")
-    if not principal or not cred_path or not os.path.isfile(cred_path):
+    cred_path = credential_path()
+    problem = None if principal else "missing principal"
+    cred = None
+    if not problem:
+        cred, problem = _read_host_credential(cred_path)
+    if problem:
         raise BindingRefusal(
-            "workflow_admission_unqualified: no host credential at "
-            f"${CRED_ENV} (or missing principal); Work remains unavailable "
-            "— caller-claimed identity is never authority")
-    if os.stat(cred_path).st_mode & 0o077:
-        raise BindingRefusal("admission credential file must be mode 0600")
-    cred = _jload(cred_path)
+            f"workflow_admission_unqualified: {problem} ({cred_path}); Work "
+            "remains unavailable — caller-claimed identity is never authority")
     if not isinstance(cred, dict) or cred.get("principal") != principal:
         raise BindingRefusal(
             "principal mismatch against the host credential file "

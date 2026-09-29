@@ -88,16 +88,27 @@ def comments(store, i):
     return json.loads(out) if out.strip() else []
 
 
+HOST_HOME = FIXTURES / "host-home"   # the in-process host's HERMES_HOME
+os.environ["HERMES_HOME"] = str(HOST_HOME)
+
+
 def cred(name, store, approved, principal="lab-human",
          secret="a" * 64, with_approved=True, with_store=True):
-    p = FIXTURES / "creds" / f"{name}.json"
+    """Host provisioning at THE fixed credential path (owner-only dir+file).
+    Tests pin a known secret so signatures are reproducible; production uses
+    rb.provision_credential (random secret), covered by test_r2g."""
+    p = pathlib.Path(rb.credential_path())
+    p.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(p.parent, 0o700)
     d = {"principal": principal, "secret": secret}
     if with_store:
         d["store"] = str(pathlib.Path(store).resolve())
     if with_approved:
         d["approved_beads"] = list(approved)
-    p.write_text(json.dumps(d))
-    os.chmod(p, 0o600)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(d))
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, p)
     return p
 
 
@@ -171,7 +182,6 @@ def request(store, beads, key):
 
 def admit(run_dir, req, credfile, principal="lab-human", secret="a" * 64,
           signature="MISSING"):
-    os.environ["BEADS_ADMISSION_CREDENTIAL_FILE"] = str(credfile)
     if signature == "MISSING":
         signature = rb.sign_request(secret, req, principal)
     return rb.admit_work(req,
@@ -357,6 +367,164 @@ class RunnerBindingTests(unittest.TestCase):
                               "signature": rb.sign_request(
                                   "a" * 64, req2, "lab-human")},
                           run_root=str(run2), bd_bin=BD)
+
+    def test_r2f_self_minted_credential_elsewhere_never_consulted(self):
+        """Reviewer bypass F2s: attacker mints a 0600 file WITH its own secret
+        and approved set [A, C], points the legacy env var at it and signs
+        with that secret. The door reads only credential_path()."""
+        s = make_store("r2f")
+        A = create(s, "A")
+        C = create(s, "C-out-of-grant")
+        cred("r2f", s, [A])                               # legit host cred
+        mine = FIXTURES / "creds" / "attacker.json"
+        mine.parent.mkdir(parents=True, exist_ok=True)
+        own = "b" * 64
+        mine.write_text(json.dumps({"principal": "anyone-i-like",
+                                    "secret": own, "approved_beads": [A, C]}))
+        os.chmod(mine, 0o600)
+        os.environ["BEADS_ADMISSION_CREDENTIAL_FILE"] = str(mine)
+        try:
+            run = FIXTURES / "runs" / "r2f"
+            shutil.rmtree(run, ignore_errors=True)
+            run.mkdir(parents=True)
+            req = request(s, [A, C], "r2fk")
+            for principal, secret in (("anyone-i-like", own),
+                                      ("lab-human", own)):
+                with self.subTest(principal=principal):
+                    with self.assertRaises(rb.BindingRefusal):
+                        rb.admit_work(req, authenticated_context={
+                            "principal": principal,
+                            "signature": rb.sign_request(secret, req, principal)},
+                            run_root=str(run), bd_bin=BD)
+            self.assertEqual(show(s, C)["status"], "open")
+        finally:
+            os.environ.pop("BEADS_ADMISSION_CREDENTIAL_FILE", None)
+
+    def test_r2g_provenance_enforced_and_provisioning_random(self):
+        s = make_store("r2g")
+        A = create(s, "A")
+        p = pathlib.Path(rb.credential_path())
+        if p.exists() or p.is_symlink():
+            p.unlink()
+        secret = rb.provision_credential("lab-human", [A], s)
+        self.assertGreaterEqual(len(secret), 64)
+        self.assertNotEqual(secret, "a" * 64)
+        with self.assertRaises(rb.BindingRefusal):        # no silent overwrite
+            rb.provision_credential("lab-human", [A], s)
+        req = request(s, [A], "r2gk")
+        run = FIXTURES / "runs" / "r2g"
+        shutil.rmtree(run, ignore_errors=True)
+        run.mkdir(parents=True)
+        ctx = {"principal": "lab-human",
+               "signature": rb.sign_request(secret, req, "lab-human")}
+        # group-writable parent -> refused
+        os.chmod(p.parent, 0o770)
+        try:
+            with self.assertRaises(rb.BindingRefusal):
+                rb.admit_work(req, authenticated_context=ctx,
+                              run_root=str(run), bd_bin=BD)
+        finally:
+            os.chmod(p.parent, 0o700)
+        # symlinked credential -> refused
+        real = p.with_name("real.json")
+        os.replace(p, real)
+        p.symlink_to(real)
+        try:
+            with self.assertRaises(rb.BindingRefusal):
+                rb.admit_work(req, authenticated_context=ctx,
+                              run_root=str(run), bd_bin=BD)
+        finally:
+            p.unlink()
+            os.replace(real, p)
+        # provisioned + provenance ok -> admitted
+        out = rb.admit_work(req, authenticated_context=ctx,
+                            run_root=str(run), bd_bin=BD)
+        self.assertEqual(out["receipt"]["beads"], [A])
+
+    def test_r2h_parent_symlink_hardlink_and_swap_refused(self):
+        """Reviewer rereview2: symlinked beads dir, a hardlink of a self-minted
+        0600 file, and a check/read swap each admitted an out-of-set bead."""
+        s = make_store("r2h")
+        A = create(s, "A")
+        C = create(s, "C")
+        p = pathlib.Path(rb.credential_path())
+        if p.exists() or p.is_symlink():
+            p.unlink()
+        host_secret = rb.provision_credential("lab-human", [A], s)
+        evil_dir = FIXTURES / "creds" / "r2h-evil"
+        shutil.rmtree(evil_dir, ignore_errors=True)
+        evil_dir.mkdir(parents=True, mode=0o700)
+        own = "c" * 64
+        evil = evil_dir / "admission-credential.json"
+        evil.write_text(json.dumps({"principal": "lab-human", "secret": own,
+                                    "approved_beads": [A, C],
+                                    "store": os.path.realpath(s)}))
+        os.chmod(evil, 0o600)
+        req = request(s, [A, C], "r2hk")
+        ctx = {"principal": "lab-human",
+               "signature": rb.sign_request(own, req, "lab-human")}
+
+        def attempt(tag):
+            run = FIXTURES / "runs" / f"r2h-{tag}"
+            shutil.rmtree(run, ignore_errors=True)
+            run.mkdir(parents=True)
+            with self.assertRaises(rb.BindingRefusal, msg=tag):
+                rb.admit_work(req, authenticated_context=ctx,
+                              run_root=str(run), bd_bin=BD)
+            self.assertFalse(os.path.exists(rb._run_paths(run)["grant"]), tag)
+
+        # (1) hardlink of the self-minted file at the derived path
+        saved = p.with_name("host.json")
+        os.replace(p, saved)
+        os.link(evil, p)
+        try:
+            attempt("hardlink")
+        finally:
+            p.unlink()
+        # (2) swap between provenance check and read: leaf replaced by a
+        # symlink the moment the door stats it (simulated via lstat hook)
+        os.replace(saved, p)
+        real_lstat, real_stat, fired = os.lstat, os.stat, []
+
+        def swap(path, *a, **k):
+            r = (real_lstat if swap.kind == "l" else real_stat)(path, *a, **k)
+            if str(path) == str(p) and not fired:
+                fired.append(1)
+                os.replace(p, saved)
+                p.symlink_to(evil)
+            return r
+        for kind, name in (("l", "lstat"), ("s", "stat")):
+            swap.kind = kind
+            fired.clear()
+            orig = getattr(rb.os, name)
+            setattr(rb.os, name, swap)
+            try:
+                attempt(f"toctou-{name}")
+            finally:
+                setattr(rb.os, name, orig)
+                if p.is_symlink():
+                    p.unlink()
+                    os.replace(saved, p)
+        # (3) symlinked beads dir pointing at the attacker's 0700 dir
+        beads = p.parent
+        held = beads.with_name("beads.host")
+        os.replace(beads, held)
+        beads.symlink_to(evil_dir)
+        try:
+            attempt("parent-symlink")
+        finally:
+            beads.unlink()
+            os.replace(held, beads)
+        # host credential still admits exactly its approved set
+        run = FIXTURES / "runs" / "r2h-ok"
+        shutil.rmtree(run, ignore_errors=True)
+        run.mkdir(parents=True)
+        okreq = request(s, [A], "r2hok")
+        out = rb.admit_work(okreq, authenticated_context={
+            "principal": "lab-human",
+            "signature": rb.sign_request(host_secret, okreq, "lab-human")},
+            run_root=str(run), bd_bin=BD)
+        self.assertEqual(out["receipt"]["beads"], [A])
 
     def test_r2d_credential_never_inherited_by_child(self):
         s = make_store("r2d")
