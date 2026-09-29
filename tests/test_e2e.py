@@ -328,10 +328,7 @@ if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)
     finally:
+        # hbl-pnu.4.7: own-dir cleanup only — the root is shared with the
+        # scenarios/mounted suites; sweeping it killed their live stores.
         if not os.environ.get("E2E_KEEP_FIXTURES"):
-            for name in os.listdir(FIXTURE_ROOT):
-                if name == "bootstrap.py":
-                    continue
-                p = os.path.join(FIXTURE_ROOT, name)
-                shutil.rmtree(p, ignore_errors=True) if os.path.isdir(p) \
-                    else None
+            bootstrap.cleanup_run_stores()

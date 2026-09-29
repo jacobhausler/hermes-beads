@@ -17,6 +17,7 @@ native-behavior probe, never the plugin's closure surface.
 """
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import uuid
@@ -25,12 +26,28 @@ BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.dirname(os.path.abspath(__file__))
 
+# hbl-pnu.4.7: the FIXTURE_ROOT is SHARED by every suite that seeds through
+# this bootstrap (e2e, scenarios, mounted smoke). A runner must delete ONLY
+# the stores its own process created — sweeping the root kills concurrent
+# suites' live stores mid-run (the recorded -C flake).
+RUN_STORES = set()
+
+
+def cleanup_run_stores():
+    """Remove exactly the stores THIS process created; never touch a
+    foreign dir in the shared fixture root."""
+    for d in list(RUN_STORES):
+        shutil.rmtree(d, ignore_errors=True)
+        RUN_STORES.discard(d)
+
 
 def make_store(prefix="e2e"):
     """Fresh disposable store: unique dir under this fixture root, own
-    git repo, own bd store (durable-in-run, deleted by the runner)."""
+    git repo, own bd store (durable-in-run, deleted by the runner via
+    cleanup_run_stores())."""
     os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT, prefix=f"{prefix}-")
+    RUN_STORES.add(d)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)
     p = subprocess.run([BD_BIN, "init", "--prefix", prefix], cwd=d,
