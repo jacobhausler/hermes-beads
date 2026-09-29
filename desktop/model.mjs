@@ -108,15 +108,17 @@ function makeNode(id) {
   };
 }
 
-function activeBlockerRefs(rec) {
+function activeBlockerRefs(rec, byId) {
   // dependency_type|type|depends_on_type; preserved verbatim; closed deps drop out.
+  // `bd list --json` edge rows carry no status: fall back to the referenced
+  // record in the same snapshot. Out-of-snapshot refs stay active (absent != closed).
   const out = [];
   for (const d of rec?.dependencies ?? []) {
     const t = d.dependency_type ?? d.type ?? d.depends_on_type ?? null;
     if (t !== "blocks") continue;
     const ref = depRef(d);
     if (ref == null) continue;
-    const st = d.status ?? null; // deps embedded from native reads carry status
+    const st = d.status ?? byId?.get(ref)?.status ?? null; // show embeds status; list does not
     if (typeof st === "string" && /^(closed|done)$/i.test(st)) continue;
     out.push({ id: ref, edgeType: t });
   }
@@ -150,7 +152,7 @@ function decorate(snap, node) {
       };
     }
   }
-  node.typedBlockers = activeBlockerRefs(rec).map((b) => ({ ...b, inherited: false }));
+  node.typedBlockers = activeBlockerRefs(rec, snap.byId).map((b) => ({ ...b, inherited: false }));
   node.edges = verbatimEdges(rec);
   // inherited blockers: ancestor walk, cycle- and depth-bounded.
   const seen = new Set([node.id]);
@@ -160,7 +162,7 @@ function decorate(snap, node) {
     if (seen.has(cur)) { node.cyclic = true; node.pathStatus = "cycle"; break; }
     seen.add(cur);
     const anc = snap.byId.get(cur);
-    for (const b of activeBlockerRefs(anc)) {
+    for (const b of activeBlockerRefs(anc, snap.byId)) {
       node.inheritedBlockers.push({ ...b, inherited: true, source: cur, via: [...seen].slice(0, depth + 2) });
     }
     cur = anc?.parent ?? null;
