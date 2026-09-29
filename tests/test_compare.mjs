@@ -215,6 +215,33 @@ test("SplitCompare: moved line, banner + re-resolved breadcrumb for moved focus,
   assert.equal(kinds(tree).includes("ghost"), false, "no ghost rows rendered");
 });
 
+// bead 2.7: "focused issue whose parent chain moved gets banner + re-resolved
+// breadcrumb". The focused row may be a DESCENDANT of the reparented issue:
+// its own parent field is unchanged, so only its ANCESTOR chain moved.
+// Independent real-bd acceptance (review accept_real.mjs R6/R7) found no banner.
+test("SplitCompare: focused DESCENDANT of a reparented issue gets banner + breadcrumb re-resolved from the current snapshot", () => {
+  const prev = snap([{ id: "p1" }, { id: "p2" }, { id: "kid", parent: "p1" }, { id: "grand", parent: "kid" }]);
+  const cur = snap([{ id: "p1" }, { id: "p2" }, { id: "kid", parent: "p2" }, { id: "grand", parent: "kid" }]);
+  const d = diffSnapshots(prev, cur);
+  assert.deepEqual(d.moved.map((m) => m.id), ["kid"], "only kid's own parent field changed");
+  const panes = createSplitPanes({
+    left: { snapshot: cur, focusable: focusable({ focus: "grand" }) },
+    right: { snapshot: snap([], { storeInfo: storeInfo("B") }) },
+  });
+  // no breadcrumb fn injected: the component resolves it from the snapshot itself
+  const tree = SplitCompare({ panes, side: "left", diff: d });
+  assert.ok(textIn(tree, "banner"), "banner: focused row's parent chain moved (ancestor reparented)");
+  assert.ok(textIn(tree, "p2 / kid / grand"), "breadcrumb re-resolved against the CURRENT snapshot");
+  const banner = walk(tree).filter((n) => typeof n === "string" && n.startsWith("banner:")).join("");
+  assert.ok(banner && !banner.includes("p1"), `old chain never shown as current: ${banner}`);
+  // unrelated focus: moved line only, no banner
+  const other = createSplitPanes({
+    left: { snapshot: cur, focusable: focusable({ focus: "p1" }) },
+    right: { snapshot: snap([], { storeInfo: storeInfo("B") }) },
+  });
+  assert.ok(!textIn(SplitCompare({ panes: other, side: "left", diff: d }), "banner"), "no banner for an unaffected focus");
+});
+
 test("SplitCompare: unconfirmed absence renders with the non-proof caveat", () => {
   const prev = snap([{ id: "a" }, { id: "gone" }]);
   const cur = snap([{ id: "a" }]);
