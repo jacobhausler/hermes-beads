@@ -356,7 +356,18 @@ export function SearchPanel({ results, cursor = -1, onActivate }) {
     kids.push(jsx("div", {
       role: "option", id: `search-hit-${i}`, "data-path-status": h.pathStatus,
       "aria-selected": i === cursor ? "true" : "false",
+      // hbl-pnu.4.6: roving tabIndex + Enter/Space activate through the
+      // SAME entry as click (onActivate -> enterSearchHit). Keyboard hits
+      // are activatable, not click-only.
+      tabIndex: i === cursor ? 0 : -1,
       onClick: () => onActivate?.(h, i),
+      onKeyDown: (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          ev.stopPropagation();
+          onActivate?.(h, i);
+        }
+      },
       children: inner,
     }, `search-hit-${i}`));
   });

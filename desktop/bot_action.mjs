@@ -17,12 +17,16 @@
 //    hbl-pnu.3.3 reason; the enabled flag comes verbatim from the plugin's
 //    work_status() (single injection point bot_handoff.bind_runner_door).
 //
-// Purity law (CONTRACTS-v3 C1): no imports, no node built-ins, no DOM, no
-// fetch/spawn — pinned by the source audit in tests/test_bot_action.mjs.
-// Element records are hand-built {type, props, key} exactly like the app's
-// jsx runtime output, so tests can walk() them without a React shim import.
+// Purity law (CONTRACTS-v3 C1): the ONLY import is react/jsx-runtime (the
+// same specifier the app loader maps, as in every other desktop component;
+// the source audit in tests/test_bot_action.mjs pins that and bans node
+// built-ins, DOM, fetch/spawn). hbl-pnu.4.6: elements are built via jsx()
+// so real React can mount the panel UNCONVERTED — the old hand-rolled
+// {type, props, key} records lacked $$typeof and were unmountable. Tests
+// keep walking the output (the capture shim implements the same jsx shape).
+import { jsx } from "react/jsx-runtime";
 
-const el = (type, props, key) => ({ type, props: props ?? {}, key: key ?? null });
+const el = (type, props, key) => jsx(type, props ?? {}, key ?? null);
 
 // Ask decision view. The plugin verdict is the ONLY authority: ok:true on
 // an ask would be a fabricated delivery claim and is refused to a typed
