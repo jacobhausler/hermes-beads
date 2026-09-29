@@ -105,6 +105,7 @@ export const KEYMAP = [
   { keys: ["Alt+ArrowLeft"], command: "history-back", desc: "App back" },
   { keys: ["Alt+ArrowRight"], command: "history-forward", desc: "App forward" },
   { keys: ["?"], command: "toggle-help", desc: "Shortcut help overlay" },
+  { keys: ["Escape"], command: "close-help", desc: "Close the help overlay, focus back to the prior row" },
 ];
 
 const isTextTarget = (target) => {
@@ -246,7 +247,17 @@ export function createTreeController({ snapshot, ui }) {
       case "focus-cursor": ui.enter(); break;
       case "history-back": ui.back(); break;
       case "history-forward": ui.forward(); break;
-      case "toggle-help": box.helpOpen = !box.helpOpen; break;
+      case "toggle-help":
+        if (!box.helpOpen) box.helpReturnFocus = ui.focus; // prior row, captured at open
+        box.helpOpen = !box.helpOpen;
+        break;
+      case "close-help": // hbl-pnu.2.9: Esc closes help; focus returns to the prior row
+        if (box.helpOpen) {
+          box.helpOpen = false;
+          const prior = box.helpReturnFocus;
+          if (prior != null && ui.focus !== prior && rows().some((r) => r.id === prior)) ui.jump(prior);
+        }
+        break;
       default: return null;
     }
     return cmd;

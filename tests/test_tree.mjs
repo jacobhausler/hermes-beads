@@ -232,6 +232,31 @@ test("controller executes exactly the bound commands; Tab exits without preventD
   c.press({ key: "?", isComposing: false, target: buttonTarget() });
   assert.equal(c.helpOpen, false);
 
+  // hbl-pnu.2.9: Esc closes the overlay and returns keyboard focus to the
+  // prior tree row (the row that held focus when help opened).
+  const f2snap = snapOf(f);
+  const w2 = createWorkbenchState(f2snap);
+  const c2 = createTreeController({ snapshot: f2snap, ui: w2 });
+  const P2 = (key) => c2.press({ key, isComposing: false, target: buttonTarget(), preventDefault: () => {} });
+  P2("ArrowDown"); P2("Enter"); // cursor + keyboard focus on the first row
+  const prior = w2.focus;
+  assert.ok(prior != null, "prior row focused");
+  assert.equal(P2("?"), "toggle-help");
+  assert.equal(c2.helpOpen, true, "help open");
+  w2.jump("deep1", "detail"); // something steals keyboard focus while help is open
+  assert.equal(w2.focus, "deep1", "focus moved while help open");
+  assert.equal(P2("Escape"), "close-help", "Escape resolves to close-help");
+  assert.equal(c2.helpOpen, false, "Esc closed the overlay");
+  assert.equal(w2.focus, prior, "Esc returned keyboard focus to the prior tree row");
+  // Esc with help CLOSED is a no-op (no state change, no history push)
+  const before2 = { sel: w2.selection, foc: w2.focus, hist: w2.history.length };
+  assert.equal(P2("Escape"), "close-help");
+  assert.deepEqual({ sel: w2.selection, foc: w2.focus, hist: w2.history.length }, before2,
+    "Esc with help closed changes nothing");
+  // Esc never works from a text target (editor swallow law)
+  assert.equal(c2.press({ key: "Escape", isComposing: false, target: editableTarget("INPUT") }), null,
+    "Escape is swallowed while a text input has focus");
+
   // while typing in the search box, every letter is swallowed: no command, no state change
   const before = { sel: w.selection, foc: w.focus, help: c.helpOpen };
   for (const k of "hjkl?") {

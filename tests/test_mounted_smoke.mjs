@@ -369,12 +369,29 @@ test("keyboard: arrows move the cursor, Enter promotes focus, collapse/expand vi
   ok(mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]') == null,
     "? again closes the overlay");
 
-  // x and Esc: NOT bound in the v1 keymap — must be INERT (no state change).
+  // hbl-pnu.2.9: Esc closes the help overlay and focus returns to the prior
+  // tree row — asserted on the SHIPPED root through the existing keybinding.
+  const priorFocusRow = ui.focus;
+  ok(priorFocusRow != null, "a prior tree row holds keyboard focus before help opens");
+  await press("?");
+  ok(mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]'),
+    "? re-opened the shortcut help overlay");
+  await press("Escape");
+  ok(mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]') == null,
+    "Esc closed the help overlay on the shipped root");
+  eq(ui.focus, priorFocusRow, "Esc left keyboard focus on the prior tree row");
+  const focusedAfterEsc = mountEl.querySelector('[data-keyboard-focus="true"]');
+  eq(focusedAfterEsc?.getAttribute("data-tree-row"), priorFocusRow,
+    "the DOM-focused row after Esc is the prior tree row");
+  await snap("help-esc-closed", mountEl);
+
+  // 'x' stays unbound, and Esc with help CLOSED is inert (close-help no-op):
+  // no state change either way.
   const before = { sel: ui.selection, focus: ui.focus, exp: [...ui.expanded].sort().join() };
   await press("x");
   await press("Escape");
   eq(ui.selection, before.sel, "unbound 'x' changed nothing");
-  eq(ui.focus, before.focus, "unbound Escape changed nothing");
+  eq(ui.focus, before.focus, "Escape with help closed changed nothing");
   eq([...ui.expanded].sort().join(), before.exp, "unbound keys did not touch expansion");
   // a bare 'x' while a text input has focus must be swallowed by the keymap
   eq(T.resolveKey({ key: "ArrowDown", target: { tagName: "INPUT" } }), null,
