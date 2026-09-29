@@ -213,9 +213,9 @@ export function createWorkbenchState(snapshot, initial = {}) {
     expanded: exp,
     history: [],
     hIdx: -1,
-    // transient search-reveal rows: id -> {parent}. NOT snapshot nodes —
-    // an out-of-snapshot hit has no proven row, and the model must never
-    // invent one (fabricated parentage / crowned roots are exclusions).
+    // Native search/show rows outside the bounded snapshot, kept only in
+    // workbench navigation state. Parentage is supplied by resolved FIELD
+    // paths; absent parentage remains an explicit boundary, not a root.
     revealed: new Map(),
   };
   const visible = () => {
@@ -244,7 +244,9 @@ export function createWorkbenchState(snapshot, initial = {}) {
       if (walked.has(id)) return;
       if (!snapshot.nodes.has(id) && !st.revealed.has(id)) return; // unknown id
       walked.add(id);
-      out.push({ id, depth });
+      const r = st.revealed.get(id);
+      out.push({ id, depth, parentId: r?.parent ?? snapshot.nodes.get(id)?.parent ?? null,
+        boundary: !!r && r.parent == null && !r.rootKnown });
       const n = snapshot.nodes.get(id);
       if (st.expanded.has(id) && !(n?.cyclic)) {
         const kids = n ? [...n.childIds, ...revealedKids(id)] : revealedKids(id);
@@ -252,16 +254,17 @@ export function createWorkbenchState(snapshot, initial = {}) {
       }
     };
     const walked = new Set();
-    for (const [id, n] of snapshot.nodes) if (n.parent === null) { mark(id); }
-    for (const [id, n] of snapshot.nodes) if (n.parent === null) walk(id, 0);
-    for (const [id, n] of snapshot.nodes) if (!reached.has(id)) out.push({ id, depth: 0 });
-    // revealed rows never reached from a known parent (unknown parentage, or
-    // a parent outside the page): honest depth-0 boundary rows — never
-    // re-emitted when their parent merely hides them collapsed.
+    const roots = [...snapshot.nodes].filter(([, n]) => n.parent === null).map(([id]) => id);
+    const rank = new Map([...(snapshot.readyIds ?? [])].map((id, i) => [id, i]));
+    roots.sort((a, b) => (rank.get(a) ?? Infinity) - (rank.get(b) ?? Infinity));
+    for (const id of roots) mark(id);
+    for (const id of roots) walk(id, 0);
+    // Snapshot orphans/cycles are honest boundary rows. Walk their children
+    // once, so a revealed child of an orphan is not silently lost.
+    for (const id of snapshot.nodes.keys()) if (!reached.has(id)) walk(id, 0);
     for (const [id, r] of st.revealed) {
-      const p = r.parent;
-      const parentKnown = p != null && (snapshot.nodes.has(p) || st.revealed.has(p));
-      if (!parentKnown) out.push({ id, depth: 0 });
+      const parentKnown = r.parent != null && (snapshot.nodes.has(r.parent) || st.revealed.has(r.parent));
+      if (!parentKnown) walk(id, 0);
     }
     return out;
   };
@@ -269,12 +272,13 @@ export function createWorkbenchState(snapshot, initial = {}) {
   const bundle = () => ({
     storeKey: st.storeKey, pane: st.pane, selection: st.selection,
     focus: st.focus, expanded: [...st.expanded].sort(),
-    revealed: [...st.revealed].map(([id, r]) => [id, r.parent ?? null]),
+    revealed: [...st.revealed].map(([id, r]) => [id, { ...r }]),
   });
   const restore = (b) => {
+    if (b.storeKey !== st.storeKey) throw new Error("workbench storeKey mismatch");
     st.selection = b.selection; st.focus = b.focus; st.pane = b.pane;
     st.expanded = new Set(b.expanded);
-    st.revealed = new Map((b.revealed ?? []).map(([id, p]) => [id, { parent: p }]));
+    st.revealed = new Map((b.revealed ?? []).map(([id, r]) => [id, { ...r }]));
   };
   const push = () => {
     st.history = st.history.slice(0, st.hIdx + 1);
@@ -290,6 +294,10 @@ export function createWorkbenchState(snapshot, initial = {}) {
     // THE expansion truth: the live set behind visibleRows/toggleExpanded/
     // jump/history-restore. The tree renders this set; it keeps no copy.
     get expanded() { return st.expanded; },
+    get revealed() { return st.revealed; },
+    // Save the full pre-navigation bundle before adding temporary search rows.
+    // Back/Forward then restore the same model expansion + reveal state.
+    save() { if (JSON.stringify(st.history[st.hIdx]) !== JSON.stringify(bundle())) push(); },
     visibleRows: visible,
     arrow(dir) {
       const rows = visible();
@@ -303,14 +311,14 @@ export function createWorkbenchState(snapshot, initial = {}) {
       if (!n || n.cyclic) return;
       if (st.expanded.has(id)) st.expanded.delete(id); else st.expanded.add(id);
     },
-    // search-reveal API (hbl-pnu.2.6): hang a transient row for an
-    // out-of-snapshot hit so Enter really lands IN the tree. The parent is
-    // caller-resolved (resolveHitPath's parent-FIELD chain) — the model
-    // invents nothing: unknown parentage renders as a depth-0 boundary row,
-    // never a crowned root. In-snapshot ids are refused (model truth only).
-    reveal(id, parent) {
-      if (id == null || snapshot.nodes.has(id)) return false;
-      st.revealed.set(id, { parent: parent ?? undefined });
+    // Only parent-FIELD evidence supplied by the caller may attach a row.
+    // Metadata comes from the native search/show result, never snapshot edits.
+    reveal(id, parent, row = {}) {
+      if (id == null || snapshot.nodes.has(id) || parent === id) return false;
+      st.revealed.set(id, { parent: parent ?? null, rootKnown: row.rootKnown === true,
+        title: typeof row.title === "string" ? row.title : id,
+        status: typeof row.status === "string" ? row.status : null });
+      if (parent != null && (snapshot.nodes.has(parent) || st.revealed.has(parent))) st.expanded.add(parent);
       return true;
     },
     unreveal(id) {

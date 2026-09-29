@@ -21,6 +21,59 @@ const {
   DEFAULT_SEARCH_LIMIT, HARD_SEARCH_LIMIT, MAX_FALLBACK_CALLS,
 } = await import("../desktop/search.mjs");
 
+test("rendered Tree reveals native hit and Back restores rows and expansion", async () => {
+  const { createWorkbenchState } = await import("../desktop/model.mjs");
+  const { Tree, buildTreeRows, createTreeController } = await import("../desktop/tree.mjs");
+  const snapshot = buildSnapshot(baseReads({ issues: [
+    { id: "root", parent: null }, { id: "mid", parent: "root" },
+    { id: "leaf", parent: "mid" },
+  ] }));
+  const ui = createWorkbenchState(snapshot, { focus: "root", selection: "root", expanded: new Set(["root"]) });
+  const history = createHistoryStack({ storeKey: snapshot.storeKey });
+  history.push({ storeKey: snapshot.storeKey, beadId: "root", focus: "root", selection: "root", filter: "Ready", search: "old", expanded: ["root"] });
+  const beforeRows = buildTreeRows(snapshot, ui).rows;
+  const beforeExpanded = [...ui.expanded];
+  const results = searchIssues({ snapshot, query: "needle",
+    searchRead: () => [{ id: "outside", title: "needle", status: "in_progress" }],
+    showRead: () => ({ id: "outside", parent: "leaf" }) });
+  const nav = enterSearchHit({ results, index: 0, snapshot, workbench: ui, history });
+  const row = buildTreeRows(snapshot, ui).rows.find(r => r.id === "outside");
+  assert.ok(row, "actual rendered-row builder includes hit");
+  assert.equal(row.depth, 3);
+  assert.equal(row.parentId, "leaf");
+  const rendered = walk(Tree({ snapshot, ui })).find(n => n?.props?.id === "row:outside");
+  assert.ok(rendered, "actual JSX tree contains hit");
+  assert.equal(rendered.props["aria-level"], 4);
+  assert.equal(rendered.props["aria-selected"], true);
+  assert.equal(snapshot.nodes.has("outside"), false);
+  assert.equal(snapshot.readyIds.has("outside"), false);
+  assert.equal(results.nativeCalls, 2);
+  const ctrl = createTreeController({ snapshot, ui });
+  // Native cursor/navigation regression is exercised by the shared tree suite.
+  assert.ok(ctrl);
+  nav.restore();
+  assert.deepEqual(buildTreeRows(snapshot, ui).rows, beforeRows);
+  assert.deepEqual([...ui.expanded], beforeExpanded);
+  assert.equal(ui.focus, "root");
+  assert.equal(history.current().filter, "Ready");
+  assert.equal(history.current().search, "old");
+  ui.forward();
+  assert.ok(buildTreeRows(snapshot, ui).rows.some(r => r.id === "outside"));
+  ui.back();
+  assert.deepEqual(buildTreeRows(snapshot, ui).rows, beforeRows);
+});
+
+test("shared model traversal preserves ready-first root ordering", async () => {
+  const { createWorkbenchState } = await import("../desktop/model.mjs");
+  const { buildTreeRows } = await import("../desktop/tree.mjs");
+  const snapshot = buildSnapshot(baseReads({ issues: [
+    { id: "later", parent: null }, { id: "ready", parent: null },
+  ], ready: [{ id: "ready" }] }));
+  const ui = createWorkbenchState(snapshot);
+  assert.deepEqual(buildTreeRows(snapshot, ui).rows.map(r => r.id), ["ready", "later"]);
+  assert.deepEqual(ui.visibleRows().map(r => r.id), ["ready", "later"]);
+});
+
 // ---- helpers ----------------------------------------------------------------
 const fixture = (name) =>
   JSON.parse(readFileSync(path.join(here, "fixtures", "search", name), "utf8"));

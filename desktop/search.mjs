@@ -365,11 +365,9 @@ export function SearchPanel({ results, cursor = -1, onActivate }) {
 }
 
 // ---- Enter: a navigation entry into the tree, not a parallel world ----------
-// Uses ONLY the public model.mjs workbench API (jump/toggleExpanded/
-// visibleRows) and a history.mjs stack — both reused unchanged. restore()
-// rewinds one history entry and reproduces the pre-Enter bundle (focus,
-// selection, pane, filter, search, expansion): the S2-style return, query
-// preserved on Back.
+// Enter records the model's pre-navigation bundle before adding native rows.
+// The external history stack retains filter/query/scroll; model Back restores
+// selection/focus/pane/expansion/revealed rows exactly, with no undo guesses.
 export function enterSearchHit({ results, index, snapshot, workbench, history,
   pane = "tree" } = {}) {
   if (!results || !Array.isArray(results.hits)) throw new Error("enterSearchHit requires searchIssues() results");
@@ -377,33 +375,30 @@ export function enterSearchHit({ results, index, snapshot, workbench, history,
   if (!hit) throw new Error(`enterSearchHit: no hit at index ${index}`);
   if (!workbench || typeof workbench.jump !== "function"
       || typeof workbench.visibleRows !== "function"
-      || typeof workbench.toggleExpanded !== "function") {
+      || typeof workbench.reveal !== "function" || typeof workbench.save !== "function"
+      || typeof workbench.back !== "function") {
     throw new Error("enterSearchHit requires the model.mjs workbench — search never owns its own world");
   }
   if (!history || typeof history.push !== "function" || typeof history.back !== "function") {
     throw new Error("enterSearchHit requires a history.mjs stack — Enter must be a history entry");
   }
   const prev = history.current();
-
-  workbench.jump(hit.id, pane);
-
-  // expand the ancestor chain (root→hit): toggle each parent whose path child
-  // is not currently a visible row — idempotent via visibleRows().
-  const expandedByUs = []; // [parentChildPair] of parents Enter expanded
-  let vis = new Set(workbench.visibleRows().map((r) => r.id));
-  for (let i = 1; i < hit.path.length; i++) {
-    const child = hit.path[i].id;
-    const parent = hit.path[i - 1].id;
-    if (parent == null || child == null || vis.has(child)) continue;
-    // a child with no snapshot node can never become a visible row — don't
-    // toggle its (already-expanded) parent into collapse.
-    if (!snapshot?.nodes?.has(child)) continue;
-    const pn = snapshot?.nodes?.get(parent);
-    if (pn && pn.cyclic) continue;
-    workbench.toggleExpanded(parent);
-    expandedByUs.push({ parent, child });
-    vis = new Set(workbench.visibleRows().map((r) => r.id));
+  workbench.save();
+  const chain = hit.path.filter(p => p.id != null);
+  for (let i = 0; i < chain.length; i++) {
+    const row = chain[i];
+    if (!snapshot.nodes.has(row.id)) {
+      workbench.reveal(row.id, i > 0 ? chain[i - 1].id : null, {
+        ...(row.id === hit.id ? hit.row : {}),
+        title: row.id === hit.id ? hit.row?.title ?? row.label : row.label,
+        rootKnown: i === 0 && hit.pathStatus === "resolved",
+      });
+    }
+    if (i < chain.length - 1 && !snapshot.nodes.get(row.id)?.cyclic) {
+      workbench.expanded.add(row.id);
+    }
   }
+  workbench.jump(hit.id, pane);
 
   const cur = workbench.history?.[workbench.history.length - 1] ?? {};
   const entry = history.push({
@@ -425,14 +420,7 @@ export function enterSearchHit({ results, index, snapshot, workbench, history,
     entry,
     restore() {
       const b = history.back();
-      // undo ONLY the expansions Enter itself performed
-      for (const { parent, child } of [...expandedByUs].reverse()) {
-        const rows = new Set(workbench.visibleRows().map((r) => r.id));
-        if (rows.has(child)) workbench.toggleExpanded(parent);
-      }
-      if (b && (b.focus != null || b.selection != null)) {
-        workbench.jump(b.focus ?? b.selection, b.pane ?? undefined);
-      }
+      workbench.back();
       return b;
     },
   };
