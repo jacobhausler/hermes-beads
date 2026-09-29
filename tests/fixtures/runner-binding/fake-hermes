@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Fixture stand-in for the `hermes chat` child the Workflow runner spawns.
+
+The runner contract (wf.py run_child): [hermes_bin, "chat", "--query-file", P,
+"--oneshot", "-Q", "--source", "workflow", ...]. The binding bakes the
+WORKER-TASK line into the node goal:
+
+  RUNNER-TASK worker BEAD=<id> ATTEMPT=<a> ARTIFACT=<abs path> WORKER=<actor>
+
+Behavior (real native effects, NO mocks of bd): writes the artifact file,
+appends the EVIDENCE envelope comment through the lane's own evidence.py
+against the real pinned bd store, then answers with ONE fenced json block.
+Markers: 'SLEEP <s>' sleeps first (stop/runner-kill probes); 'FAILTASK'
+exits 1 after effects (failure-isolation probe).
+
+Every spawn appends 'SPAWN <bead>' to $FAKE_LOG so tests count spawns —
+the replay-skip / adoption / no-re-spawn proofs ride this counter.
+"""
+import json
+import os
+import re
+import sys
+import time
+
+args = sys.argv[1:]
+if "--query-file" not in args:
+    sys.exit("fake-hermes: --query-file required")
+q = open(args[args.index("--query-file") + 1], encoding="utf-8").read()
+
+m = re.search(r"RUNNER-TASK worker BEAD=(\S+) ATTEMPT=(\S+) "
+              r"ARTIFACT=(\S+) WORKER=(\S+)", q)
+if not m:
+    print("fake-hermes: no RUNNER-TASK line in prompt — no-op echo")
+    print("```json\n" + json.dumps({"result": "noop"}) + "\n```")
+    sys.exit(0)
+bead, attempt, artifact, worker = m.groups()
+
+with open(os.environ["FAKE_LOG"], "a", encoding="utf-8") as f:
+    f.write(f"SPAWN {bead}\n")
+
+if "SLEEP" in q:
+    try:
+        time.sleep(float(q.split("SLEEP")[1].split()[0]))
+    except Exception:
+        pass
+
+store = os.environ["BEADS_STORE"]
+lane = os.environ["BEADS_LANE"]
+bd = os.environ["BEADS_BD"]
+sys.path.insert(0, lane)
+import evidence      # noqa: E402  (lane module — real guarded writer path)
+import read_model    # noqa: E402
+
+row = read_model.show(store, bead, bd_bin=bd)
+if not row or row.get("assignee") != worker:
+    print("```json\n" + json.dumps(
+        {"worker_error": f"bead {bead} not held by {worker}: {row!r}"}) + "\n```")
+    sys.exit(0)
+
+with open(artifact, "w", encoding="utf-8") as f:
+    f.write(f"artifact {bead} {attempt}\n")
+
+evidence.WorkerSurface(store, actor=worker, bd_bin=bd).record_evidence(
+    bead, attempt=attempt, artifacts=[os.path.basename(artifact)],
+    summary="isolated runner child")
+
+if "FAILTASK" in q:
+    print("```json\n" + json.dumps(
+        {"worker_error": "injected worker failure", "bead": bead}) + "\n```")
+    sys.exit(1)
+
+print("```json\n" + json.dumps(
+    {"bead": bead, "attempt": attempt,
+     "artifact": os.path.basename(artifact), "worker": worker}) + "\n```")

@@ -9,3 +9,4 @@ tests/.claims-fixtures/
 tests/fixtures/correlation-runtime/
 tests/fixtures/evidence-runtime/
 tests/fixtures/drafts-runtime/
+tests/fixtures/runner-binding-runtime/
