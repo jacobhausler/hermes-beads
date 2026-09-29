@@ -410,6 +410,19 @@ test("S10 inherited multi-blocker: x10 shows inherited g1,g2 (via p10) plus dire
 // show-row snapshots (S10 above) behave correctly. Fix candidate:
 // activeBlockerRefs(snap, rec) resolves ref status via snap.byId when the
 // edge lacks one.
-test.todo("model blockersFor: closed blocker drops out of list-sourced snapshots too", (t) => {
-  t.diagnostic("see comment: list_all edge rows carry no status; model only checks d.status");
+test("model blockersFor: closed blocker drops out of list-sourced snapshots too (status resolved via snapshot record)", () => {
+  // pure-model reproducer of the S10 finding: list-sourced edge rows carry NO status
+  const snap = buildSnapshot({
+    issues: [
+      { id: "g", status: "closed", parent: null },
+      { id: "h", status: "open", parent: null },
+      { id: "x", status: "open", parent: null, dependencies: [
+        { issue_id: "x", depends_on_id: "g", type: "blocks" },
+        { issue_id: "x", depends_on_id: "h", type: "blocks" },
+        { issue_id: "x", depends_on_id: "gone", type: "blocks" } ] },
+    ], ready: null, blocked: null, storeInfo: STORE_INFO,
+  }, { bound: 500 });
+  const ids = B.blockersFor(snap, "x").filter((b) => !b.inherited).map((b) => b.id).sort();
+  // closed g drops; open h stays; an out-of-snapshot ref stays (absence is not proof of closure)
+  assert.deepEqual(ids, ["gone", "h"]);
 });
