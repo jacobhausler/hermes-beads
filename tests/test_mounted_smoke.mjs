@@ -245,7 +245,14 @@ async function mount(sessionOpts = {}) {
   });
 }
 async function unmount() {
-  await act(async () => { root.unmount(); });
+  // A door test that FAILED midway may have thrown out of React's commit
+  // with a pending focus effect: a normal unmount then throws and cascades
+  // (every later mount hits the stale root). Dismount defensively so each
+  // door test fails on ITS OWN assertions, never on a sibling's wreckage.
+  try { await act(async () => { root.unmount(); }); }
+  catch {
+    try { root.unmount(); } catch { /* the tree is gone; the container is reusable */ }
+  }
   root = null;
 }
 async function press(key, opts = {}, targetSel = null) {
