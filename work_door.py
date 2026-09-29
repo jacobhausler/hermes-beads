@@ -76,7 +76,7 @@ class WorkDoor:
     """
 
     def __init__(self, *, store, bd_bin="bd", run_base, workflow_src,
-                 hermes_bin, cred_path=None, authority_domain="lab",
+                 hermes_bin, authority_domain="lab",
                  profile="beads-work", verifier="verifier-r",
                  worker_default="worker-r", goal_prefix="",
                  node_timeout=600, node_max_turns=8, wall_deadline_s=None,
@@ -86,7 +86,6 @@ class WorkDoor:
         self.run_base = os.path.abspath(str(run_base))
         self.workflow_src = os.path.abspath(str(workflow_src))
         self.hermes_bin = str(hermes_bin)
-        self.cred_path = cred_path
         self.authority_domain = authority_domain
         self.profile = profile
         self.verifier = verifier
@@ -105,10 +104,10 @@ class WorkDoor:
     def precheck_error(self):
         """None when qualified; a typed reason string otherwise. Checked
         BEFORE any claim so an unqualified Work never touches the store."""
-        if not self.cred_path or not os.path.isfile(self.cred_path):
-            return (f"runner credential file absent at {self.cred_path!r} "
-                    f"(env {rb.CRED_ENV}): no host secret, no signature — "
-                    "runner qualification absent")
+        cred, problem = rb._read_host_credential(rb.credential_path())
+        if problem:
+            return (f"host credential unusable at {rb.credential_path()!r}: "
+                    f"{problem} — runner qualification absent")
         if not (os.path.isfile(os.path.join(self.workflow_src, "wf.py"))
                 and os.path.isfile(
                     os.path.join(self.workflow_src, "wfcommon.py"))):
@@ -120,21 +119,17 @@ class WorkDoor:
         return None
 
     def read_credential(self):
-        """Read the host credential file under runner_binding's own
-        verification laws (mode 0600, principal, secret >= MIN_SECRET_LEN).
-        A file that only restates the principal is self-issued, not a
-        credential."""
-        path = self.cred_path
-        st = os.stat(path)
-        if st.st_mode & 0o077:
-            raise WorkDoorError(f"credential file {path} is group/world-"
-                                "readable (needs 0600)")
-        cred = _jload(path)
+        """The host credential at runner_binding.credential_path(), read
+        through runner_binding's own fd-bound provenance check (no second,
+        weaker reader; no caller-chosen path)."""
+        cred, problem = rb._read_host_credential(rb.credential_path())
+        if problem:
+            raise WorkDoorError(f"host credential unusable: {problem}")
         if not isinstance(cred, dict) or not cred.get("principal"):
-            raise WorkDoorError(f"credential file {path} lacks a principal")
+            raise WorkDoorError("host credential lacks a principal")
         secret = cred.get("secret") or ""
         if not isinstance(secret, str) or len(secret) < rb.MIN_SECRET_LEN:
-            raise WorkDoorError("credential file carries no host-generated "
+            raise WorkDoorError("host credential carries no host-generated "
                                 f"secret (>= {rb.MIN_SECRET_LEN} chars)")
         return cred
 
@@ -189,19 +184,12 @@ class WorkDoor:
                    "verifier": self.verifier, "request_key": key}
             secret = cred["secret"]
             sig = rb.sign_request(secret, req, cred["principal"])
-            prev = os.environ.get(rb.CRED_ENV)
-            os.environ[rb.CRED_ENV] = self.cred_path
             try:
                 res = rb.admit_work(req, authenticated_context={
                     "principal": cred["principal"], "signature": sig},
                     run_root=run_dir, bd_bin=self.bd_bin)
             except rb.BindingError as exc:
                 raise WorkDoorError(f"admission refused: {exc}") from exc
-            finally:
-                if prev is None:
-                    os.environ.pop(rb.CRED_ENV, None)
-                else:
-                    os.environ[rb.CRED_ENV] = prev
 
             # launch marker (O_EXCL): the first winner launches the runner;
             # a duplicate NEVER re-launches (no second scheduler, no second
@@ -259,7 +247,7 @@ class WorkDoor:
         env = dict(os.environ)
         env["HERMES_HOME"] = os.path.join(run_dir, ".home")
         env["WF_RUNS_ROOT"] = self.run_base
-        env[rb.CRED_ENV] = self.cred_path
+        env.pop(rb.CRED_ENV, None)   # never carried; the runner verifies nothing
         env["FAKE_LOG"] = os.path.join(run_dir, "fake.log")
         env["BEADS_STORE"] = self.store
         env["BEADS_LANE"] = os.path.dirname(os.path.abspath(rb.__file__))
@@ -402,17 +390,9 @@ class WorkDoor:
                     "key", "state": "unknown"}
         cred = self.read_credential()
         sig = rb.sign_stop(cred["secret"], run_dir, cred["principal"])
-        prev = os.environ.get(rb.CRED_ENV)
-        os.environ[rb.CRED_ENV] = self.cred_path
-        try:
-            res = rb.stop_work(run_dir, authenticated_context={
-                "principal": cred["principal"], "signature": sig})
-        finally:
-            if prev is None:
-                os.environ.pop(rb.CRED_ENV, None)
-            else:
-                os.environ[rb.CRED_ENV] = prev
-        # TRUEFUL: while the runner is alive the state is cancel_requested;
+        res = rb.stop_work(run_dir, authenticated_context={
+            "principal": cred["principal"], "signature": sig})
+        # TRUTHFUL: while the runner is alive the state is cancel_requested;
         # "cancelled" only once it is confirmed terminal. stop_work itself
         # never claims more than stopping_unknown.
         alive = self.runner_alive(request_key)

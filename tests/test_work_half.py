@@ -26,6 +26,7 @@ Run: python3 tests/test_work_half.py
 """
 import json
 import os
+import pathlib
 import shutil
 import sys
 import time
@@ -81,8 +82,8 @@ class WorkHalf(unittest.TestCase):
     def test_duplicate_click_one_receipt_one_admission(self):
         s = trb.make_store("wh-dup")
         i = trb.create(s, "dup click")
-        cf = trb.cred("wh-dup", s, [i])
-        d = self.door(s, cred_path=str(cf))
+        trb.cred("wh-dup", s, [i])
+        d = self.door(s)
         r1 = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
                                   request_key="k-dup")
         r2 = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
@@ -122,11 +123,11 @@ class WorkHalf(unittest.TestCase):
     def test_timeout_is_uncertain_never_delivered(self):
         s = trb.make_store("wh-to")
         i = trb.create(s, "slow worker")
-        cf = trb.cred("wh-to", s, [i])
+        trb.cred("wh-to", s, [i])
         # the door's own wall deadline expires while the runner is still
         # alive and the worker still runs: the TRUTH at that moment is
         # "uncertain" — the click was handed off, nothing confirmed it.
-        d = self.door(s, cred_path=str(cf), goal_prefix="SLEEP 12 ",
+        d = self.door(s, goal_prefix="SLEEP 12 ",
                       node_timeout=60, wall_deadline_s=5)
         r = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
                                  request_key="k-to")
@@ -142,8 +143,8 @@ class WorkHalf(unittest.TestCase):
     def test_cancel_requested_then_cancelled_only_after_runner_confirms(self):
         s = trb.make_store("wh-cancel")
         i = trb.create(s, "long worker")
-        cf = trb.cred("wh-cancel", s, [i])
-        d = self.door(s, cred_path=str(cf), goal_prefix="SLEEP 20 ",
+        trb.cred("wh-cancel", s, [i])
+        d = self.door(s, goal_prefix="SLEEP 20 ",
                       node_timeout=60)
         r = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
                                  request_key="k-cancel")
@@ -176,8 +177,8 @@ class WorkHalf(unittest.TestCase):
     def test_worker_exit_never_closes_the_bead(self):
         s = trb.make_store("wh-fail")
         i = trb.create(s, "failing worker")
-        cf = trb.cred("wh-fail", s, [i])
-        d = self.door(s, cred_path=str(cf), goal_prefix="FAILTASK ",
+        trb.cred("wh-fail", s, [i])
+        d = self.door(s, goal_prefix="FAILTASK ",
                       node_timeout=45)
         r = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
                                  request_key="k-fail")
@@ -195,8 +196,10 @@ class WorkHalf(unittest.TestCase):
     def test_unqualified_door_is_visible_unavailable(self):
         s = trb.make_store("wh-unq")
         i = trb.create(s, "unqualified")
-        missing = str(WH / "creds" / "does-not-exist.json")
-        d = self.door(s, cred_path=missing)
+        cp = pathlib.Path(rb.credential_path())
+        if cp.exists() or cp.is_symlink():
+            cp.unlink()                      # no host credential provisioned
+        d = self.door(s)
         out = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
                                    request_key="k-unq")
         self.assertFalse(out["ok"])
@@ -207,11 +210,11 @@ class WorkHalf(unittest.TestCase):
         row = read_model.show(str(s), i, bd_bin=BD)
         self.assertFalse(row.get("assignee") or None)
         # missing isolated patched checkout => also typed unavailable
-        cf = trb.cred("wh-unq", s, [i])
+        trb.cred("wh-unq", s, [i])
         d2 = work_door.make_work_door(
             store=str(s), bd_bin=BD, run_base=str(WH / "runs"),
             workflow_src=str(trb.FIXTURES / "no-such-checkout"),
-            hermes_bin=str(trb.FAKE_HERMES), cred_path=str(cf))
+            hermes_bin=str(trb.FAKE_HERMES))
         bot_handoff.bind_runner_door(d2)
         out2 = bot_handoff.run_work(str(s), i, actor="w-bot", bd_bin=BD,
                                     request_key="k-unq2")
