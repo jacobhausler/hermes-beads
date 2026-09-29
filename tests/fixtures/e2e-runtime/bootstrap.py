@@ -17,20 +17,75 @@ native-behavior probe, never the plugin's closure surface.
 """
 import json
 import os
+import shutil
 import subprocess
 import tempfile
+import time
 import uuid
 
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.dirname(os.path.abspath(__file__))
 
+# hbl-pnu.4.7: the FIXTURE_ROOT is SHARED by every suite that seeds through
+# this bootstrap (e2e, scenarios, mounted smoke). A runner must delete ONLY
+# the stores its own process created — sweeping the root kills concurrent
+# suites' live stores mid-run (the recorded -C flake).
+RUN_STORES = set()
+
+# hbl-pnu.4.7: crashed runs used to leave stores forever (the old sweeps
+# were the flake). Reclaim only AGE-OUT orphans: a live concurrent run's
+# store is fresh (bd/dolt writes refresh mtime), so the threshold guards it.
+STALE_SECONDS = 3600
+
+
+def _store_age_mtime(p):
+    """Newest of the dir's own mtime and its immediate children's — the
+    store's own dir may go quiet while bd writes inside .git/.dolt."""
+    newest = os.stat(p).st_mtime
+    try:
+        for child in os.scandir(p):
+            try:
+                newest = max(newest, child.stat().st_mtime)
+            except OSError:
+                pass
+    except OSError:
+        pass
+    return newest
+
+
+def _sweep_orphans():
+    cutoff = time.time() - STALE_SECONDS
+    for name in os.listdir(FIXTURE_ROOT):
+        if name == "bootstrap.py" or name == "__pycache__":
+            continue
+        p = os.path.join(FIXTURE_ROOT, name)
+        if p in RUN_STORES or not os.path.isdir(p):
+            continue
+        try:
+            if _store_age_mtime(p) > cutoff:
+                continue
+        except OSError:
+            continue
+        shutil.rmtree(p, ignore_errors=True)
+
+
+def cleanup_run_stores():
+    """Remove exactly the stores THIS process created; never touch a
+    foreign dir in the shared fixture root."""
+    for d in list(RUN_STORES):
+        shutil.rmtree(d, ignore_errors=True)
+        RUN_STORES.discard(d)
+
 
 def make_store(prefix="e2e"):
     """Fresh disposable store: unique dir under this fixture root, own
-    git repo, own bd store (durable-in-run, deleted by the runner)."""
+    git repo, own bd store (durable-in-run, deleted by the runner via
+    cleanup_run_stores())."""
     os.makedirs(FIXTURE_ROOT, exist_ok=True)
+    _sweep_orphans()
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT, prefix=f"{prefix}-")
+    RUN_STORES.add(d)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)
     p = subprocess.run([BD_BIN, "init", "--prefix", prefix], cwd=d,

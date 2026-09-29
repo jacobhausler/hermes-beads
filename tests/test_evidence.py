@@ -44,10 +44,21 @@ BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, "fixtures", "evidence-runtime")
 
+# hbl-pnu.4.7: own-dir cleanup only (a concurrent run of this same suite
+# must not have its in-flight stores swept out from under it).
+RUN_STORES = set()
+
+
+def cleanup_run_stores():
+    for d in list(RUN_STORES):
+        shutil.rmtree(d, ignore_errors=True)
+        RUN_STORES.discard(d)
+
 
 def make_store():
     # unique name per fixture: tests/fixtures/evidence-runtime/<case>-<uuid>
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT, prefix="ev-")
+    RUN_STORES.add(d)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)
     p = subprocess.run([BD_BIN, "init", "--prefix", "ev"], cwd=d,
@@ -497,5 +508,7 @@ if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)
     finally:
-        for name in os.listdir(FIXTURE_ROOT):
-            shutil.rmtree(os.path.join(FIXTURE_ROOT, name), ignore_errors=True)
+        # hbl-pnu.4.7: remove only stores THIS process created, never sweep
+        # the root (a concurrent run of the same suite would be nuked).
+        if not os.environ.get("E2E_KEEP_FIXTURES"):
+            cleanup_run_stores()
