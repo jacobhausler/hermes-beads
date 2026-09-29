@@ -35,9 +35,11 @@ Trusted-agent surface policy, not a hostile-shell sandbox.
 """
 import fcntl
 import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 import time
 
 import claims
@@ -47,6 +49,7 @@ import read_model
 
 BINDING_DIR = "beads"           # run-dir namespace owned by this binding
 CRED_ENV = "BEADS_ADMISSION_CREDENTIAL_FILE"
+MIN_SECRET_LEN = 32                 # host-generated secret; not restatable
 _LEDGER_STATES = ("closed_verified", "rejected", "quarantined",
                   "external_closed_unknown", "blocked", "failed")
 
@@ -72,6 +75,16 @@ def _atomic_write(path, obj):
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, path)
+    # R4: the rename itself must be durable before any native effect rides
+    # on this record — fsync the containing directory too.
+    try:
+        dfd = os.open(os.path.dirname(path), os.O_RDONLY)
+        try:
+            os.fsync(dfd)
+        finally:
+            os.close(dfd)
+    except OSError:
+        pass
 
 
 def _jload(path, default=None):
@@ -112,11 +125,35 @@ def node_task(node):
 
 # ---------- authentication (C4 door: host credential file; lab-qualified) ----------
 
-def _verify_credential(authenticated_context):
+def sign_request(secret, request, principal):
+    """HOST-side helper: the only way to mint a valid admission signature is
+    to hold the credential file's secret — the request body cannot create it.
+    (A real deployment calls this from the host's operator tooling.)"""
+    return _sign(secret, {"action": "admit", "principal": principal,
+                          "request": request})
+
+
+def sign_stop(secret, run, principal):
+    """HOST-side helper for an authenticated stop."""
+    return _sign(secret, {"action": "stop", "principal": principal,
+                          "run": str(run)})
+
+
+def _sign(secret, message):
+    return hmac.new(str(secret).encode(), _canonical(message).encode(),
+                    hashlib.sha256).hexdigest()
+
+
+def _verify_credential(authenticated_context, message):
+    """The door: the request must carry an HMAC the request-body cannot
+    mint, verified against the host-held secret in the 0600 credential file
+    under the runner's own state dir. A file that only restates the
+    principal is NOT a credential (P3a)."""
     if not isinstance(authenticated_context, dict):
         raise BindingRefusal("authenticated_context must be supplied by the "
                              "host, never by the request body")
     principal = authenticated_context.get("principal")
+    signature = authenticated_context.get("signature") or ""
     cred_path = os.environ.get(CRED_ENV, "")
     if not principal or not cred_path or not os.path.isfile(cred_path):
         raise BindingRefusal(
@@ -130,6 +167,20 @@ def _verify_credential(authenticated_context):
         raise BindingRefusal(
             "principal mismatch against the host credential file "
             "(selected row / caller-provided principal are not authority)")
+    secret = cred.get("secret") or ""
+    if not isinstance(secret, str) or len(secret) < MIN_SECRET_LEN:
+        raise BindingRefusal(
+            "credential file carries no host-generated secret "
+            f"(>= {MIN_SECRET_LEN} chars): a file that only restates the "
+            "principal is self-issued, not a credential")
+    message = dict(message or {})
+    message.setdefault("principal", principal)
+    if not signature or not hmac.compare_digest(
+            _sign(secret, message), str(signature)):
+        raise BindingRefusal(
+            "admission signature missing/invalid: the request was not "
+            "signed by the holder of the host secret (HMAC over the exact "
+            "request + principal)")
     return cred
 
 
@@ -140,7 +191,9 @@ def admit_work(request, *, authenticated_context, run_root, bd_bin):
     same principal+request_key returns the stored receipt; ANY change in
     principal, store, or exact ordered bead scope rejects. Nothing here
     dispatches — the runner drives execution."""
-    cred = _verify_credential(authenticated_context)
+    cred = _verify_credential(
+        authenticated_context,
+        {"action": "admit", "request": request})
     for k in ("authority_domain", "profile", "store", "beads", "worker",
               "verifier", "request_key"):
         if k not in (request or {}):
@@ -161,7 +214,12 @@ def admit_work(request, *, authenticated_context, run_root, bd_bin):
             request["authority_domain"] != cred["authority_domain"]:
         raise BindingRefusal("credential/authority-domain mismatch")
     approved = set(cred.get("approved_beads") or [])
-    if approved and not set(beads) <= approved:
+    if not approved:
+        raise BindingRefusal(
+            "credential carries no approved_beads ceiling — admission is "
+            "refused (an omitted ceiling would mean no scope ceiling at all; "
+            "the approved set is mandatory, never grown from discovery)")
+    if not set(beads) <= approved:
         raise BindingRefusal(
             "out-of-grant IDs in request: "
             f"{sorted(set(beads) - approved)} (a fixed approved set never "
@@ -394,16 +452,26 @@ def before_launch(run, node, skey, argv):
             raise BindingRefusal(
                 f"{bead_id} absent from the scoped ready frontier — "
                 "refusing before effects")
-    try:
-        claims.claim(store, bead_id, actor=g["worker"], bd_bin=bd_bin)
-    except native.NativeError as exc:
-        raise BindingRefusal(f"exact-ID claim failed for {bead_id}: {exc}")
 
+    # R4: the durable launch intent — carrying the runner-held causal
+    # NONCE — is written AND fsynced BEFORE the claim (the first native
+    # effect). A death in the claim window therefore leaves an intent that
+    # reconcile/before_launch can observe; a claim with no intent can never
+    # happen. The nonce is random per launch: only this run knows it, and
+    # the verifier-authorized close reason must carry it verbatim (R3).
+    nonce = secrets.token_hex(16)
     _atomic_write(_intent_path(run, node_id, attempt),
                   {"intent": f"{node_id}.a{attempt}", "node": node_id,
                    "bead": bead_id, "attempt": attempt,
                    "operation": "launch", "state": "intent", "skey": skey,
+                   "nonce": nonce,
                    "argv_digest": _digest(list(argv)), "at": time.time()})
+    try:
+        claims.claim(store, bead_id, actor=g["worker"], bd_bin=bd_bin)
+    except native.NativeError as exc:
+        # The claim (the effect) never landed: the intent stays unsettled
+        # for reconcile's native observation — never deleted blind.
+        raise BindingRefusal(f"exact-ID claim failed for {bead_id}: {exc}")
     return ("spawn", None)
 
 
@@ -489,11 +557,31 @@ def verify_node(run, node, result):
                    artifact=artifact, worker=worker, result=result)
 
 
+def _launch_nonce(run, bead_id, attempt):
+    """The runner-held causal nonce for this bead's launch intent (R3):
+    random per launch, recorded BEFORE the claim, known only to this run.
+    None if this run never durably launched this bead/attempt — an external
+    actor cannot mint it, so a close reason carrying it is proof of runner
+    causality, not a guessable string."""
+    idir = _run_paths(run)["intents"]
+    found = None
+    if os.path.isdir(idir):
+        for fn in os.listdir(idir):
+            rec = _jload(os.path.join(idir, fn)) or {}
+            if (rec.get("operation") == "launch"
+                    and rec.get("bead") == bead_id
+                    and str(rec.get("attempt")) == str(attempt)
+                    and rec.get("nonce")):
+                if found is None or rec.get("at", 0) > found.get("at", 0):
+                    found = rec
+    return (found or {}).get("nonce")
+
+
 def authorize_close(run, bead_id, attempt, verifier_result, *, bd_bin=None):
     """CLOSE gate: a provided verdict is an INPUT, re-checked here (a
     rejected verdict or evidence-less close NEVER advances the successor).
     The only close argv path is evidence.authorized_close — evidenced,
-    artifact-citing, causally tokened, read-backed."""
+    artifact-citing, causally tokened (runner-held nonce), read-backed."""
     g, _ = _grant(run)
     bd_bin = bd_bin or g["bd_bin"]
     if not isinstance(verifier_result, dict) or \
@@ -503,11 +591,18 @@ def authorize_close(run, bead_id, attempt, verifier_result, *, bd_bin=None):
                       "problems": (verifier_result or {}).get(
                           "problems", ["no verdict"])})
         return {"closed": False, "state": "rejected"}
+    nonce = _launch_nonce(run, bead_id, attempt)
     causal_token = f"attempt={attempt} verifier={g['verifier']}"
     row = read_model.show(g["store"], bead_id, bd_bin=bd_bin)
     if row and row.get("status") == "closed":
         reason = row.get("close_reason") or ""
-        causal = causal_token in reason
+        # Causality (R3): the exact verifier actor from the grant must be
+        # the closer (read-back assignee), AND the reason must carry the
+        # runner-held nonce VERBATIM — a replayable substring alone is
+        # never credited (P4). No runner launch intent => no causality.
+        causal = bool(nonce) and causal_token in reason \
+            and f"nonce={nonce}" in reason \
+            and (row.get("assignee") or "") == g["verifier"]
         ledger_write(run, bead_id,
                      {"state": "closed_verified" if causal
                       else "external_closed_unknown",
@@ -521,7 +616,17 @@ def authorize_close(run, bead_id, attempt, verifier_result, *, bd_bin=None):
         ledger_write(run, bead_id, {"state": "rejected", "attempt": attempt,
                                     "problems": ["no artifacts cited"]})
         return {"closed": False, "state": "rejected"}
+    if not nonce:
+        # No durable launch intent this run wrote for this bead/attempt:
+        # nothing this run launched can be causally closed by it.
+        ledger_write(run, bead_id,
+                     {"state": "rejected", "attempt": attempt,
+                      "problems": ["no durable launch intent (nonce) for "
+                                   "this bead/attempt — closure would be "
+                                   "uncalable"]})
+        return {"closed": False, "state": "rejected"}
     reason = (f"workflow admitted close {bead_id} {causal_token} "
+              f"nonce={nonce} "
               f"run={os.path.basename(g['store'])} "
               f"artifacts={';'.join(artifacts)}")
     receipt = _jload(_run_paths(run)["receipt"], {}) or {}
@@ -580,7 +685,8 @@ def stop_work(run, *, authenticated_context):
     """Authenticated stop: latch BEFORE any spawn can start. Child death is
     the stock runner's stop watcher; this adds the binding-side latch so a
     re-drive cannot resurrect work past the stop boundary."""
-    _verify_credential(authenticated_context)
+    _verify_credential(authenticated_context,
+                       {"action": "stop", "run": str(run)})
     _, paths = _grant(run)
     _atomic_write(os.path.join(paths["base"], "STOP.json"),
                   {"at": time.time(),

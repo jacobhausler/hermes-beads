@@ -115,17 +115,29 @@ def _beads_granted(run):
 
 def _beads_child(meta, node, byid, index):
     """Stock solo spawn path with the binding gate under the same spawn
-    lock; returns a result dict or None to fall through to stock code."""
+    lock; returns a result dict or None to fall through to stock code.
+    R1: a VERIFIED live orphan (wfcommon.active_child: running record +
+    efp match + pid alive + skey-in-cmdline) is ADOPTED here via the
+    runner's own _adopt_child — the solo path must NEVER fall through to a
+    second Popen on top of live work. (Stock wf.py only calls active_child
+    in the fanout branch; without this the binding would double-spawn.)"""
     run = meta["_run"]
     if not _beads_granted(run):
         return None
+    child = _bh.active_child(_b, run, node, byid, index)
+    if child is not None:
+        # adopt OUTSIDE the procs lock — _adopt_child takes it itself
+        memo_key = str(node["id"]) + ":" + str(index) + ":" + str(child["pid"])
+        memo = (meta.get("_adopt_result") or {{}}).get(memo_key)
+        if memo is not None:
+            return {{**memo, **_profile_evidence(node)}}   # already harvested
+        return {{**_adopt_child(meta, node, byid, index, child,
+                                node.get("schema")),
+                **_profile_evidence(node)}}
     with meta["_procs_lock"]:
         if meta["_stop"].is_set():
             return {{"status": "failed", "error": "cancelled before spawn",
                      "error_class": "cancelled", "ms": 0}}
-        child = _bh.active_child(_b, run, node, byid, index)
-        if child is not None:
-            return None                      # adoption wins: stock attaches
         solo = next((k for k in meta["_procs"] if k.startswith(
             str(node["id"]) + ":")), None)
         if solo is not None:
@@ -149,10 +161,13 @@ def _beads_settle(run, node, r):
     # def that follows (run_agent_node anchor a3's preceding helper boundary)
     src = src.replace(a3, prelude + "\n" + a3, 1)
 
-    # 1) pre-Popen gate inside the spawn lock (before stock check→Popen)
+    # 1) pre-Popen gate inside the spawn lock (before stock check→Popen).
+    #    R2: the admission credential NEVER rides into a child env — the
+    #    child has no admission authority; the host holds the secret alone.
     src = src.replace(
         "        proc = None\n        with meta[\"_procs_lock\"]:",
         "        proc = None\n"
+        "        env.pop(\"BEADS_ADMISSION_CREDENTIAL_FILE\", None)\n"
         "        if not node.get(\"fanout\"):\n"
         "            _bd = _beads_child(meta, node, byid, index)\n"
         "            if _bd is not None:\n"
