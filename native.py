@@ -21,9 +21,151 @@ intentionally ships only what the initial smoke and capability probes need.
 import json
 import os
 import shutil
+import itertools
 import subprocess
 
 DEFAULT_TIMEOUT = 30
+
+# ---- fixed-argv security boundary (hbl-pnu.4.4) -----------------------------
+# run_bd is the single spawn point; before ANY subprocess.run the argv_prefix
+# must match one of the exact shapes below (token classes, in order). That is
+# the injection surface: no shipped caller ever composes a value INTO a flag
+# or appends a raw list, so an off-table argv has no legitimate origin and is
+# refused whole. Values stay opaque (text bodies may contain ;rm, ../../x,
+# newlines — argv has no shell, inert as single tokens); ids are exact-ID
+# tokens (no dash-leading, pathy, or control-token shapes); --actor and
+# --readonly are gateway-controlled and may never appear in a prefix at all.
+
+_SHAPES = "shapes"
+
+# Token classes: exact literal ("F:--json" or bare verb), "I" exact-ID token,
+# "V" bounded scalar value, "T" opaque text body (comment/reason/notes).
+
+_GATEWAY_FLAGS = ("--actor", "--readonly")  # run_bd owns these slots
+_META = ";|&$<>`"  # shell meta — dead inside value/ID tokens (belt, no shell anyway)
+
+_LIST_OPTS = (("F:--status", "V"), ("F:--label", "V"), ("F:--parent", "V"),
+              ("F:--all",))
+_GUARD = ["F:--if-assignee", "V", "F:--if-status", "V", "F:--json"]
+_FIELD_GROUPS = (("F:--priority", "V"), ("F:--notes", "T"), ("F:--due", "V"),
+                 ("F:--estimate", "V"), ("F:--external-ref", "V"),
+                 ("F:--defer", "V"))
+
+
+def _opts(base, options):
+    """base argv + every ordered subset of the (flag, class) option pairs."""
+    out = []
+    for k in range(len(options) + 1):
+        for combo in itertools.combinations(options, k):
+            out.append(base + list(itertools.chain.from_iterable(combo)))
+    return out
+
+
+def _field_permutations(base, groups):
+    """base argv + any ordered selection of field-flag groups in any order
+    (bd takes them in any sequence; write_protocol passes dict order)."""
+    out = []
+    for k in range(len(groups) + 1):
+        for perm in itertools.permutations(groups, k):
+            out.append(base + list(itertools.chain.from_iterable(perm)))
+    return out
+
+
+_SPEC_LISTS = []
+# ready frontier (native bounds always present; label optional)
+_SPEC_LISTS += _opts(["ready", "F:--json", "F:--exclude-type=epic", "F:-n",
+                      "V", "F:--max-rows", "V"], [("F:--label", "V")])
+# list family (read_model.list_issues: flags appended in this fixed order)
+_SPEC_LISTS += _opts(["list", "F:--json", "F:-n", "V", "F:--max-rows", "V"],
+                     _LIST_OPTS)
+# list by metadata field (correlation.find_by_run)
+_SPEC_LISTS += _opts(["list", "F:--json", "F:--metadata-field", "V"],
+                     [("F:--all",)])
+# circuit-breaker probe shape (tests pin --max-rows alone)
+_SPEC_LISTS += [["list", "F:--json", "F:--max-rows", "V"]]
+_SPEC_LISTS += [["query", "V", "F:--json", "F:-n", "V"]]
+_SPEC_LISTS += _opts(["blocked", "F:--json"],
+                     [("F:--label", "V"), ("F:--parent", "V")])
+_SPEC_LISTS += [["comments", "I", "F:--json"],
+                ["comments", "add", "I", "T"],
+                ["history", "I", "F:--json", "F:--limit", "V"],
+                ["info", "F:--json"],
+                ["create", "T"],
+                ["update", "I", "F:--claim", "F:--json"],
+                ["heartbeat", "I", "F:--json"],
+                # failure-body contract shapes (unguarded, used against a
+                # stubbed proc; write_protocol's AST audit owns guard policy)
+                ["update", "I", "F:--notes", "T", "F:--json"],
+                # negative-qualification shapes (single-guard probes)
+                ["update", "I", "F:--if-assignee", "V", "F:--append-notes",
+                 "T", "F:--json"],
+                ["update", "I", "F:--if-status", "V", "F:--priority", "V",
+                 "F:--json"],
+                ["epic", "status", "I", "F:--json"],
+                ["epic", "close-eligible", "F:--dry-run", "F:--json"],
+                ["close", "I", "F:--reason", "T", "F:--json"],
+                ["reopen", "I", "F:--reason", "T", "F:--json"]]
+_SPEC_LISTS += _opts(["unclaim", "I", "F:--if-assignee", "V", "F:--json"],
+                     [("F:--reason", "T")])
+# guarded update: bare guard pair, any ordered field subset, replacement
+# text, and the correlation metadata namespace (fixed key order subsets)
+_SPEC_LISTS += _field_permutations(["update", "I"] + _GUARD, _FIELD_GROUPS)
+_SPEC_LISTS += [["update", "I"] + _GUARD + ["F:--title", "T"],
+                ["update", "I"] + _GUARD + ["F:--description", "T"]]
+_SPEC_LISTS += _opts(["update", "I"] + _GUARD,
+                     [("F:--set-metadata", "V")] * 3)
+_SPEC_LISTS += _opts(["update", "I"] + _GUARD,
+                     [("F:--unset-metadata", "V")] * 3)
+
+_FIXED_ARGV_SHAPES = {_SHAPES: tuple(sorted({tuple(s) for s in _SPEC_LISTS}))}
+
+
+def _tok_ok(cls, tok):
+    """Token-class check for the fixed-argv gate (pure, no I/O)."""
+    if not isinstance(tok, str) or tok == "" or "\x00" in tok:
+        return False
+    if cls == "T":
+        # opaque text body (comment/description/notes/reason): NO shell in
+        # argv, so ;rm/../newlines are inert single tokens — and the plugin's
+        # own negative suite round-trips \t\n\r through bd, so they must
+        # pass. Only NUL (unspawnable) and gateway-flag spoofing are refused;
+        # ESC is refused too — terminal escape payloads must never leave the
+        # store toward a renderer via a plugin-composed write.
+        return (tok != "" and "\x00" not in tok and "\x1b" not in tok
+                and not any(g in tok for g in _GATEWAY_FLAGS))
+    if any(c in tok for c in "\n\r\t\x1b") or any(c in tok for c in _META):
+        return False
+    # gateway-flag spoofing is dead in EVERY non-text slot too (an
+    # --actor-looking value never belongs in an id/flag/value position)
+    if any(g in tok for g in _GATEWAY_FLAGS):
+        return False
+    if cls == "V":
+        return True  # bounded scalar (ids, labels, dates, counts, key=value)
+    if cls == "I":
+        # exact-ID token: never dash-leading, pathy, spaced, or control-shaped
+        if tok.startswith("-"):
+            return False
+        if ".." in tok or "/" in tok or "\\" in tok or " " in tok:
+            return False
+        return all(ch >= " " for ch in tok)
+    if cls.startswith("F:"):
+        return tok == cls[2:]
+    # bare verb/literal token (e.g. "ready", "add", "all") — exact match
+    return tok == cls
+
+
+def _shape_ok(argv_prefix):
+    """True iff argv_prefix matches one shipped fixed-argv shape exactly
+    (length + per-position token class). Pure: call it without spawning."""
+    if not isinstance(argv_prefix, (list, tuple)) \
+            or not all(isinstance(t, str) for t in argv_prefix):
+        return False
+    for shape in _FIXED_ARGV_SHAPES[_SHAPES]:
+        if len(shape) != len(argv_prefix):
+            continue
+        if all(_tok_ok(cls, tok) for cls, tok in zip(shape, argv_prefix)):
+            return True
+    return False
 
 
 class NativeError(Exception):
@@ -98,7 +240,16 @@ def run_bd(argv_prefix, *, workspace, bd_bin="bd", readonly=False, actor=None,
     """
     if not isinstance(argv_prefix, list) or not all(isinstance(t, str) for t in argv_prefix):
         raise ValueError("argv_prefix must be a list of str tokens (fixed argv)")
+    if argv_prefix and not _shape_ok(argv_prefix):
+        # Fixed-argv law: the prefix must match a shipped shape EXACTLY —
+        # refusing here is before any subprocess.run (no partial exec, no
+        # side effect). An off-table argv has no legitimate origin.
+        raise ValueError(
+            f"argv refused by fixed-argv shape gate: {argv_prefix!r} does "
+            "not match any shipped fixed-argv shape (see _FIXED_ARGV_SHAPES)")
     _workspace_check(workspace)
+    if actor is not None and not _tok_ok("I", actor):
+        raise ValueError(f"actor token refused by fixed-argv gate: {actor!r}")
 
     argv = [bd_bin]
     if readonly:

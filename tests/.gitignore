@@ -10,3 +10,4 @@ node_modules/
 .search-fixtures/
 fixtures/handoff-runtime/handoff-*/
 .standalone-runtime/
+security-runtime/
