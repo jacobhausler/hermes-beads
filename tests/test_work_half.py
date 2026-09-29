@@ -45,6 +45,12 @@ import test_runner_binding as trb  # noqa: E402  (fixture helpers: reuse)
 
 BD = trb.BD
 WH = trb.FIXTURES / "work-half"
+# Own host HERMES_HOME + own patched checkout: the runner suite runs in
+# parallel in the integrated gate and provisions ITS credential at ITS
+# HERMES_HOME; sharing either would let one suite's cred()/rmtree clobber
+# the other mid-test (same race class as hbl-pnu.4.7).
+os.environ["HERMES_HOME"] = str(WH / "host-home")
+WORKFLOW_SRC = WH / "workflow-source"
 
 
 class WorkHalf(unittest.TestCase):
@@ -54,15 +60,13 @@ class WorkHalf(unittest.TestCase):
         # fresh run root: a stale run from an earlier session can never
         # shadow this session's admission (idempotency lives in real state,
         # and the state under test is created fresh, deterministically).
-        if trb.WORKFLOW_SRC.exists():
-            shutil.rmtree(trb.WORKFLOW_SRC)
-        trb.WORKFLOW_SRC.mkdir(parents=True)
-        for f in ("wf.py", "wfcommon.py"):
-            shutil.copy2(trb.INSTALLED / f, trb.WORKFLOW_SRC / f)
-        runner_hooks.install(trb.WORKFLOW_SRC / "wf.py", os.path.dirname(HERE))
         if WH.exists():
             shutil.rmtree(WH)
         (WH / "runs").mkdir(parents=True)
+        WORKFLOW_SRC.mkdir(parents=True)
+        for f in ("wf.py", "wfcommon.py"):
+            shutil.copy2(trb.INSTALLED / f, WORKFLOW_SRC / f)
+        runner_hooks.install(WORKFLOW_SRC / "wf.py", os.path.dirname(HERE))
 
     def setUp(self):
         bot_handoff.bind_runner_door(None)
@@ -73,7 +77,7 @@ class WorkHalf(unittest.TestCase):
     def door(self, store, **kw):
         d = work_door.make_work_door(
             store=str(store), bd_bin=BD,
-            run_base=str(WH / "runs"), workflow_src=str(trb.WORKFLOW_SRC),
+            run_base=str(WH / "runs"), workflow_src=str(WORKFLOW_SRC),
             hermes_bin=str(trb.FAKE_HERMES), **kw)
         bot_handoff.bind_runner_door(d)
         return d

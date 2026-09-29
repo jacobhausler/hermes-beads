@@ -2,7 +2,7 @@
 //
 // Before this bead no desktop/*.mjs component attached the keyboard
 // contract: the mounted smoke's WorkbenchApp was test-authored, so a human
-// had nothing real to press keys in (reports/finish-mounted-review.json
+// had nothing real to press keys in (mounted-smoke review
 // defect 1). This module composes the REAL panels — Tree, RecordCard,
 // BlockerCard, SearchPanel, SplitCompare, DraftPanel (drafts_view.mjs),
 // botActionPanel — and binds the existing keymap/controller (tree.mjs
