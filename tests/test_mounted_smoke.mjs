@@ -1204,9 +1204,28 @@ test("doors: blocked row shows a visible blockers button AND Ctrl+b opens the ca
   eq(session.card, null, "Return cleared the session view box");
   eq(ui.focus, origin.focus, "Return restored the origin keyboard focus");
   eq(ui.selection, IDS.taskB, "cursor stays on the blocked row the card was opened from");
-  const af = document.activeElement;
-  eq(af?.getAttribute?.("data-tree-row") ?? null, origin.focus,
-    "document focus returned to the tree (origin row), not the dead button/body");
+  // hbl-pnu.2.11 real-Chrome finding: document focus must land on the ROVING
+  // TAB STOP (the cursor row the card was opened from), never on a different
+  // row — else the ring sits on one row while the next arrow moves from
+  // another (observed: ring on wt-aqh, ArrowDown jumped 3 rows).
+  const tabStop = () => mountEl.querySelector('[role="treeitem"][tabindex="0"]')
+    ?.getAttribute("data-tree-row") ?? null;
+  const rowOrder = () => [...mountEl.querySelectorAll('[role="treeitem"]')]
+    .map((r) => r.getAttribute("data-tree-row"));
+  const assertFocusIsTabStopAndArrowStepsOne = async (label) => {
+    const af = document.activeElement?.getAttribute?.("data-tree-row") ?? null;
+    eq(af, tabStop(), `${label}: document focus sits on the roving tab stop`);
+    eq(af, ui.selection, `${label}: document focus is the cursor row`);
+    const order = rowOrder(); const i = order.indexOf(af);
+    ok(i >= 0, `${label}: focused row is rendered (${af} in ${order.join(",")})`);
+    const [k, back, want] = i + 1 < order.length
+      ? ["ArrowDown", "ArrowUp", order[i + 1]] : ["ArrowUp", "ArrowDown", order[i - 1]];
+    await press(k);
+    eq(document.activeElement?.getAttribute?.("data-tree-row") ?? null, want,
+      `${label}: next ${k} moves exactly ONE row from the focused row (order ${order.join(",")})`);
+    await press(back);
+  };
+  await assertFocusIsTabStopAndArrowStepsOne("Return button");
   // (c) the key door: Ctrl+b for the selected row (cursor on taskB, focus on ready)
   await walkCursorTo(IDS.ready);
   await press("Enter", {});
@@ -1222,6 +1241,7 @@ test("doors: blocked row shows a visible blockers button AND Ctrl+b opens the ca
     "Alt+ArrowLeft cleared the card (negative control: controller pass-through fails — the card would stay mounted)");
   eq(session.card, null, "Alt+ArrowLeft cleared session.card");
   eq(ui.focus, origin.focus, "Alt+ArrowLeft restored the origin keyboard focus");
+  await assertFocusIsTabStopAndArrowStepsOne("Alt+ArrowLeft");
   await snap("user-blocker-door", mountEl);
   await unmount();
 });
