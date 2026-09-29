@@ -178,6 +178,18 @@ def run_work(workspace, bead, *, actor, bd_bin="bd", request_key=None):
             out.update({"ok": False, "error": "runner_unqualified",
                         "reason": why, "handed_off": False})
             return out
+    admission = getattr(_runner_door, "admission_error", None)
+    if callable(admission):
+        try:
+            why = admission(bead, request_key, workspace)
+        except Exception as exc:            # a broken check refuses
+            why = f"admission check failed: {exc}"
+        if why:
+            # decided BEFORE the claim: nothing touched the store
+            out.update({"ok": False, "error": "door_refused",
+                        "reason": why, "handed_off": False,
+                        "claimed": False})
+            return out
     import claims
     try:
         row = claims.claim(workspace, bead, actor=actor, bd_bin=bd_bin)

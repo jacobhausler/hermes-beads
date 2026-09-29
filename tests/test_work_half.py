@@ -193,6 +193,25 @@ class WorkHalf(unittest.TestCase):
         self.assertEqual(led["state"], "failed")
         self.assertEqual(row.get("assignee"), "w-bot")  # still held; not closed
 
+    # ---- 4b: refusable clicks decided BEFORE the claim (review finding 1) --
+    def test_refused_click_claims_nothing(self):
+        s = trb.make_store("wh-pre")
+        i = trb.create(s, "approved")
+        j = trb.create(s, "NOT approved")
+        trb.cred("wh-pre", s, [i])
+        self.door(s)
+        for bead, key, why in ((j, "k-out", "approved scope"),
+                               (i, None, "idempotency key")):
+            out = bot_handoff.run_work(str(s), bead, actor="w-bot", bd_bin=BD,
+                                       request_key=key)
+            row = read_model.show(str(s), bead, bd_bin=BD)   # native truth first
+            self.assertFalse(row.get("assignee") or None, (bead, row))
+            self.assertEqual(row.get("status"), "open", (bead, row))
+            self.assertFalse(out["ok"], out)
+            self.assertEqual(out["error"], "door_refused")
+            self.assertIn(why, out["reason"])
+            self.assertIs(out.get("claimed"), False)
+
     # ---- 5: unqualified => typed unavailable, never fake success -----------
     def test_unqualified_door_is_visible_unavailable(self):
         s = trb.make_store("wh-unq")

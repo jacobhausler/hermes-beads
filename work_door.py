@@ -134,28 +134,43 @@ class WorkDoor:
         return cred
 
     # ---------- the door ----------------------------------------------------
+    def admission_error(self, bead, request_key, workspace=None):
+        """Every refusal the door can decide WITHOUT effects, as a typed
+        string (None = admissible). run_work calls this BEFORE claiming, so
+        a keyless / out-of-scope / wrong-store click never leaves a claimed
+        bead behind."""
+        if not request_key or not isinstance(request_key, str):
+            return ("work click without an idempotency key is refused — the "
+                    "door cannot prove one admission per click")
+        err = self.precheck_error()
+        if err:
+            return f"runner_unqualified: {err}"
+        try:
+            cred = self.read_credential()
+        except WorkDoorError as exc:
+            return str(exc)
+        if bead not in set(cred.get("approved_beads") or []):
+            return (f"bead {bead} outside the credential's approved scope: "
+                    "scoped admission refused before effects")
+        if cred.get("store") and os.path.realpath(cred["store"]) != \
+                os.path.realpath(self.store):
+            return ("credential/store mismatch: the door may not retarget "
+                    "the canonical store")
+        if workspace is not None and os.path.realpath(str(workspace)) != \
+                os.path.realpath(self.store):
+            return ("workspace is not the door's canonical store: refused "
+                    "before effects")
+        return None
+
     def __call__(self, payload):
         bead = payload["bead"]
         actor = payload.get("actor") or self.worker_default
         key = payload.get("request_key")
-        if not key or not isinstance(key, str):
-            raise WorkDoorError("work click without an idempotency key is "
-                                "refused — the door cannot prove one "
-                                "admission per click")
-        err = self.precheck_error()
-        if err:
-            raise WorkDoorError(f"runner_unqualified: {err}")
         with self._lock:
+            err = self.admission_error(bead, key)
+            if err:
+                raise WorkDoorError(err)
             cred = self.read_credential()
-            approved = set(cred.get("approved_beads") or [])
-            if bead not in approved:
-                raise WorkDoorError(
-                    f"bead {bead} outside the credential's approved scope: "
-                    "scoped admission refused before effects")
-            if cred.get("store") and os.path.realpath(cred["store"]) != \
-                    os.path.realpath(self.store):
-                raise WorkDoorError("credential/store mismatch: the door "
-                                    "may not retarget the canonical store")
 
             # ONE door call -> ONE admit_work. The click's key is claimed
             # in a durable O_EXCL map BEFORE anything: the winner derives
@@ -174,7 +189,8 @@ class WorkDoor:
                 os.write(fd, run_id.encode())
                 os.close(fd)
             except FileExistsError:
-                run_id = open(marker, encoding="utf-8").read().strip()
+                with open(marker, encoding="utf-8") as f:
+                    run_id = f.read().strip()
             run_dir = os.path.join(self.run_base, run_id)
             self._build_run(run_dir, run_id, key, bead, actor, cred)
 
@@ -278,7 +294,8 @@ class WorkDoor:
         marker = os.path.join(self.run_base, ".keys",
                               self._key_tag(request_key))
         try:
-            run_id = open(marker, encoding="utf-8").read().strip()
+            with open(marker, encoding="utf-8") as f:
+                run_id = f.read().strip()
         except FileNotFoundError:
             return None
         run_dir = os.path.join(self.run_base, run_id)
