@@ -172,7 +172,11 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
   const doReturn = () => {
     returnFromCard({ stack, ui, state: {} });
     session.card = null;
-    const origin = ui.focus ?? ui.selection;
+    // Document focus lands on the ROVING TAB STOP (the cursor row the card
+    // was opened from). Focusing the model's parked focus row instead left
+    // the ring on one row while the next arrow moved from another (2.11
+    // real-Chrome finding).
+    const origin = ui.selection ?? ui.focus;
     if (origin != null) originReq.current = origin;
     rerender();
   };
