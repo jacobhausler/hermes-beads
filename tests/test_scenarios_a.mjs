@@ -393,3 +393,23 @@ test("S10 inherited multi-blocker: x10 shows inherited g1,g2 (via p10) plus dire
   assert.ok(!blocked3.includes(IDS.x10) && !blocked3.includes(IDS.p10),
     "with all three blockers closed, native blocked lists neither x10 nor p10");
 });
+
+// --------------------------------------------------------------------------
+// Known component limitation surfaced by S10, NOT blocking this lane (S10
+// passes via the show-row snapshot above). Reproducer:
+//   1. seed world; externally `bd close g3`
+//   2. buildSnapshot({ issues: read list_all, ready, blocked }) — the
+//      Browse/refreshOnce row source
+//   3. B.blockersFor(snap, x10) STILL lists g3 as an active direct blocker.
+// model.mjs activeBlockerRefs drops a closed dep only via the edge's own
+// `d.status`, but native `bd list --all --json` dependency[] edge rows carry
+// NO status field (probed bd 1.3.0: {issue_id, depends_on_id, type, ...}
+// only). The referenced record's status IS available in the same snapshot
+// (byId.get(ref).status === "closed"); the resolver never consults it.
+// `bd show --json` DOES expand deps to full records with status — so
+// show-row snapshots (S10 above) behave correctly. Fix candidate:
+// activeBlockerRefs(snap, rec) resolves ref status via snap.byId when the
+// edge lacks one.
+test.todo("model blockersFor: closed blocker drops out of list-sourced snapshots too", (t) => {
+  t.diagnostic("see comment: list_all edge rows carry no status; model only checks d.status");
+});
