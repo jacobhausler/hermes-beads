@@ -9,3 +9,4 @@ node_modules/
 .compare-runtime/
 .search-fixtures/
 fixtures/handoff-runtime/handoff-*/
+.standalone-runtime/
