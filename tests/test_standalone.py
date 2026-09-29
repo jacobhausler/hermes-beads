@@ -69,6 +69,7 @@ FIXTURE_ROOT = os.path.join(HERE, ".standalone-runtime")
 FOREIGN_CWD = os.path.join(os.path.dirname(os.path.dirname(BD_BIN)),
                            "fixtures", "standalone-foreign-cwd")
 os.makedirs(FOREIGN_CWD, exist_ok=True)
+os.makedirs(FIXTURE_ROOT, exist_ok=True)  # fresh checkout: create before any mkdtemp
 ARTIFACTS = ["tests/test_standalone.py"]
 WORKER, PARENT = "sa-worker", "sa-parent"
 NOTE = "standalone: guarded edit"
