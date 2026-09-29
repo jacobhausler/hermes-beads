@@ -6,3 +6,4 @@ node_modules/
 .fixtures/
 .fixtures-reads/
 .history-fixtures/
+.compare-runtime/
