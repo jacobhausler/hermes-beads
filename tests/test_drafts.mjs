@@ -385,6 +385,65 @@ test("proven save with a working clear reports draftCleared true", () => {
   assert.equal(d.getDraft(SI_A, "abc"), null);
 });
 
+// ---- reviewer probe (drive-hci review): clear-debt after a NON-remove failure --
+// If the store wrote a draft durably and then degraded through keys()/get()
+// (remove still functional), a later discard must still clear what it wrote.
+// Returning true while leaving the storage entry behind resurrects the
+// discarded draft on reload — the same bug class as the parent repro.
+test("discard after non-remove capability failure clears storage; no reload resurrection", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "abc", "was durable", {});          // committed durably
+  assert.equal(d.durability(), "durable");
+  storage.keys = () => { throw new Error("listing denied once"); };
+  d.saveDraft(SI_A, "other", "degrade me", {});         // keyCount() fault ⇒ terminal degrade
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.discardDraft(SI_A, "abc"), true);
+  assert.equal(storage.map.has(draftKey(SI_A, "abc")), false,
+    "the entry this store wrote durably must be cleared, not left to resurrect");
+  const reloaded = createDraftStore({ storage });       // fresh instance, remove healed
+  assert.equal(reloaded.durability(), "durable");
+  assert.equal(reloaded.getDraft(SI_A, "abc"), null,
+    "a discarded draft must not come back after reload");
+});
+
+test("discard after degrade with a revoked remove reports false and keeps the draft visible", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "abc", "durable copy", {});
+  storage.keys = () => { throw new Error("listing denied"); };
+  d.saveDraft(SI_A, "x", "degrade", {});
+  assert.equal(d.durability(), "memory-only");
+  storage.remove = () => { throw new Error("remove revoked"); };
+  assert.equal(d.discardDraft(SI_A, "abc"), false,
+    "the store still owes a storage-side clear for what it wrote durably");
+  assert.equal(d.getDraft(SI_A, "abc").text, "durable copy",
+    "no silent loss: the un-cleared draft stays visible");
+});
+
+test("loaded draft is cleared after later storage degradation", () => {
+  const storage = fakeStorage();
+  createDraftStore({ storage }).saveDraft(SI_A, "abc", "prior session", {});
+  const d = createDraftStore({ storage });
+  assert.equal(d.getDraft(SI_A, "abc").text, "prior session");
+  storage.keys = () => { throw new Error("listing failed"); };
+  d.saveDraft(SI_A, "other", "session only", {});
+  assert.equal(d.discardDraft(SI_A, "abc"), true);
+  assert.equal(createDraftStore({ storage }).getDraft(SI_A, "abc"), null);
+});
+
+test("write that persists then throws still requires storage-side discard", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  const set = storage.set.bind(storage);
+  storage.set = (key, value) => { set(key, value); throw new Error("uncertain write"); };
+  d.saveDraft(SI_A, "abc", "persisted despite error", {});
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.discardDraft(SI_A, "abc"), true);
+  storage.set = set;
+  assert.equal(createDraftStore({ storage }).getDraft(SI_A, "abc"), null);
+});
+
 // ---- purity audit ---------------------------------------------------------------
 test("desktop/drafts.mjs is pure: no fs/child_process/localStorage/window/DOM/bd reach", () => {
   const src = readFileSync(path.join(here, "..", "desktop", "drafts.mjs"), "utf8");

@@ -123,6 +123,7 @@ export function createDraftStore(opts = {}) {
   const maxDrafts = opts.maxDrafts ?? 200;
   const local = new Map(); // session fallback + hot cache
   const sessions = new Map(); // key -> open editor handle
+  const storageDebt = new Set(); // keys this store committed to storage while durable
   let warning = null;
   let durable = false;
 
@@ -176,7 +177,10 @@ export function createDraftStore(opts = {}) {
   const put = (key, rec) => {
     local.set(key, rec);
     if (durable) {
-      try { adapter.set(key, JSON.stringify(rec)); } catch {
+      try {
+        storageDebt.add(key); // a throwing write can still have persisted
+        adapter.set(key, JSON.stringify(rec));
+      } catch {
         degrade("Durable SDK storage raised during a write — drafts are session-only and will be lost on reload.");
       }
     }
@@ -193,6 +197,7 @@ export function createDraftStore(opts = {}) {
       return null;
     }
     if (raw == null) return null;
+    storageDebt.add(key); // loaded entries also need clearing after degradation
     let rec;
     try { rec = JSON.parse(raw); } catch {
       try { adapter.remove(key); } catch {
@@ -264,16 +269,16 @@ export function createDraftStore(opts = {}) {
     // Returns true ONLY when the clear is complete. Storage is cleared FIRST:
     // if the adapter cannot commit the remove, the draft stays visible and we
     // report false — a half-cleared draft that resurfaces later is worse than
-    // an honest failure. (durable===false means nothing was ever written, so
-    // the local delete is the whole clear and true is honest.)
+    // an honest failure. Degradation does not erase prior persistence.
     discardDraft(storeInfo, beadId) {
       const key = draftKey(storeInfo, beadId);
-      if (durable) {
+      if (durable || storageDebt.has(key)) {
         try { adapter.remove(key); } catch {
           degrade("Durable SDK storage raised while discarding a draft — the draft was kept visible; drafts are session-only and will be lost on reload.");
           return false;
         }
       }
+      storageDebt.delete(key);
       local.delete(key);
       sessions.delete(key);
       return true;
