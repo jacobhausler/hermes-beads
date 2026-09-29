@@ -34,6 +34,7 @@ import read_model    # noqa: E402
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, ".fixtures-reads")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 RECEIPTS = "/home/hermes/.hermes/work/beads-lab/reports/interop-receipts.json"
 
 

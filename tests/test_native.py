@@ -21,6 +21,7 @@ import native  # noqa: E402
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, ".fixtures")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 
 
 def make_store():

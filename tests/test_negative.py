@@ -45,6 +45,7 @@ import evidence          # noqa: E402
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, "fixtures", "negative-runtime")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 DOCS = os.path.join(os.path.dirname(HERE), "docs", "negative-qualification.md")
 
 VOLATILE = {"updated_at", "lease_expires_at", "heartbeat_at"}

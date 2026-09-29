@@ -39,6 +39,7 @@ import write_protocol    # noqa: E402  (the module under test)
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, ".write-fixtures")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 
 
 def make_store():

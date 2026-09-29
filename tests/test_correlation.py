@@ -37,6 +37,7 @@ import correlation       # noqa: E402  (the module under test)
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, "fixtures", "correlation-runtime")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 RUNNER_ROOT = "/home/hermes/.hermes/plugins/hermes-workflows"
 
 

@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, ".fixtures")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Contract state (declared here, asserted below). A caller that wants CAS must
