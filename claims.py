@@ -12,7 +12,7 @@ composited. Field values pass through verbatim (statuses/edge types we have
 never seen stay untouched).
 
 Native facts this module relies on (pinned bd 1.3.0, f45b249ce — probed via
-`bd <cmd> --help` + reports/interop-receipts.json Q1-Q9; nothing invented):
+`bd <cmd> --help` + recorded interop receipts Q1-Q9; nothing invented):
   claim      `bd update <id> --claim --json` — sets assignee=<actor>,
              status=in_progress. Same-actor re-claim: exit 0, lease
              unchanged (idempotent, observed Q2). Distinct-actor on a held
