@@ -26,7 +26,9 @@ only read and hash-pinned before/after.
   the runner uid is inside the boundary. A process that controls the runner's
   environment or runs as the runner uid can re-provision (`rotate=True`) or
   read the 0600 secret file — a file-secret scheme cannot stop that; it needs
-  a different-uid host signer (production gate hbl-pnu.3.6). The per-call env
+  a different-uid host signer (production gate hbl-pnu.3.6). Only the last
+  two components (`beads/`, the file) are opened no-follow; symlinks higher
+  up inside `HERMES_HOME` are followed, which is in-boundary by the same rule. The per-call env
   pointer that let a request aim the door at any file is gone. Children do
   not receive the secret in env or argv; a same-uid child can still read the
   file.

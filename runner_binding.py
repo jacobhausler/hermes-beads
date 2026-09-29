@@ -206,8 +206,9 @@ def _read_host_credential(path):
         if dst.st_mode & 0o077:
             return None, "credential directory must be owner-only (0700)"
         try:
-            fd = os.open(os.path.basename(path), os.O_RDONLY | os.O_NOFOLLOW,
-                         dir_fd=dfd)
+            fd = os.open(os.path.basename(path),
+                         os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                         dir_fd=dfd)   # NONBLOCK: a FIFO cannot hang the door
         except OSError:
             return None, ("no host credential provisioned "
                           "(or it is a symlink — refused)")
