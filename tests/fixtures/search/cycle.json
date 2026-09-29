@@ -1,0 +1,35 @@
+{
+  "storeInfo": {
+    "workspace": "/lab/store",
+    "db": "/lab/store/.beads/lab.db"
+  },
+  "issues": [
+    {
+      "id": "cyc-a",
+      "title": "cycle member a",
+      "status": "open",
+      "parent": "cyc-b",
+      "dependencies": []
+    },
+    {
+      "id": "cyc-b",
+      "title": "cycle member b",
+      "status": "open",
+      "parent": "cyc-a",
+      "dependencies": []
+    }
+  ],
+  "outOfSnapshot": [
+    {
+      "id": "ocyc-a",
+      "title": "outside cycle a",
+      "parent": "ocyc-b"
+    },
+    {
+      "id": "ocyc-b",
+      "title": "outside cycle b",
+      "parent": "ocyc-a"
+    }
+  ],
+  "_fact": "parent cycles terminate with an explicit marker (in-snapshot via model.mjs decorate; out-of-snapshot via the fallback walk's visited set) \u2014 no infinite walk. outOfSnapshot is a documented data note; the in-snapshot cycle is what resolveHitPath renders."
+}

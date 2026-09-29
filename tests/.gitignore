@@ -7,3 +7,4 @@ node_modules/
 .fixtures-reads/
 .history-fixtures/
 .compare-runtime/
+.search-fixtures/

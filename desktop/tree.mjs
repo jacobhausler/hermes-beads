@@ -58,26 +58,23 @@ export function buildTreeRows(snapshot, ui, opts = {}) {
   const rows = treeVisibleRows(snapshot, ui);
   const partial = rows.length > maxRows;
   const kept = partial ? rows.slice(0, maxRows) : rows;
-  const setsizeOf = (id) => {
-    const n = snapshot.nodes.get(id);
-    let k = 0;
-    for (const m of snapshot.nodes.values()) if ((m.parent ?? null) === (n?.parent ?? null)) k += 1;
-    return Math.max(1, k);
-  };
+  const setsizeOf = (id) => siblingCount(snapshot, ui, id);
   const posByParent = new Map(); // 1-based ordinal among rendered siblings
-  const out = kept.map(({ id, depth }) => {
+  const out = kept.map(({ id, depth, boundary }) => {
     const node = snapshot.nodes.get(id);
-    const rec = snapshot.byId.get(id) ?? {};
-    const pk = node?.parent == null ? "" : node.parent;
+    const rec = snapshot.byId.get(id) ?? ui.revealed.get(id) ?? {};
+    const parentId = rowParent(snapshot, ui, id);
+    const pk = parentId == null ? "" : parentId;
     const posinset = (posByParent.get(pk) ?? 0) + 1;
     posByParent.set(pk, posinset);
+    const status = node?.storedStatus ?? rec.status ?? "unknown";
     const row = {
       kind: "row", id,
-      parentId: node?.parent ?? null, // byte-match of the snapshot parent field
+      parentId, boundary: !!boundary,
       depth,
       indentPx: depth * INDENT_PX,
-      statusWord: node?.storedStatus ?? "unknown",
-      statusGlyph: statusLabel(node?.storedStatus ?? null).split(" ")[0],
+      statusWord: status,
+      statusGlyph: statusLabel(status).split(" ")[0],
       posinset,
       setsize: setsizeOf(id),
       title: typeof rec.title === "string" ? rec.title : id, // verbatim
@@ -158,40 +155,22 @@ export function expandedOf(snapshot, ui) {
   return new Set(modelExpanded(snapshot, ui));
 }
 
-// Conventional tree traversal over the snapshot's parent FIELD only:
-// roots ordered ready-first (readyIds insertion order, stable) then arrival
-// order, children in childIds order, a subtree rendered only while every
-// ancestor is expanded. Rows never reachable from any rendered root
-// (missing-parent orphans, cycle members) still get exactly one row — never
-// silently hidden — mirroring model.mjs's honesty rule.
-function treeVisibleRows(snapshot, ui) {
-  const expanded = modelExpanded(snapshot, ui);
-  const seenAll = new Set();
-  const mark = (id) => {
-    const n = snapshot.nodes.get(id);
-    if (!n || seenAll.has(id)) return;
-    seenAll.add(id);
-    for (const c of n.childIds) mark(c);
-  };
-  const rootIds = [];
-  for (const [id, n] of snapshot.nodes) if (n.parent === null) rootIds.push(id);
-  for (const id of rootIds) mark(id);
-  const rank = new Map();
-  if (snapshot.readyIds) { let i = 0; for (const id of snapshot.readyIds) if (!rank.has(id)) rank.set(id, i++); }
-  const ordered = [...rootIds].sort((a, b) => (rank.get(a) ?? Infinity) - (rank.get(b) ?? Infinity));
-  const out = [];
-  const reached = new Set();
-  const walk = (id, depth) => {
-    const n = snapshot.nodes.get(id);
-    if (!n || reached.has(id)) return;
-    reached.add(id);
-    out.push({ id, depth });
-    if (n.cyclic) return;
-    if (expanded.has(id)) for (const c of n.childIds) walk(c, depth + 1);
-  };
-  for (const id of ordered) walk(id, 0);
-  for (const id of snapshot.nodes.keys()) if (!seenAll.has(id)) out.push({ id, depth: 0 });
-  return out;
+// The model owns both expansion and transient native rows. The tree must
+// consume its exact visible rows rather than maintaining a second traversal.
+function treeVisibleRows(snapshot, ui) { return ui.visibleRows(); }
+
+function rowParent(snapshot, ui, id) {
+  return snapshot.nodes.get(id)?.parent ?? ui.revealed.get(id)?.parent ?? null;
+}
+function rowChildren(snapshot, ui, id) {
+  return [...(snapshot.nodes.get(id)?.childIds ?? []),
+    ...[...ui.revealed].filter(([, r]) => r.parent === id).map(([rid]) => rid)];
+}
+function siblingCount(snapshot, ui, id) {
+  const parent = rowParent(snapshot, ui, id);
+  if (parent != null) return rowChildren(snapshot, ui, parent).length || 1;
+  return [...snapshot.nodes.values()].filter((n) => n.parent === null).length
+    + [...ui.revealed.values()].filter((r) => r.parent == null).length || 1;
 }
 
 // ---- navigation controller ---------------------------------------------------
@@ -241,6 +220,7 @@ export function createTreeController({ snapshot, ui }) {
     if (cmd === "exit-tree") { box.tabExit = true; return cmd; } // Tab exits natively
     ev.preventDefault?.();
     const node = () => snapshot.nodes.get(ui.selection);
+    const children = () => rowChildren(snapshot, ui, ui.selection);
     const exp = () => modelExpanded(snapshot, ui);
     switch (cmd) {
       case "cursor-up": stepBy(-1); break;
@@ -248,17 +228,19 @@ export function createTreeController({ snapshot, ui }) {
       case "cursor-first": { const r = rows(); if (r.length) slide(r[0].id); break; }
       case "cursor-last": { const r = rows(); if (r.length) slide(r.at(-1).id); break; }
       case "expand-or-first-child": {
-        const n = node();
-        if (n && n.childIds.length && !n.cyclic) {
+        const kids = children();
+        if (kids.length && !node()?.cyclic) {
           if (!exp().has(ui.selection)) exp().add(ui.selection);
-          else slide(n.childIds[0]); // first child is the next visible row
+          else slide(kids[0]);
         }
         break;
       }
       case "collapse-or-parent": {
-        const n = node();
-        if (n && n.childIds.length && !n.cyclic && exp().has(ui.selection)) exp().delete(ui.selection);
-        else if (n && n.parent != null) slide(n.parent);
+        if (children().length && !node()?.cyclic && exp().has(ui.selection)) exp().delete(ui.selection);
+        else {
+          const parent = rowParent(snapshot, ui, ui.selection);
+          if (parent != null && rows().some((r) => r.id === parent)) slide(parent);
+        }
         break;
       }
       case "focus-cursor": ui.enter(); break;
@@ -374,12 +356,7 @@ export function createRefreshScheduler({ provider, now = () => Date.now(), delay
 export function Tree({ snapshot, ui, scheduler }) {
   const rows = treeVisibleRows(snapshot, ui);
   const expanded = modelExpanded(snapshot, ui);
-  const setsizeOf = (id) => {
-    const n = snapshot.nodes.get(id);
-    let k = 0;
-    for (const m of snapshot.nodes.values()) if ((m.parent ?? null) === (n?.parent ?? null)) k += 1;
-    return Math.max(1, k);
-  };
+  const setsizeOf = (id) => siblingCount(snapshot, ui, id);
   // The roving tab stop must exist: if the model cursor sits on a row the
   // current expansion hides (e.g. initial.selection deep in a collapsed
   // subtree), fall back to the first rendered row.
@@ -390,32 +367,38 @@ export function Tree({ snapshot, ui, scheduler }) {
   const posByParent = new Map(); // 1-based ordinal among visible siblings
   const items = rows.map((r, i) => {
     const n = snapshot.nodes.get(r.id);
-    const rec = snapshot.byId.get(r.id) ?? {};
-    let rowLabel = (rec.title ?? r.id) + " " + statusLabel(n?.storedStatus ?? null);
+    const rec = snapshot.byId.get(r.id) ?? ui.revealed.get(r.id) ?? {};
+    const status = n?.storedStatus ?? rec.status ?? null;
+    const boundary = r.boundary ? "parent unknown — bounded search boundary" : null;
+    let rowLabel = (rec.title ?? r.id) + " " + statusLabel(status);
+    if (boundary) rowLabel += `, ${boundary}`;
     const prog = epicProgress(snapshot, r.id);
     if (prog) rowLabel += ` epic progress ${prog.closed}/${prog.total}`;
-    const pk = n?.parent == null ? "" : n.parent;
+    const parent = rowParent(snapshot, ui, r.id);
+    const pk = parent == null ? "" : parent;
     const posinset = (posByParent.get(pk) ?? 0) + 1;
     posByParent.set(pk, posinset);
+    const kids = rowChildren(snapshot, ui, r.id);
     const props = {
       role: "treeitem",
       id: `row:${r.id}`,
       "data-tree-row": r.id,
-      "aria-label": `${rowLabel}, level ${(n?.depth ?? 0) + 1}, ` +
+      "aria-label": `${rowLabel}, level ${r.depth + 1}, ` +
         `${r.id === selId ? "selection cursor, " : ""}${r.id === focusId ? "keyboard focus" : ""}`,
-      "aria-level": (n?.depth ?? 0) + 1,
+      "aria-level": r.depth + 1,
       "aria-posinset": posinset,
       "aria-setsize": setsizeOf(r.id),
       "aria-selected": r.id === selId,
-      "aria-expanded": n && n.childIds.length ? expanded.has(r.id) : undefined,
+      "aria-expanded": kids.length ? expanded.has(r.id) : undefined,
+      "data-parent-boundary": boundary ? "unknown" : undefined,
       "data-keyboard-focus": String(r.id === focusId),
       "data-tree-focusable": String(r.id === selId),
       tabIndex: r.id === selId ? 0 : -1, // roving tab stop
-      style: { paddingInlineStart: `${(n?.depth ?? 0) * INDENT_PX}px` },
-      // glyph AND word as visible text nodes — never glyph-only, never color
+      style: { paddingInlineStart: `${r.depth * INDENT_PX}px` },
       children: [
-        jsx("span", { "data-indent-px": (n?.depth ?? 0) * INDENT_PX, children: rec.title ?? r.id }),
-        statusLabel(n?.storedStatus ?? null),
+        jsx("span", { "data-indent-px": r.depth * INDENT_PX, children: rec.title ?? r.id }),
+        statusLabel(status),
+        ...(boundary ? [boundary] : []),
         ...(prog ? [`epic progress ${prog.closed}/${prog.total}`] : []),
         ...(snapshot.blockedIds?.has(r.id) ? ["blocked"] : []),
       ],

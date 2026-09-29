@@ -1,0 +1,95 @@
+{
+  "storeInfo": {
+    "workspace": "/lab/store",
+    "db": "/lab/store/.beads/lab.db"
+  },
+  "issues": [
+    {
+      "id": "hbl-9g2",
+      "title": "Hermes Beads: disposable design and implementation laboratory",
+      "status": "open",
+      "issue_type": "epic",
+      "parent": null,
+      "dependencies": []
+    },
+    {
+      "id": "hbl-9g2.4",
+      "title": "PROBE FIXTURE: branch A",
+      "status": "open",
+      "issue_type": "epic",
+      "parent": "hbl-9g2",
+      "dependencies": []
+    },
+    {
+      "id": "hbl-9g2.4.1",
+      "title": "PROBE FIXTURE: blocker in branch A",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "hbl-9g2.4",
+      "dependencies": [
+        {
+          "id": "hbl-9g2.5.1",
+          "dependency_type": "blocks",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "id": "hbl-9g2.5",
+      "title": "PROBE FIXTURE: branch B",
+      "status": "open",
+      "issue_type": "epic",
+      "parent": "hbl-9g2",
+      "dependencies": []
+    },
+    {
+      "id": "hbl-9g2.5.1",
+      "title": "PROBE FIXTURE: blocked worker in branch B",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "hbl-9g2.5",
+      "dependencies": [
+        {
+          "id": "hbl-9g2.4.1",
+          "dependency_type": "blocks",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "id": "hbl-ibv",
+      "title": "PROBE FIXTURE: nav probe epic",
+      "status": "open",
+      "issue_type": "epic",
+      "parent": null,
+      "dependencies": []
+    },
+    {
+      "id": "hbl-ibv.1",
+      "title": "PROBE FIXTURE: keyboard map spec",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "hbl-ibv",
+      "dependencies": []
+    },
+    {
+      "id": "hbl-0uf",
+      "title": "PROBE FIXTURE: focus model spec",
+      "status": "open",
+      "issue_type": "task",
+      "parent": "hbl-ibv.1",
+      "dependencies": []
+    }
+  ],
+  "ready": [
+    "hbl-ibv",
+    "hbl-ibv.1",
+    "hbl-0uf",
+    "hbl-9g2",
+    "hbl-9g2.4"
+  ],
+  "blocked": [
+    "hbl-9g2.5.1"
+  ],
+  "_fact": "mirrors reports/hci.md FACT 6 probe subtree (bd 1.3.0): search 'branch B' -> [hbl-9g2.5.1, hbl-9g2.5] flat, no path; hbl-0uf has no ID dots, its structure comes from parent=hbl-ibv.1 (reparented AFTER creation \u2014 FACT 4)."
+}

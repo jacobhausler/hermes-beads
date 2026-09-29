@@ -1,0 +1,16 @@
+{
+  "storeInfo": {
+    "workspace": "/lab/store",
+    "db": "/lab/store/.beads/lab.db"
+  },
+  "issues": [
+    {
+      "id": "chain-kid",
+      "title": "chained under nothing",
+      "status": "open",
+      "parent": "chain-a",
+      "dependencies": []
+    }
+  ],
+  "_fact": "chain-a is absent from the bounded read and the facade answers NOTHING to lookups \u2014 exhaustion must surface a visible unavailable state, not a show loop."
+}

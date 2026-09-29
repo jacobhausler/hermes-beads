@@ -182,6 +182,49 @@ test("claimed-not-ready regression: absent from ready AND blocked => unknown, ne
   assert.equal(n.divergence, null);
 });
 
+test("search reveal API: revealed hit rows are workbench state, NEVER snapshot nodes; unknown parentage renders as an honest boundary row", () => {
+  // model half of the hbl-pnu.2.6 reveal gap: jump alone can't make an
+  // out-of-snapshot hit a visible row (it has no node). reveal(id,parent)
+  // hangs a transient row under a snapshot parent; the snapshot's nodes/
+  // byId are never touched (no invented node, no crowned parent); unreveal
+  // removes the row entirely — Back leaves nothing behind.
+  const f = fixture("tree.json");
+  const snap = buildSnapshot(baseReads(f), { fetchedAt: 1 });
+  const ui = createWorkbenchState(snap, {});
+  assert.equal(typeof ui.reveal, "function", "workbench exposes reveal");
+  assert.equal(typeof ui.unreveal, "function", "workbench exposes unreveal");
+
+  const before = ui.visibleRows().map((r) => `${r.id}:${r.depth}`);
+  const hit = { id: "out-hit", parent: "deep1" };
+  assert.equal(ui.reveal(hit.id, hit.parent), true, "reveal of an out-of-snapshot id succeeds");
+  const rows = ui.visibleRows();
+  const i = rows.findIndex((r) => r.id === hit.id);
+  assert.ok(i >= 0, "revealed hit is an ACTUAL visible row");
+  const pi = rows.findIndex((r) => r.id === hit.parent);
+  assert.equal(rows[i].depth, rows[pi].depth + 1, "revealed row hangs at its parent's child depth");
+  assert.ok(i > pi, "tree order: revealed row reads after its parent");
+  // honesty: NOTHING was invented in the snapshot
+  assert.ok(!snap.nodes.has(hit.id) && !snap.byId.has(hit.id),
+    "no fabricated node/row entered the snapshot");
+  // collapse the parent: the revealed row hides like any real child
+  ui.toggleExpanded("deep1");
+  assert.ok(!ui.visibleRows().some((r) => r.id === hit.id),
+    "collapsing the parent hides the revealed row");
+  ui.toggleExpanded("deep1");
+  // unreveal: exactly the pre-reveal state returns
+  assert.equal(ui.unreveal(hit.id), true);
+  assert.deepEqual(ui.visibleRows().map((r) => `${r.id}:${r.depth}`), before,
+    "unreveal leaves no orphan row");
+  // a revealed id with NO parentage (search row, parent key absent) still
+  // renders — as an honest depth-0 boundary row, never dropped
+  ui.reveal("ghost-hit", undefined);
+  const g = ui.visibleRows().find((r) => r.id === "ghost-hit");
+  assert.ok(g, "unknown-parentage hit is still revealed");
+  assert.equal(g.depth, 0, "unknown parentage renders at the boundary depth, never crowned into a family");
+  // in-snapshot ids are model truth: reveal is a refused no-op
+  assert.equal(ui.reveal("deep1", "a"), false, "in-snapshot rows are never re-revealed");
+});
+
 test("tree expansion respects cycles: cyclic node not descended", () => {
   const f = fixture("cycle.json");
   const snap = buildSnapshot(baseReads(f), { fetchedAt: 1 });
