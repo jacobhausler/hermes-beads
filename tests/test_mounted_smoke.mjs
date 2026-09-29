@@ -128,16 +128,18 @@ test.after(() => {
   execFileSync("python3", [SEEDER, "cleanup", STORE], { encoding: "utf8" });
 });
 
-function read(name, ...args) {
+function readIn(store, name, ...args) {
   const out = JSON.parse(execFileSync("python3",
-    [SEEDER, "read", STORE, name, ...args],
+    [SEEDER, "read", store, name, ...args],
     { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
   return out.rc === 0 ? out.payload : { ...out };
 }
-function actCli(actor, ...argv) {
-  return JSON.parse(execFileSync("python3", [SEEDER, "act", STORE, actor, ...argv],
+function read(name, ...args) { return readIn(STORE, name, ...args); }
+function actCliIn(store, actor, ...argv) {
+  return JSON.parse(execFileSync("python3", [SEEDER, "act", store, actor, ...argv],
     { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
 }
+function actCli(actor, ...argv) { return actCliIn(STORE, actor, ...argv); }
 // bounded native search/show facades (read_model shape; same as scenarios_a)
 function nativeSearch(query, bound) {
   const out = execFileSync(BD_BIN,
@@ -223,14 +225,18 @@ let BEFORE_LIST_ALL = null; // captured after the test's own sanctioned native w
 let root = null;
 let botView = null; // hbl-pnu.3.7: injected bot panel view (runState fixtures)
 async function mount(sessionOpts = {}) {
-  const { botView: bv, ...rest } = sessionOpts;
+  const { botView: bv, world = null, ...rest } = sessionOpts;
   Object.assign(session, rest);
   botView = bv ?? null; // reset every mount unless the fixture supplies one
+  // hbl-pnu.3.7: an injected `world` lets the real-door smoke mount the
+  // SHIPPED root against its own disposable store without disturbing the
+  // browse world's no-mutation guarantee.
+  const w = world ?? { snapshot, ui, controller, stack,
+    storeInfo: STORE_INFO, draftBeadId: IDS.conflict };
   root = createRoot(mountEl);
   await act(async () => {
     root.render(React.createElement(WorkbenchApp, {
-      snapshot, ui, controller, stack, session,
-      storeInfo: STORE_INFO, draftBeadId: IDS.conflict, botView,
+      ...w, session, botView,
       bindRerender: (fn) => { box.rerender = fn; },
     }));
   });
@@ -742,6 +748,210 @@ test("bot runState: role=status renders the door state verbatim; Cancel enabled 
   eq(mountEl.querySelector('#bot-panel-slot [role="status"]') != null, false,
     "no runState => no role=status element (nothing invented)");
   await snap("runstate-none", mountEl);
+  await unmount();
+});
+
+
+// ---- T9 hbl-pnu.3.7: mounted smoke against the REAL door (host bridge) ----
+// The shipped panel is presentation-only: runState arrives INJECTED and the
+// Work/Cancel clicks call INJECTED host handlers. Here the host handlers
+// drive the REAL work_door through work_bridge.py (execFileSync, exactly the
+// smoke's make_store.py pattern): the states asserted below exist in no
+// fixture — fake-hermes really spawns, really sleeps, really gets stopped,
+// and 'succeeded' appears only when the ledger says closed_verified.
+const BRIDGE = path.join(here, "..", "work_bridge.py");
+const BRIDGE_HOME = path.join(here, "..", "tests", ".work-bridge", "host-home");
+const VOCAB9 = ["admitted", "running", "succeeded", "failed", "uncertain",
+  "cancel_requested", "cancelled", "unknown"];
+const WORK_WORLD = JSON.parse(execFileSync("python3",
+  [SEEDER, "seed", "--prefix", "mntwork"],
+  { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
+test.after(() => {
+  execFileSync("python3", [SEEDER, "cleanup", WORK_WORLD.store], { encoding: "utf8" });
+});
+
+function bridgeCall(verb, opts = {}) {
+  const { bead, key, goalPrefix, nodeTimeout, wallDeadline } = opts;
+  const argv = [BRIDGE, verb, "--store", WORK_WORLD.store, "--bead", bead, "--key", key];
+  if (goalPrefix !== undefined) argv.push("--goal-prefix", goalPrefix);
+  if (nodeTimeout !== undefined) argv.push("--node-timeout", String(nodeTimeout));
+  if (wallDeadline !== undefined) argv.push("--wall-deadline", String(wallDeadline));
+  return JSON.parse(execFileSync("python3", argv, {
+    encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
+    env: { ...process.env, HERMES_HOME: BRIDGE_HOME },
+  }));
+}
+
+function makeWorkBead(title) {
+  const r = actCliIn(WORK_WORLD.store, ACTOR, "create", title, "--json");
+  eq(r.rc, 0, `work bead created in the door store: ${title}`);
+  return JSON.parse(r.stdout).id;
+}
+
+function workSnapshot() {
+  return buildSnapshot({
+    issues: readIn(WORK_WORLD.store, "list_all"),
+    ready: null,
+    blocked: readIn(WORK_WORLD.store, "blocked"),
+    storeInfo: WORK_WORLD.storeInfo,
+  }, { bound: 500 });
+}
+
+async function rr() { box.rerender(); await act(async () => {}); }
+
+async function mountWorkHost(bead, key, clickOpts = {}) {
+  const snap = workSnapshot();
+  const wui = createWorkbenchState(snap);
+  const host = {
+    ask: null, work: { present: true, enabled: true, disabledReason: null },
+    bead, key, runState: null, cancelRequested: false,
+    clicks: [], clickJson: null, cancelJson: null,
+  };
+  // the ONLY host handlers the shipped panel may ever call — they do all
+  // door I/O (via the bridge CLI); the components themselves spawn nothing.
+  host.onWork = (b) => {
+    host.clicks.push(b);
+    host.clickJson = bridgeCall("click", { bead: b, key, ...clickOpts });
+  };
+  host.onCancel = () => {
+    const c = bridgeCall("cancel", { bead, key });
+    host.cancelJson = c;
+    host.runState = { state: c.state };
+    if (c.state === "cancel_requested") host.cancelRequested = true;
+    box.rerender();
+  };
+  await mount({
+    showBot: true, draftStore: null, card: null, searchResults: null,
+    compare: null, botView: host,
+    world: {
+      snapshot: snap, ui: wui,
+      controller: T.createTreeController({ snapshot: snap, ui: wui }),
+      stack: createHistoryStack({ storeKey: snap.storeKey }),
+      storeInfo: WORK_WORLD.storeInfo, draftBeadId: bead,
+    },
+  });
+  return host;
+}
+
+function statusEl() { return mountEl.querySelector('[role="status"]'); }
+function cancelBtnEl() {
+  return [...mountEl.querySelectorAll("button")]
+    .find((b) => /^Cancel$|^Cancel \(/.test(b.textContent.trim()));
+}
+function workBtnEl() {
+  return [...mountEl.querySelectorAll("button")].find((b) => b.textContent.startsWith("Work"));
+}
+
+// Poll the door THROUGH the bridge only. data-run-state equality is asserted
+// at EVERY poll: the component displays the injected bridge JSON verbatim
+// and has no other source for the state it shows (FROM THE DOOR).
+async function pollDoor(host, pred, { timeoutMs = 90000, everyMs = 400 } = {}) {
+  const end = Date.now() + timeoutMs;
+  const seen = [];
+  for (;;) {
+    const st = bridgeCall("state", host);
+    host.runState = st;
+    await rr();
+    const el = statusEl();
+    CHECKS++;
+    assert.ok(el, `role=status rendered while polling (bridge said ${st.state})`);
+    CHECKS++;
+    assert.equal(el.getAttribute("data-run-state"), st.state,
+      `rendered state mirrors the bridge JSON verbatim (bridge=${st.state})`);
+    seen.push(st.state);
+    if (pred(st)) return { st, seen };
+    if (Date.now() >= end) return { st, seen, timedOut: true };
+    await new Promise((r) => setTimeout(r, everyMs));
+  }
+}
+
+test("REAL door: Work click renders admitted/running from the door; Cancel -> cancel_requested while runner alive, cancelled only after confirmed terminal", async () => {
+  const bead = makeWorkBead("work door cancel target");
+  const host = await mountWorkHost(bead, "k-mnt-cancel",
+    { goalPrefix: "SLEEP 20 ", nodeTimeout: 60 });
+  const workBtn = workBtnEl();
+  ok(workBtn, "Work button present on the shipped root");
+  eq(workBtn.disabled, false, "Work enabled (host reports the door qualified)");
+  await act(async () => { workBtn.click(); });
+  eq(host.clicks.length, 1, "Work click reached the injected host onWork exactly once");
+  eq(host.clicks[0], bead, "onWork received the bead id");
+  CHECKS++;
+  assert.ok(host.clickJson, "the host handler called the bridge click (real door)");
+  eq(host.clickJson.ok, true, `door admitted the click: ${JSON.stringify(host.clickJson)}`);
+  eq(host.clickJson.handed_off, true, "handed_off through the real door");
+  eq(host.clickJson.door_result.delivery, false, "handed_off is never delivered");
+  eq(host.clickJson.door_result.no_dispatch, true, "no_dispatch rides along");
+  const run = await pollDoor(host, (st) => st.state === "running");
+  CHECKS++;
+  assert.ok(!run.timedOut, `the door reached running (saw ${run.seen})`);
+  CHECKS++;
+  assert.ok(run.seen.every((s) => VOCAB9.includes(s)),
+    `only the truthful vocabulary was ever rendered (${run.seen})`);
+  CHECKS++;
+  assert.ok(run.seen[0] === "admitted" || run.seen[0] === "running",
+    `first state from the door is admitted|running (saw ${run.seen[0]})`);
+  await snap("real-door-running", mountEl);
+  const cancelBtn = cancelBtnEl();
+  ok(cancelBtn, "Cancel button present");
+  eq(cancelBtn.disabled, false, "Cancel enabled while running");
+  await act(async () => { cancelBtn.click(); });
+  CHECKS++;
+  assert.ok(host.cancelJson, "Cancel click reached the injected host onCancel -> bridge cancel");
+  eq(host.cancelJson.ok, true, `door accepted the cancel: ${JSON.stringify(host.cancelJson)}`);
+  eq(host.cancelJson.state, "cancel_requested", "the door says cancel_requested");
+  eq(host.cancelJson.runner_alive, true, "the runner really is alive at the request");
+  eq(statusEl().textContent.trim(), "cancel_requested",
+    "role=status shows cancel_requested WHILE the runner is alive");
+  eq(statusEl().getAttribute("data-run-state"), "cancel_requested",
+    "the live region names the displayed state");
+  await snap("real-door-cancel-requested", mountEl);
+  const fin = await pollDoor(host, (st) => st.state === "cancelled", { timeoutMs: 120000 });
+  CHECKS++;
+  assert.ok(!fin.timedOut, `the door confirmed terminal cancelled (saw ${fin.seen})`);
+  CHECKS++;
+  assert.ok(fin.seen.every((s) => VOCAB9.includes(s)), `truthful vocabulary throughout (${fin.seen})`);
+  eq(statusEl().textContent.trim(), "cancelled",
+    "cancelled rendered ONLY after the door confirmed terminal");
+  const html = mountEl.querySelector(".bot-action-panel").innerHTML;
+  ok(!/succeeded/.test(html), "no 'succeeded' text on the cancel path");
+  ok(!/\bdone\b/.test(html), "no 'done' text on the cancel path");
+  ok(!/delivered/.test(html), "no 'delivered' text on the cancel path");
+  await snap("real-door-cancelled", mountEl);
+  await unmount();
+});
+
+test("REAL door timeout: wall deadline while the runner is alive renders 'uncertain' (never delivered)", async () => {
+  const bead = makeWorkBead("slow door target");
+  const host = await mountWorkHost(bead, "k-mnt-to",
+    { goalPrefix: "SLEEP 12 ", nodeTimeout: 60, wallDeadline: 5 });
+  await act(async () => { workBtnEl().click(); });
+  eq(host.clickJson.ok, true, `door admitted the slow run: ${JSON.stringify(host.clickJson)}`);
+  const to = await pollDoor(host, (st) => st.state === "uncertain", { timeoutMs: 60000 });
+  CHECKS++;
+  assert.ok(!to.timedOut, `the wall deadline produced uncertain (saw ${to.seen})`);
+  eq(statusEl().textContent.trim(), "uncertain", "'uncertain' rendered from the door");
+  const html = mountEl.querySelector(".bot-action-panel").innerHTML;
+  ok(!/succeeded|\bdone\b|delivered/.test(html),
+    "no success/delivered text while uncertain");
+  await snap("real-door-uncertain", mountEl);
+  const done = await pollDoor(host, (st) => st.runner_alive === false, { timeoutMs: 150000 });
+  CHECKS++;
+  assert.ok(!done.timedOut, `the runner settled before store cleanup (saw ${done.seen})`);
+  await unmount();
+});
+
+test("REAL door success: a normal run renders 'succeeded' only when the ledger says so; Cancel disabled at terminal", async () => {
+  const bead = makeWorkBead("fast door target");
+  const host = await mountWorkHost(bead, "k-mnt-ok");
+  await act(async () => { workBtnEl().click(); });
+  eq(host.clickJson.ok, true, `door admitted the run: ${JSON.stringify(host.clickJson)}`);
+  const okRun = await pollDoor(host, (st) => st.state === "succeeded", { timeoutMs: 120000 });
+  CHECKS++;
+  assert.ok(!okRun.timedOut, `the real run reached succeeded (saw ${okRun.seen})`);
+  eq(statusEl().textContent.trim(), "succeeded", "'succeeded' rendered verbatim from the door");
+  eq(statusEl().getAttribute("data-run-state"), "succeeded", "live region names succeeded");
+  eq(cancelBtnEl().disabled, true, "Cancel disabled once terminal");
+  await snap("real-door-succeeded", mountEl);
   await unmount();
 });
 
