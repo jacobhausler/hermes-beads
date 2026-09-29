@@ -80,7 +80,10 @@ const React = (await import("react")).default;
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 
-// ---- components under test (REAL modules; react/jsx-runtime resolves real) ---
+// ---- components under test (REAL shipped modules; react/jsx-runtime real) ---
+// hbl-pnu.4.6: the ONLY app/panel imports are the shipped desktop/workbench.mjs
+// WorkbenchApp (which itself composes the real panels). No test-authored app,
+// panel wrapper, or record converter exists in this file.
 const { buildSnapshot, createWorkbenchState } = await import("../desktop/model.mjs");
 const T = await import("../desktop/tree.mjs");
 const { RecordCard } = await import("../desktop/record.mjs");
@@ -89,11 +92,11 @@ const { searchIssues, SearchPanel, enterSearchHit } = await import("../desktop/s
 const { createHistoryStack } = await import("../desktop/history.mjs");
 const { createSplitPanes, diffSnapshots, confirmDeletions, SplitCompare } =
   await import("../desktop/compare.mjs");
-const { createDraftStore, editDecision, draftLimitationNotice } =
-  await import("../desktop/drafts.mjs");
+const { createDraftStore } = await import("../desktop/drafts.mjs");
 const BA = await import("../desktop/bot_action.mjs");
-
-const h = React.createElement;
+// hbl-pnu.4.6: mount ONLY shipped exports — the product root composes the
+// panels and binds the keymap; the harness defines no app, panel, or converter.
+const { WorkbenchApp } = await import("../desktop/workbench.mjs");
 
 // ---- assertion + evidence accounting ----------------------------------------
 let CHECKS = 0;
@@ -197,84 +200,10 @@ const session = {
   draftStore: null,
   pane: "tree",
   compare: null, // {panes, side, diff, confirmed}
-  botRecordedIncompat: null,
+  showBot: false,
 };
 
-function DraftPanel({ store, storeInfo, beadId }) {
-  const d = store.getDraft(storeInfo, beadId);
-  const dec = editDecision();
-  const notice = draftLimitationNotice();
-  const warn = store.warning();
-  return h("section", { role: "group", "aria-label": "Draft" },
-    h("div", { role: "status", "data-durability": store.durability() },
-      `durability: ${store.durability()}`),
-    warn ? h("div", { role: "alert", "data-warning-kind": warn.kind }, warn.text) : null,
-    h("div", { id: "draft-text", "data-bead": beadId }, d ? d.text : "\u2014 no draft \u2014"),
-    dec.saveContent.enabled
-      ? h("button", { type: "button", id: "draft-save" }, "Save")
-      : h("button", { type: "button", id: "draft-save", disabled: true,
-          "aria-disabled": "true", title: dec.saveContent.disabledReason }, "Save (disabled)"),
-    notice.saveDisabled
-      ? h("div", { id: "save-limitation", role: "note" }, notice.text)
-      : null);
-}
-
-function convertRecordTree(n) {
-  // bot_action.mjs builds hand-rolled {type, props, key} records (capture-shim
-  // shape, no $$typeof). Walk it structurally and hand React REAL elements.
-  if (Array.isArray(n)) return n.map(convertRecordTree);
-  if (n && typeof n === "object" && "type" in n && "props" in n && !n.$$typeof) {
-    const { children, ...rest } = n.props;
-    return h(n.type, rest, convertRecordTree(children));
-  }
-  return n;
-}
-
-const box = {}; // live re-render handle
-function WorkbenchApp() {
-  const [, bump] = React.useReducer((x) => x + 1, 0);
-  box.rerender = () => bump();
-  const focusId = ui.focus ?? ui.selection;
-  const reduced = dom.window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  return h("div", {
-    id: "workbench",
-    "data-motion": reduced ? "reduce" : "no-preference",
-    onKeyDown: (ev) => {
-      const cmd = controller.press(ev);
-      if (cmd) box.rerender();
-    },
-  },
-    React.createElement(T.Tree, { snapshot, ui, scheduler: null }),
-    focusId != null && snapshot.nodes.has(focusId)
-      ? React.createElement(RecordCard, { snapshot, id: focusId }) : null,
-    session.card
-      ? React.createElement(B.BlockerCard, { card: session.card,
-          onReturn: () => box.rerender() }) : null,
-    session.searchResults
-      ? React.createElement(SearchPanel, {
-          results: session.searchResults, cursor: 0,
-          onActivate: (hit, i) => {
-            enterSearchHit({ results: session.searchResults, index: i,
-              snapshot, workbench: ui, history: stack });
-            session.searchResults = null;
-            box.rerender();
-          },
-        }) : null,
-    session.compare
-      ? React.createElement(SplitCompare, session.compare) : null,
-    session.draftStore
-      ? React.createElement(DraftPanel, { store: session.draftStore,
-          storeInfo: STORE_INFO, beadId: IDS.conflict }) : null,
-    h("div", { id: "bot-panel-slot" },
-      session.botRecordedIncompat === "rec"
-        ? convertRecordTree(BA.botActionPanel({
-            ask: BA.askDecision({ ok: false, error: "session_door_unqualified",
-              read_only: true, no_dispatch: true }),
-            work: { present: true, enabled: false,
-              disabledReason: "runner door (hbl-pnu.3.3) not bound" },
-          }))
-        : null));
-}
+const box = {}; // live re-render handle (handed out by the shipped root)
 
 // shared storage adapter so persistence can be proven across remounts
 function makeStorage() {
@@ -290,11 +219,18 @@ function makeStorage() {
 const sharedStorage = makeStorage();
 
 let mountEl = document.getElementById("root");
+let BEFORE_LIST_ALL = null; // captured after the test's own sanctioned native writes
 let root = null;
 async function mount(sessionOpts = {}) {
   Object.assign(session, sessionOpts);
   root = createRoot(mountEl);
-  await act(async () => { root.render(React.createElement(WorkbenchApp)); });
+  await act(async () => {
+    root.render(React.createElement(WorkbenchApp, {
+      snapshot, ui, controller, stack, session,
+      storeInfo: STORE_INFO, draftBeadId: IDS.conflict,
+      bindRerender: (fn) => { box.rerender = fn; },
+    }));
+  });
 }
 async function unmount() {
   await act(async () => { root.unmount(); });
@@ -346,7 +282,7 @@ test("mounted tree: real React DOM with treeitem roles, aria-level/expanded, rov
 test("hostile titles: rendered as escaped TEXT; zero <script>/<img> and zero on* attributes in DOM", async () => {
   snapshot = liveSnapshot(); // include the hostile bead (fresh native read)
   // rebuild ui/controller on the fresh snapshot so nav tests continue coherently
-  session.botRecordedIncompat = "rec";
+  session.showBot = true;
   session.draftStore = createDraftStore({ storage: sharedStorage });
   sharedStorage.map.clear();
   session.draftStore.saveDraft(STORE_INFO, IDS.conflict, "draft under hostile session");
@@ -368,7 +304,7 @@ test("hostile titles: rendered as escaped TEXT; zero <script>/<img> and zero on*
 
 // ---- T3 keyboard navigation on the LIVE surface -------------------------------
 test("keyboard: arrows move the cursor, Enter promotes focus, collapse/expand via arrows, x/Esc inert", async () => {
-  session.botRecordedIncompat = "rec";
+  session.showBot = true;
   session.draftStore = createDraftStore({ storage: sharedStorage });
   await mount();
   // cursor starts null: ArrowDown lands on a real row and the DOM follows
@@ -412,6 +348,27 @@ test("keyboard: arrows move the cursor, Enter promotes focus, collapse/expand vi
     "true", "ArrowRight re-expanded");
   ok(mountEl.querySelector(`[data-tree-row="${IDS.taskB}"]`), "subtree rows return");
 
+  // hbl-pnu.4.6 acceptance: app-back + help exercised on the SHIPPED root.
+  // Two pushes with a cursor move between them make Back observable.
+  await press("Enter");                      // push bundle A (focus on cursor)
+  const backTarget = ui.focus;
+  await press("ArrowDown");                  // move cursor somewhere else
+  ok(ui.selection !== backTarget, "cursor moved off the app-back target");
+  await press("Enter");                      // push bundle B
+  await press("ArrowLeft", { altKey: true }); // Alt+ArrowLeft = history-back
+  eq(ui.focus, backTarget, "Alt+ArrowLeft (app-back) restored the prior keyboard focus");
+  await press("ArrowRight", { altKey: true }); // and forward re-applies bundle B
+  ok(ui.focus !== backTarget || ui.selection != null,
+    "Alt+ArrowRight (app-forward) moved focus again");
+  // '?' opens the shortcut overlay through the shipped root's binding
+  await press("?");
+  const dlg = mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]');
+  ok(dlg, "? opened the shortcut help overlay on the shipped root");
+  ok(dlg.textContent.includes("cursor-down"), "overlay lists the bound commands");
+  await press("?");
+  ok(mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]') == null,
+    "? again closes the overlay");
+
   // x and Esc: NOT bound in the v1 keymap — must be INERT (no state change).
   const before = { sel: ui.selection, focus: ui.focus, exp: [...ui.expanded].sort().join() };
   await press("x");
@@ -427,7 +384,7 @@ test("keyboard: arrows move the cursor, Enter promotes focus, collapse/expand vi
 
 // ---- T4 search + record + blockers + compare mounted --------------------------
 test("search/record/blockers/compare mount with live DOM evidence", async () => {
-  session.botRecordedIncompat = "rec";
+  session.showBot = true;
   session.draftStore = createDraftStore({ storage: sharedStorage });
   // search: real native rows, panel mounted, hostile query title escaped too
   session.searchResults = searchIssues({
@@ -442,9 +399,40 @@ test("search/record/blockers/compare mount with live DOM evidence", async () => 
   ok([...mountEl.querySelectorAll(".search-hit-path")].some((n) => (n.getAttribute("aria-label") ?? "").startsWith("path: ")), "ancestor path labels present (aria-label on .search-hit-path)");
   await snap("search-panel", mountEl);
 
-  // Enter on a hit = a navigation entry into the tree (not a parallel world)
+  // Enter on a hit = a navigation entry into the tree (not a parallel world).
+  // hbl-pnu.4.6 RED: equality with the HIT id (the old `!= null` check was
+  // vacuous — ui.focus was already non-null from T3 and the dispatched Enter
+  // resolved to the tree focus-cursor command, not the hit).
+  const hit0id = session.searchResults.hits[0].id;
+  ok(opts.every((o) => o.hasAttribute("tabindex")),
+    "every search option carries a tabIndex (keyboard-activatable)");
+  ui.jump(hit0id === IDS.epic ? IDS.taskB : IDS.epic); // park focus away from the hit
   await press("Enter", {}, '#search-hit-0');
-  ok(ui.focus != null, "Enter on a search hit focuses the target");
+  eq(ui.focus, hit0id, "Enter on a search hit moves ui focus to THAT hit id");
+  eq(mountEl.querySelector('#search-panel') != null, false,
+    "activation closes the panel (navigation entry, not a parallel world)");
+
+  // Click does the same (the same navigation entry): park focus away from
+  // the hit, click it, and require equality with THAT hit id.
+  const results2 = searchIssues({ snapshot, query: "blocked", searchRead: nativeSearch,
+    showRead: nativeShow, limit: 25 });
+  ok(results2.hits.length >= 1, "search returns at least one hit for the click leg");
+  const targetId = results2.hits[0].id;
+  ui.jump(targetId === IDS.epic ? IDS.taskB : IDS.epic);
+  session.searchResults = results2;
+  box.rerender();
+  await act(async () => {});
+  await act(async () => { mountEl.querySelector("#search-hit-0").click(); });
+  eq(ui.focus, targetId, "click on a search hit moves ui focus to THAT hit id");
+  session.searchResults = null;
+
+  // Space is the third equal activation path.
+  ui.jump(targetId === IDS.epic ? IDS.taskB : IDS.epic);
+  session.searchResults = results2;
+  box.rerender();
+  await act(async () => {});
+  await press(" ", {}, "#search-hit-0");
+  eq(ui.focus, targetId, "Space on a search hit moves ui focus to THAT hit id");
   session.searchResults = null;
 
   // blockers: jumpToBlocker through the readonly provider, card mounted
@@ -494,13 +482,14 @@ test("search/record/blockers/compare mount with live DOM evidence", async () => 
   ok(sc.textContent.includes("moved"), "moved line rendered");
   await snap("split-compare", mountEl);
   session.compare = null;
+  BEFORE_LIST_ALL = JSON.stringify(read("list_all"));
   await unmount();
 });
 
 // ---- T5 drafts: persistence through unmount/remount + honest unavailability ---
 test("drafts: survive unmount/remount via the injected storage; report memory-only when storage throws", async () => {
   // durable leg: shared adapter already holds the draft saved in T2's session
-  session.botRecordedIncompat = "rec";
+  session.showBot = true;
   session.draftStore = createDraftStore({ storage: sharedStorage });
   eq(session.draftStore.durability(), "durable", "adapter with get/set/remove/keys is durable");
   await mount();
@@ -511,6 +500,22 @@ test("drafts: survive unmount/remount via the injected storage; report memory-on
     "draft SURVIVED unmount/remount (read back through storage after root re-created)");
   const saveBtn = mountEl.querySelector("#draft-save");
   eq(saveBtn.disabled, true, "Save disabled (no proven atomic content guard)");
+
+  // hbl-pnu.4.6 acceptance: typing in the description field STEALS letter
+  // keys — bare keys while the textarea owns focus must not move the tree
+  // cursor or open help (the shipped root defers via resolveKey's swallow).
+  const input = mountEl.querySelector("#draft-input");
+  ok(input && input.tagName === "TEXTAREA", "description field is a real textarea");
+  const beforeTyping = { sel: ui.selection, focus: ui.focus,
+    exp: [...ui.expanded].sort().join() };
+  await press("ArrowDown", {}, "#draft-input");
+  await press("x", {}, "#draft-input");
+  await press("?", {}, "#draft-input");
+  await press("Enter", {}, "#draft-input");
+  eq(ui.selection, beforeTyping.sel, "letters/arrows/Enter in the description field move nothing in the tree");
+  eq(ui.focus, beforeTyping.focus, "description typing left keyboard focus untouched");
+  eq([...ui.expanded].sort().join(), beforeTyping.exp, "description typing left expansion untouched");
+  eq(controller.helpOpen, false, "bare ? in the description field did not open help");
   ok(mountEl.querySelector("#save-limitation").textContent.includes("NO ATOMIC CONTENT GUARD"),
     "product-limitation notice rendered, no collaborative-edit claim");
   await snap("drafts-durable", mountEl);
@@ -551,7 +556,7 @@ function makeStorageKept(map) {
 
 // ---- T6 reduced motion + reflow ------------------------------------------------
 test("prefers-reduced-motion probed via matchMedia stub; no fixed px widths in inline styles", async () => {
-  session.botRecordedIncompat = "rec";
+  session.showBot = true;
   session.draftStore = createDraftStore({ storage: sharedStorage });
   reducedMotion = false;
   await mount();
@@ -598,15 +603,15 @@ test("prefers-reduced-motion probed via matchMedia stub; no fixed px widths in i
 });
 
 // ---- T7 bot_action: precise incompatibility + faithful mount ------------------
-test("bot_action: raw record tree is NOT a React element (precise incompatibility recorded); converted tree mounts with disabled Work button", async () => {
-  // Direct mount attempt with the raw record (capture-shim shape, no $$typeof).
+test("bot_action: botActionPanel emits REAL jsx and mounts UNCONVERTED with Work disabled", async () => {
+  // Direct mount attempt with the raw panel (no converter — hbl-pnu.4.6).
   const raw = BA.botActionPanel({
     ask: BA.askDecision({ ok: false, error: "session_door_unqualified", read_only: true }),
     work: { present: true, enabled: false, disabledReason: "runner door not bound" },
   });
   CHECKS++;
-  assert.equal(raw.$$typeof, undefined,
-    "incompatibility recorded: botActionPanel returns plain {type,props,key} records (no React $$typeof) — not mountable by React directly");
+  assert.ok(raw && raw.$$typeof && /^Symbol\(react\./.test(String(raw.$$typeof)),
+    "hbl-pnu.4.6: botActionPanel emits REAL jsx (react/jsx-runtime $$typeof), so React can mount it directly");
   const scratch = document.createElement("div");
   document.body.appendChild(scratch);
   const r2 = createRoot(scratch);
@@ -617,17 +622,20 @@ test("bot_action: raw record tree is NOT a React element (precise incompatibilit
     catch (e) { directErr = e; }
     finally { console.error = origErr; }
   }
+  const directHtml = scratch.innerHTML;
   await act(async () => { r2.unmount(); });
   scratch.remove();
   CHECKS++;
-  assert.ok(directErr, `direct mount of the raw record threw as expected (${directErr?.message?.slice(0, 80)})`);
+  assert.equal(directErr, null, `direct unconverted mount must not throw (${directErr?.message?.slice(0, 80)})`);
+  CHECKS++;
+  assert.ok(/bot-action-panel/.test(directHtml) && /disabled/.test(directHtml),
+    "unconverted mount renders the panel with the Work button disabled");
 
-  // Faithful structural conversion (same tree, React.createElement at each node)
-  session.botRecordedIncompat = "rec";
+  session.showBot = true;
   session.draftStore = createDraftStore({ storage: sharedStorage });
   await mount();
   const panel = mountEl.querySelector(".bot-action-panel");
-  ok(panel, "converted botActionPanel mounted");
+  ok(panel, "unconverted botActionPanel mounted by the shipped WorkbenchApp");
   const buttons = [...panel.querySelectorAll("button")];
   const work = buttons.find((b) => b.textContent.startsWith("Work"));
   ok(work, "Work button present");
@@ -640,8 +648,14 @@ test("bot_action: raw record tree is NOT a React element (precise incompatibilit
 });
 
 // final native readback proof the surface never wrote the store
-test("mounted session never mutated the store (same-moment native readback)", () => {
-  const rows = read("list_all");
+test("mounted session never mutated the store (before/after list_all JSON equality)", () => {
+  CHECKS++;
+  assert.ok(BEFORE_LIST_ALL != null, "before-snapshot captured after the sanctioned writes only");
+  const after = JSON.stringify(read("list_all"));
+  CHECKS++;
+  assert.equal(after, BEFORE_LIST_ALL,
+    "list_all is byte-identical before vs after the mounted session (no hidden writes)");
+  const rows = JSON.parse(after);
   CHECKS++;
   assert.ok(rows.some((r) => r.id === IDS.epic) && rows.some((r) => r.id === HOSTILE_ID),
     "store still holds the seeded world + the one bead the harness explicitly created via the seeder act CLI");

@@ -134,11 +134,18 @@ test("work control flips to enabled only when the runner door is bound", () => {
   assert.equal(work.props.disabled, false);
 });
 
-// ---- Purity law (CONTRACTS-v3 C1): zero I/O, zero imports ----------------------
-test("bot_action.mjs is import-free and I/O-free (purity source audit)", () => {
+// ---- Purity law (CONTRACTS-v3 C1): only react/jsx-runtime; zero I/O --------
+test("bot_action.mjs imports ONLY react/jsx-runtime and is I/O-free (purity source audit)", () => {
   const src = readFileSync(
     path.join(here, "..", "desktop", "bot_action.mjs"), "utf8");
-  assert.ok(!/^\s*import\s/m.test(src), "no import statements");
+  const imports = src.match(/^\s*import\s.*$/gm) ?? [];
+  // hbl-pnu.4.6: the hand-rolled records were replaced by REAL jsx so React
+  // can mount the panel unconverted; react/jsx-runtime is the single allowed
+  // import (same loader-mapped specifier as every other desktop component).
+  for (const line of imports) {
+    assert.ok(/from\s+["']react\/jsx-runtime["']\s*;?\s*$/.test(line),
+      `unexpected import: ${line}`);
+  }
   for (const banned of ["node:", "fetch(", "child_process", "localStorage",
     "window.", "document.", "XMLHttpRequest", "WebSocket", "require("]) {
     assert.ok(!src.includes(banned), `banned token present: ${banned}`);
