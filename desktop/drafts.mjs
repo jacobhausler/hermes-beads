@@ -100,14 +100,24 @@ export function runContentSave(draftStore, storeInfo, beadId, opts = {}) {
   if (readBack !== draft.text) {
     return { saved: false, reason: "readback-mismatch", channel: null };
   }
-  draftStore.discardDraft(storeInfo, beadId); // proof-backed save is the only auto-clear
-  return { saved: true, reason: null, channel: "guarded-update" };
+  const cleared = draftStore.discardDraft(storeInfo, beadId); // proof-backed save is the only auto-clear
+  // draftCleared is reported honestly: if the adapter could not commit the
+  // clear, the caller must know the draft is still there (and the store has
+  // already degraded itself to session-only with a warning).
+  return { saved: true, reason: null, channel: "guarded-update", draftCleared: cleared };
 }
 
 // Draft store over an INJECTED storage adapter — the supported SDK storage
 // surface (get/set/remove[/keys]). No adapter, an adapter that declares
 // itself unavailable, or one that throws during the probe => honest
 // memory-only durability + explicit warning. In-session drafts always work.
+//
+// Capability completeness is a HARD requirement for the durable claim: an
+// adapter without a working `remove` cannot clear a discarded draft, so it is
+// rejected as incomplete storage (session-only + explicit warning) instead of
+// being trusted and silently resurrecting discarded drafts on the next read.
+// Any capability failure (missing method, throw from get/set/remove/keys) is
+// TERMINAL for the store's lifetime — never re-trusted by a later write.
 export function createDraftStore(opts = {}) {
   const adapter = opts.storage;
   const maxDrafts = opts.maxDrafts ?? 200;
@@ -116,16 +126,35 @@ export function createDraftStore(opts = {}) {
   let warning = null;
   let durable = false;
 
+  const degrade = (text) => {
+    durable = false; // terminal: a capability failure is never undone
+    warning = { kind: "storage-error", text };
+  };
+
   const usable = !!adapter && adapter.available !== false &&
     typeof adapter.get === "function" && typeof adapter.set === "function";
-  if (usable) {
+  if (usable && typeof adapter.remove !== "function") {
+    // Incomplete storage: writes would be permanent; discards would be lies.
+    warning = {
+      kind: "memory-only",
+      text: "The provided storage adapter is incomplete — it exposes no remove/clear, " +
+        "so discarded drafts could silently come back. Treating storage as unavailable: " +
+        "drafts are session-only and will be lost on reload.",
+    };
+  } else if (usable) {
     durable = true; // optimistic until proven otherwise
     try {
       adapter.set(PROBE_KEY, "1");
-      if (typeof adapter.remove === "function") adapter.remove(PROBE_KEY);
+      // Read the probe BACK: a get that throws (or can't round-trip) proves
+      // the adapter unreliable — reject it now, before any draft is trusted
+      // to it (same root capability failure as a throwing set/remove/keys).
+      if (adapter.get(PROBE_KEY) !== "1") {
+        degrade("Durable SDK storage could not read back its setup probe — drafts are session-only and will be lost on reload.");
+      } else {
+        adapter.remove(PROBE_KEY);
+      }
     } catch {
-      durable = false;
-      warning = { kind: "storage-error", text: "Durable SDK storage raised during setup — drafts are session-only and will be lost on reload." };
+      degrade("Durable SDK storage raised during setup — drafts are session-only and will be lost on reload.");
     }
   } else {
     warning = { kind: "memory-only", text: "No supported durable storage adapter was provided — drafts are session-only and will be lost on reload." };
@@ -137,7 +166,7 @@ export function createDraftStore(opts = {}) {
       try {
         for (const k of adapter.keys()) if (k.startsWith(CAPABILITY_KEY_PREFIX)) seen.add(k);
       } catch {
-        warning = { kind: "storage-error", text: "Durable SDK storage raised while listing drafts — treating writes as session-only." };
+        degrade("Durable SDK storage raised while listing drafts — drafts are session-only and will be lost on reload.");
       }
     }
     seen.delete(PROBE_KEY);
@@ -148,8 +177,7 @@ export function createDraftStore(opts = {}) {
     local.set(key, rec);
     if (durable) {
       try { adapter.set(key, JSON.stringify(rec)); } catch {
-        durable = false;
-        warning = { kind: "storage-error", text: "Durable SDK storage raised during a write — later drafts are session-only and will be lost on reload." };
+        degrade("Durable SDK storage raised during a write — drafts are session-only and will be lost on reload.");
       }
     }
   };
@@ -159,13 +187,17 @@ export function createDraftStore(opts = {}) {
     if (!durable) return null;
     let raw = null;
     try { raw = adapter.get(key); } catch {
-      warning = { kind: "storage-error", text: "Durable SDK storage raised during a read — later drafts are session-only." };
+      // Same root capability failure as a throwing keys()/set()/remove():
+      // an adapter that throws on read cannot back a durable claim.
+      degrade("Durable SDK storage raised during a read — drafts are session-only and will be lost on reload.");
       return null;
     }
     if (raw == null) return null;
     let rec;
     try { rec = JSON.parse(raw); } catch {
-      try { if (typeof adapter.remove === "function") adapter.remove(key); } catch { /* drop best-effort */ }
+      try { adapter.remove(key); } catch {
+        degrade("Durable SDK storage raised while dropping a corrupt draft — drafts are session-only and will be lost on reload.");
+      }
       return null; // corrupt entry: dropped, never surfaced as a draft
     }
     if (!rec || typeof rec.text !== "string" || typeof rec.beadId !== "string") return null;
@@ -229,13 +261,21 @@ export function createDraftStore(opts = {}) {
       return rec ? JSON.stringify({ v: 1, beadId: rec.beadId, text: rec.text, baseText: rec.baseText }) : null;
     },
 
+    // Returns true ONLY when the clear is complete. Storage is cleared FIRST:
+    // if the adapter cannot commit the remove, the draft stays visible and we
+    // report false — a half-cleared draft that resurfaces later is worse than
+    // an honest failure. (durable===false means nothing was ever written, so
+    // the local delete is the whole clear and true is honest.)
     discardDraft(storeInfo, beadId) {
       const key = draftKey(storeInfo, beadId);
+      if (durable) {
+        try { adapter.remove(key); } catch {
+          degrade("Durable SDK storage raised while discarding a draft — the draft was kept visible; drafts are session-only and will be lost on reload.");
+          return false;
+        }
+      }
       local.delete(key);
       sessions.delete(key);
-      if (durable) {
-        try { if (typeof adapter.remove === "function") adapter.remove(key); } catch { /* already gone */ }
-      }
       return true;
     },
   };
@@ -244,7 +284,10 @@ export function createDraftStore(opts = {}) {
   function get_raw_exists(key) {
     if (local.has(key)) return true;
     if (!durable) return false;
-    try { return adapter.get(key) != null; } catch { return false; }
+    try { return adapter.get(key) != null; } catch {
+      degrade("Durable SDK storage raised during a read — drafts are session-only and will be lost on reload.");
+      return false;
+    }
   }
 
   return api;

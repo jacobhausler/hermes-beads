@@ -258,6 +258,133 @@ test("capacity limit: saves beyond maxDrafts are refused, existing drafts intact
   assert.equal(d.getDraft(SI_A, "c"), null);
 });
 
+// ---- adapter capability failures: get/remove/keys (parent repro 09-29) ---------
+// An adapter exposing only {get,set} is INCOMPLETE storage. Incomplete storage
+// must never be reported as durable, and a discarded draft must never come back.
+test("adapter WITHOUT remove: honest session-only warning; discard stays discarded", () => {
+  const storage = fakeStorage();
+  delete storage.remove;                       // supported SDK surface: {get,set} only
+  const d = createDraftStore({ storage });
+  assert.equal(d.durability(), "memory-only",
+    "an adapter lacking remove must not be reported durable");
+  assert.equal(d.warning().kind, "memory-only");
+  assert.match(d.warning().text, /cannot clear|incomplete/i);
+  d.saveDraft(SI_A, "abc", "do not resurrect me", { baseText: "b" });
+  assert.equal(d.discardDraft(SI_A, "abc"), true);
+  assert.equal(d.getDraft(SI_A, "abc"), null,
+    "discarded draft must NOT resurrect from uncleared adapter storage");
+  // reload over the same adapter: the discarded draft stays gone, too
+  const reloaded = createDraftStore({ storage });
+  assert.equal(reloaded.getDraft(SI_A, "abc"), null);
+});
+
+test("incomplete adapter: pre-seeded draft from an earlier durable run stays gone after discard", () => {
+  // The parent's repro shape: a draft exists in storage, but the adapter has
+  // no clear primitive. Discarding must be final for this instance AND for a
+  // new instance over the same adapter — never a silent resurrection.
+  const storage = fakeStorage({ seed: [[draftKey(SI_A, "abc"),
+    JSON.stringify({ storeKey: "k", beadId: "abc", text: "old draft", baseText: "b", updatedAt: null })]] });
+  delete storage.remove;
+  const d = createDraftStore({ storage });
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.discardDraft(SI_A, "abc"), true);
+  assert.equal(d.getDraft(SI_A, "abc"), null);
+  assert.equal(createDraftStore({ storage }).getDraft(SI_A, "abc"), null,
+    "an incomplete adapter must never be read back as durable storage");
+});
+
+test("throwing remove is terminal: durability never flips back to durable", () => {
+  const storage = fakeStorage({ failures: { remove: new Error("remove unsupported") } });
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "a1", "one", {});
+  d.saveDraft(SI_A, "a2", "two", {});
+  assert.equal(d.durability(), "memory-only",
+    "one capability failure must not be re-trusted by later successful writes");
+  assert.equal(d.getDraft(SI_A, "a1").text, "one");
+});
+
+test("adapter throwing on remove at setup: memory-only + storage-error; discard is honestly complete", () => {
+  const storage = fakeStorage({ failures: { remove: new Error("remove unsupported") } });
+  const d = createDraftStore({ storage });
+  assert.equal(d.durability(), "memory-only",
+    "a throwing remove is a capability failure — never claim durable");
+  assert.equal(d.warning().kind, "storage-error");
+  assert.match(d.warning().text, /session-only/i);
+  d.saveDraft(SI_A, "abc", "keep visible", {});
+  assert.equal(d.getDraft(SI_A, "abc").text, "keep visible");
+  // nothing reached storage, so the local delete IS the whole clear
+  assert.equal(d.discardDraft(SI_A, "abc"), true);
+  assert.equal(d.getDraft(SI_A, "abc"), null);
+});
+
+test("adapter losing remove mid-session: discard returns false, durability drops, draft survives", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "abc", "survivor", {});      // written durably
+  assert.equal(d.durability(), "durable");
+  storage.remove = () => { throw new Error("remove revoked"); };
+  assert.equal(d.discardDraft(SI_A, "abc"), false,
+    "a discard that could not be committed to storage must not report true");
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.warning().kind, "storage-error");
+  assert.match(d.warning().text, /session-only/i);
+  assert.equal(d.getDraft(SI_A, "abc").text, "survivor",
+    "an un-committed discard keeps the content visible — no silent loss");
+});
+
+test("adapter throwing on get during setup probe: durable rejected, later discard cannot resurrect", () => {
+  const storage = fakeStorage({ failures: { get: new Error("read wall") } });
+  const d = createDraftStore({ storage });
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.warning().kind, "storage-error");
+  d.saveDraft(SI_A, "abc", "volatile only", {});
+  assert.equal(d.getDraft(SI_A, "abc").text, "volatile only");
+  assert.equal(d.discardDraft(SI_A, "abc"), true,
+    "with durable writes already rejected, in-memory discard is complete");
+  assert.equal(d.getDraft(SI_A, "abc"), null);
+});
+
+test("adapter throwing on keys: durability() must flip to memory-only with session-only warning", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  assert.equal(d.durability(), "durable");       // optimistic start is fine
+  storage.keys = () => { throw new Error("listing denied"); };
+  d.saveDraft(SI_A, "abc", "x", {});             // triggers capacity keyCount()
+  assert.equal(d.durability(), "memory-only",
+    "a throwing keys() is the same root capability failure — not durable");
+  assert.equal(d.warning().kind, "storage-error");
+  assert.match(d.warning().text, /session-only/i);
+});
+
+test("proven save where the draft clear FAILS reports the un-cleared draft honestly", () => {
+  const storage = fakeStorage();
+  const d = createDraftStore({ storage });
+  d.saveDraft(SI_A, "abc", "final", { baseText: "b" });
+  storage.remove = () => { throw new Error("remove revoked"); };
+  const res = runContentSave(d, SI_A, "abc", {
+    contentCasSupported: true,
+    attemptBlindReplace: () => ({ ok: true, readBack: { description: "final" } }),
+    appendSuggestion: () => ({ ok: true }),
+  });
+  assert.equal(res.saved, true, "the content write itself did succeed");
+  assert.equal(res.draftCleared, false, "but the clear did not — say so");
+  assert.equal(d.durability(), "memory-only");
+  assert.equal(d.warning().kind, "storage-error");
+});
+
+test("proven save with a working clear reports draftCleared true", () => {
+  const d = createDraftStore({ storage: fakeStorage() });
+  d.saveDraft(SI_A, "abc", "final", { baseText: "b" });
+  const res = runContentSave(d, SI_A, "abc", {
+    contentCasSupported: true,
+    attemptBlindReplace: () => ({ ok: true, readBack: { description: "final" } }),
+    appendSuggestion: () => { throw new Error("not needed"); },
+  });
+  assert.equal(res.saved, true);
+  assert.equal(res.draftCleared, true);
+  assert.equal(d.getDraft(SI_A, "abc"), null);
+});
+
 // ---- purity audit ---------------------------------------------------------------
 test("desktop/drafts.mjs is pure: no fs/child_process/localStorage/window/DOM/bd reach", () => {
   const src = readFileSync(path.join(here, "..", "desktop", "drafts.mjs"), "utf8");
