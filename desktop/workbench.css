@@ -10,6 +10,7 @@
   line-height: 1.4;
   color: var(--foreground, CanvasText);
   background: var(--background, Canvas);
+  align-items: flex-start; /* panels size to content, never stretch to the tree's height */
 }
 #workbench [role="tree"] {
   flex: 1 1 20rem;
@@ -90,7 +91,7 @@
   white-space: nowrap;
 }
 #workbench .status-glyph { font-weight: 700; }
-#workbench .blocked-chip { border-color: var(--danger, Mark); }
+#workbench .blocked-chip { border: 2px solid var(--danger, #b00020); font-weight: 600; }
 
 /* ---- blocker card (F5) ------------------------------------------------------ */
 #workbench [id^="blocker-card:"] ul {
@@ -143,6 +144,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-content: flex-start;
   gap: 0.5rem;
   border: 1px solid var(--border, GrayText);
   border-radius: 0.5rem;

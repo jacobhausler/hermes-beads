@@ -214,12 +214,21 @@ export function createTreeController({ snapshot, ui }) {
     const t = vis[Math.max(0, Math.min(vis.length - 1, i + d))];
     if (t) slide(t.id);
   };
+  // The rendered tab stop falls back to the first row while the model cursor
+  // is null; a keyboard user who Tabs in is ON that row, so the first arrow
+  // must move FROM it (not merely initialise the cursor onto it).
+  const seedFromTabStop = (ev) => {
+    if (ui.selection != null) return;
+    const id = ev?.target?.getAttribute?.("data-tree-row");
+    if (id && idxOf(id) !== -1) slide(id);
+  };
 
   const press = (ev) => {
     const cmd = resolveKey(ev);
     if (cmd === null) return null;
     if (cmd === "exit-tree") { box.tabExit = true; return cmd; } // Tab exits natively
     ev.preventDefault?.();
+    if (cmd.startsWith("cursor-")) seedFromTabStop(ev);
     const node = () => snapshot.nodes.get(ui.selection);
     const children = () => rowChildren(snapshot, ui, ui.selection);
     const exp = () => modelExpanded(snapshot, ui);

@@ -51,9 +51,16 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
   useEffect(() => {
     const rootEl = rootRef.current;
     if (!rootEl || typeof document === "undefined") return;
-    const marker = rootEl.querySelector('[data-keyboard-focus="true"]');
+    // Roving tabindex law: document focus follows the tab stop (the row
+    // the cursor is on), so the ring paints where the arrows went. Only
+    // when focus is ALREADY inside the tree — never steal it from elsewhere.
+    const tree = rootEl.querySelector('[role="tree"]');
+    const marker = rootEl.querySelector('[role="treeitem"][tabindex="0"]')
+      ?? rootEl.querySelector('[data-keyboard-focus="true"]');
     if (!marker) return;
     if (document.activeElement === marker) return;
+    if (!(tree && tree.contains(document.activeElement))
+        && rootEl.querySelector('[data-keyboard-focus="true"]') !== marker) return;
     const ae = document.activeElement;
     if (ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT"
         || ae.isContentEditable)) return;

@@ -73,3 +73,14 @@ test("F4-F7 field separation is structural, not paint-adjacent text", () => {
   assert.ok(bot.includes('"aria-label": "Bot actions"'), "bot panel is a labelled group");
   assert.ok(bot.includes('role: "group"'), "bot panel role=group");
 });
+
+test("hbl-pnu.2.10: blocked chip border meets 3:1 non-text contrast on white (real-Chrome finding: Mark fallback = yellow, 1.07:1)", async () => {
+  const { WORKBENCH_CSS } = await import("../desktop/workbench_css.mjs");
+  const m = WORKBENCH_CSS.match(/\.blocked-chip\s*\{[^}]*var\(--danger,\s*([^)]+)\)/);
+  assert.ok(m, "blocked chip border uses a --danger token with an explicit fallback");
+  const fb = m[1].trim();
+  assert.match(fb, /^#[0-9a-f]{6}$/i, "fallback is a concrete colour, not a system keyword (Mark renders yellow)");
+  const ch = (i) => { const v = parseInt(fb.slice(1 + 2 * i, 3 + 2 * i), 16) / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * ch(0) + 0.7152 * ch(1) + 0.0722 * ch(2);
+  assert.ok(1.05 / (L + 0.05) >= 3, `fallback contrast vs white >= 3:1 (got ${(1.05 / (L + 0.05)).toFixed(2)})`);
+});

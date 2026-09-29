@@ -992,10 +992,16 @@ test("visual layer (F1-F7): one shipped <style> with :focus-visible; roving docu
   ok(marker, "one row carries data-keyboard-focus=true");
   eq(document.activeElement, marker,
     "document.activeElement IS the data-keyboard-focus row after Enter (F3)");
-  await press("ArrowDown");                 // cursor advances; marker stays
-  marker = mountEl.querySelector('[data-keyboard-focus="true"]');
-  eq(document.activeElement, marker,
-    "after ArrowDown document.activeElement is still the data-keyboard-focus row (F3)");
+  await press("ArrowDown");                 // cursor advances: DOM focus follows the tab stop
+  const stop = mountEl.querySelector('[role="treeitem"][tabindex="0"]');
+  eq(stop.getAttribute("data-tree-row"), ui.selection, "tab stop is the cursor row");
+  eq(document.activeElement, stop,
+    "after ArrowDown document.activeElement is the cursor row (roving tabindex; ring paints where the arrows went)");
+  const before = ui.selection;
+  await press("ArrowUp");                   // (cursor may sit on the last row)
+  ok(ui.selection !== before, "the next arrow moves the cursor (no swallowed keypress)");
+  eq(document.activeElement.getAttribute("data-tree-row"), ui.selection,
+    "focus tracks every arrow press");
   await press("Enter");                     // marker MOVES; focus must move with it
   marker = mountEl.querySelector('[data-keyboard-focus="true"]');
   eq(document.activeElement, marker,
