@@ -151,6 +151,9 @@ export function botActionPanel({ ask, work, refineLanded = false,
   const workLabel = work && work.enabled ? "Work (runner door bound)" : "Work";
   return el("div", {
     className: "bot-action-panel",
+    // hbl-pnu.2.10 (F7): a labelled group so the controls announce as one
+    // cluster with gaps (stylesheet), not fused inline text.
+    role: "group", "aria-label": "Bot actions",
     children: [
       el("span", { children: askText }, "ask"),
       el("button", { children: "Refine" + (refineLanded ? " (draft saved)" : ""), disabled: false }, "refine"),

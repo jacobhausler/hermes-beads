@@ -16,7 +16,8 @@
 // entry — search never owns a parallel world); selection ≠ focus stays
 // model.mjs's law; the bot panel mounts UNCONVERTED real jsx.
 import { jsx } from "react/jsx-runtime";
-import { useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
+import { WORKBENCH_CSS } from "./workbench_css.mjs";
 import { Tree, ShortcutHelp } from "./tree.mjs";
 import { RecordCard } from "./record.mjs";
 import { BlockerCard } from "./blockers.mjs";
@@ -36,14 +37,31 @@ import { botActionPanel, askDecision } from "./bot_action.mjs";
 export function WorkbenchApp({ snapshot, ui, controller, stack, session,
   storeInfo, draftBeadId, botView = null, bindRerender }) {
   const [, bump] = useReducer((x) => x + 1, 0);
+  const rootRef = useRef(null);
   const rerender = () => bump();
   if (typeof bindRerender === "function") bindRerender(rerender);
   const focusId = ui.focus ?? ui.selection;
   const reduced = typeof window !== "undefined" && window.matchMedia
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
     : false;
+  // hbl-pnu.2.10 (F3): the keyboard-focus MARKER and document focus must
+  // never diverge — whenever the controller moves the marker, the row takes
+  // real document focus (WCAG 2.4.7: the ring paints on activeElement).
+  // A text target keeps focus (same swallow law the keymap enforces).
+  useEffect(() => {
+    const rootEl = rootRef.current;
+    if (!rootEl || typeof document === "undefined") return;
+    const marker = rootEl.querySelector('[data-keyboard-focus="true"]');
+    if (!marker) return;
+    if (document.activeElement === marker) return;
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT"
+        || ae.isContentEditable)) return;
+    marker.focus({ preventScroll: false });
+  });
   return jsx("div", {
     id: "workbench",
+    ref: rootRef,
     "data-motion": reduced ? "reduce" : "no-preference",
     onKeyDown: (ev) => {
       // ONE binding point for the whole keymap: arrows/Enter/arrow-left/
@@ -53,11 +71,14 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
       if (cmd) rerender();
     },
     children: [
+      // hbl-pnu.2.10 (F1): THE shipped stylesheet, rendered exactly once so
+      // every host that mounts this root gets the visual layer for free.
+      jsx("style", { children: WORKBENCH_CSS }, "workbench-css"),
       jsx(Tree, { snapshot, ui, scheduler: null }, "tree"),
       focusId != null && snapshot.nodes.has(focusId)
         ? jsx(RecordCard, { snapshot, id: focusId }, "record") : null,
       session.card
-        ? jsx(BlockerCard, { card: session.card, onReturn: rerender }, "blocker") : null,
+        ? jsx(BlockerCard, { card: session.card, onReturn: rerender, snapshot }, "blocker") : null,
       session.searchResults
         ? jsx(SearchPanel, {
             results: session.searchResults, cursor: 0,
