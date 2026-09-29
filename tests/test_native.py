@@ -21,6 +21,7 @@ import native  # noqa: E402
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, ".fixtures")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 
 
 def make_store():
@@ -30,6 +31,7 @@ def make_store():
     a fixture store would share the parent repo's dolt databases. A private
     `git init` isolates the store inside the fixture dir itself.
     """
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)
@@ -62,6 +64,7 @@ class BoundaryContract(unittest.TestCase):
             native.ready_frontier("relative/path")
         with self.assertRaises(native.WorkspaceError):
             native.ready_frontier("/nonexistent/dir-at-all")
+        os.makedirs(FIXTURE_ROOT, exist_ok=True)
         empty = tempfile.mkdtemp(dir=FIXTURE_ROOT)
         with self.assertRaises(native.WorkspaceError):
             native.ready_frontier(empty)

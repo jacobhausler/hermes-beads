@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, ".fixtures")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Contract state (declared here, asserted below). A caller that wants CAS must
@@ -62,6 +63,7 @@ def make_store():
     Without .git the embedded-dolt home resolves to the nearest parent git
     root and the fixture would share the lane repo's databases.
     """
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
                    capture_output=True)

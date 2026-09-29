@@ -43,6 +43,7 @@ import write_protocol      # noqa: E402
 BD_BIN = os.environ.get("BEADS_LAB_BD",
                         "/home/hermes/.hermes/work/beads-lab/bin/bd")
 FIXTURE_ROOT = os.path.join(HERE, "fixtures", "evidence-runtime")
+os.makedirs(FIXTURE_ROOT, exist_ok=True)
 
 # hbl-pnu.4.7: own-dir cleanup only (a concurrent run of this same suite
 # must not have its in-flight stores swept out from under it).
@@ -57,6 +58,7 @@ def cleanup_run_stores():
 
 def make_store():
     # unique name per fixture: tests/fixtures/evidence-runtime/<case>-<uuid>
+    os.makedirs(FIXTURE_ROOT, exist_ok=True)
     d = tempfile.mkdtemp(dir=FIXTURE_ROOT, prefix="ev-")
     RUN_STORES.add(d)
     subprocess.run(["git", "init", "-q", "."], cwd=d, check=True,
