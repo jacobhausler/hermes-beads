@@ -13,12 +13,15 @@ only read and hash-pinned before/after.
   (fixture child), including after runner-only death (R1: a verified live
   orphan is adopted via the runner's own `_adopt_child`; the solo path never
   Popen's a second child).
-- Admission is authenticated: the credential file must carry a host-held
-  `secret` (>=32 chars, file mode 0600, under the runner's own state dir,
-  generated once). Every admission/stop is verified by HMAC-SHA256
-  (`sign_request`/`sign_stop`) over the exact request body. Self-issued
-  credentials without the secret are refused (typed `BindingRefusal`), as are
-  forged signatures and unsigned stops.
+- Admission is authenticated: the ONLY credential consulted lives at
+  `$HERMES_HOME/beads/admission-credential.json` (`credential_path()`), created
+  once by the host via `provision_credential()` with a fresh 64-hex secret.
+  The door refuses unless the file is a regular file (no symlink), mode 0600,
+  owned by the runner uid, in an owner-only directory. There is no
+  caller-pointable path: a self-minted file elsewhere, even with its own
+  secret, is never read (reviewer bypass F2s; `test_r2f`, `test_r2g`). Every
+  admission/stop is verified by HMAC-SHA256 (`sign_request`/`sign_stop`) over
+  the exact request body; unsigned or forged requests are refused.
 - The approved-set ceiling is mandatory: no `approved_beads` in the
   credential = refusal, so omission can never mean "everything in the store".
 - The child never inherits the credential: the runner prelude pops
@@ -60,7 +63,7 @@ only read and hash-pinned before/after.
 | p4_forged_close_replay | R3 forged close token credited | `test_r3a`–`test_r3c` |
 | P6 probe | R4 claim before any intent | `test_r4_launch_intent_fsynced_before_claim` |
 
-Honest open item: the reviewer's suite baseline (176 tests / 92 errors in
-their lane copy, from missing gitignored fixture dirs) is unreproduced here
-and unexplained; this lane's suite runs green with fixture dirs created on
-demand under `tests/fixtures/`.
+Known residuals (not blocking, stated): the admission signature does not bind a
+run id, so the same signed request admitted into a second run dir yields a
+second grant (both within the approved ceiling); intent files are not
+integrity-signed (tamper fails closed at close time, not at read time).
