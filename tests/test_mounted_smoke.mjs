@@ -225,8 +225,9 @@ let BEFORE_LIST_ALL = null; // captured after the test's own sanctioned native w
 let root = null;
 let botView = null; // hbl-pnu.3.7: injected bot panel view (runState fixtures)
 async function mount(sessionOpts = {}) {
-  const { botView: bv, world = null, reads: rd, ...rest } = sessionOpts;
+  const { botView: bv, world = null, reads: rd, features = undefined, ...rest } = sessionOpts;
   Object.assign(session, rest);
+  session.features = features ?? null; // council S3: generic panes are flag-gated
   botView = bv ?? null; // reset every mount unless the fixture supplies one
   // hbl-pnu.2.11: `reads` is a Prop, never session state — it arrives
   // separately and lands on the shipped root's reads facade slot.
@@ -427,7 +428,9 @@ test("search/record/blockers/compare mount with live DOM evidence", async () => 
     snapshot, query: "blocked", searchRead: nativeSearch, showRead: nativeShow, limit: 25,
   });
   ok(session.searchResults.hits.length > 0, "native search returned hits");
-  await mount();
+  // council S3 (2026-09-30): compare is a generic-pane FLAG; this legacy
+  // proof keeps it ON to preserve the shipped-surface evidence.
+  await mount({ features: { compare: true } });
   const panel = mountEl.querySelector('#search-panel[role="listbox"]');
   ok(panel, "SearchPanel mounted as listbox");
   const opts = [...mountEl.querySelectorAll('[role="option"]')];
@@ -520,6 +523,33 @@ test("search/record/blockers/compare mount with live DOM evidence", async () => 
   session.compare = null;
   BEFORE_LIST_ALL = JSON.stringify(read("list_all"));
   await unmount();
+});
+
+// ---- T4b council S3: compare pane is flag-gated OFF by default ----------------
+// The boundary doc (docs/hbi-boundary.md rule 3): generic explorer-class panes
+// render ONLY behind an explicit feature flag. A session with compare state
+// populated must render NOTHING without features.compare === true — b9s owns
+// exploration; the pane owns actions through the door.
+test("compare pane stays OFF by default; only features.compare===true mounts it", async () => {
+  const before = liveSnapshot();
+  const panes = createSplitPanes({
+    left: { snapshot: before, focusable: { focus: IDS.moveMe }, breadcrumb: null },
+    right: { snapshot: before },
+  });
+  const diff = diffSnapshots(before, before);
+  const confirmed = confirmDeletions(diff, { reads: { show: () => [], history: () => [] } });
+  session.compare = { panes, side: "left", diff, confirmed };
+
+  await mount(); // no features prop => default OFF
+  eq(mountEl.querySelector('[aria-label="Split compare"]'), null,
+    "compare must NOT mount without the flag (council S3)");
+  await unmount();
+
+  await mount({ features: { compare: true } });
+  ok(mountEl.querySelector('[aria-label="Split compare"]'),
+    "compare mounts with the explicit flag");
+  await unmount();
+  session.compare = null;
 });
 
 // ---- T5 drafts: persistence through unmount/remount + honest unavailability ---

@@ -263,7 +263,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
             focusHit: (i) => { focusReq.current = i; rerender(); },
             onActivate: activateHit,
           }, "search") : null,
-      session.compare
+      session.compare && session.features?.compare === true
         ? jsx(SplitCompare, session.compare, "compare") : null,
       session.draftStore
         ? jsx(DraftPanel, { store: session.draftStore, storeInfo,
