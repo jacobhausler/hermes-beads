@@ -4,7 +4,7 @@
 // contract: the mounted smoke's WorkbenchApp was test-authored, so a human
 // had nothing real to press keys in (mounted-smoke review
 // defect 1). This module composes the REAL panels — Tree, RecordCard,
-// BlockerCard, SearchPanel, SplitCompare, DraftPanel (drafts_view.mjs),
+// BlockerCard, SearchPanel, DraftPanel (drafts_view.mjs),
 // botActionPanel — and binds the existing keymap/controller (tree.mjs
 // resolveKey + createTreeController, reused unchanged) on the product
 // root's onKeyDown. Typing in the description field steals letter keys:
@@ -39,7 +39,6 @@ import { Tree, ShortcutHelp, resolveKey } from "./tree.mjs";
 import { RecordCard } from "./record.mjs";
 import { BlockerCard, BlockersDoor, blockersFor, jumpToBlocker, returnFromCard } from "./blockers.mjs";
 import { SearchPanel, searchIssues, enterSearchHit } from "./search.mjs";
-import { SplitCompare } from "./compare.mjs";
 import { DraftPanel } from "./drafts_view.mjs";
 import { botActionPanel, askDecision } from "./bot_action.mjs";
 
@@ -293,8 +292,6 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
             focusHit: (i) => { focusReq.current = i; rerender(); },
             onActivate: activateHit,
           }, "search") : null,
-      session.compare && session.features?.compare === true
-        ? jsx(SplitCompare, session.compare, "compare") : null,
       session.draftStore
         ? jsx(DraftPanel, { store: session.draftStore, storeInfo,
             beadId: draftBeadId,

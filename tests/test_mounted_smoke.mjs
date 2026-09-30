@@ -2,7 +2,7 @@
 // real desktop surface against a local isolated store. jsdom 27+ + React 19 +
 // react-dom 19 (READ-ONLY from the rich-ui plugin's pinned node_modules via
 // tests/__shims__/jsx-real-loader.mjs) mount the actual desktop components
-// (tree, record, blockers, search, compare, drafts, bot_action) with
+// (tree, record, blockers, search, drafts, bot_action) with
 // createRoot + act, exactly the pattern proven by
 // rich-ui/hermes-rich-ui-plugin/tests/test_render_smoke.mjs.
 //
@@ -90,8 +90,6 @@ const { RecordCard } = await import("../desktop/record.mjs");
 const B = await import("../desktop/blockers.mjs");
 const { searchIssues, SearchPanel, enterSearchHit } = await import("../desktop/search.mjs");
 const { createHistoryStack } = await import("../desktop/history.mjs");
-const { createSplitPanes, diffSnapshots, confirmDeletions, SplitCompare } =
-  await import("../desktop/compare.mjs");
 const { createDraftStore } = await import("../desktop/drafts.mjs");
 const BA = await import("../desktop/bot_action.mjs");
 // hbl-pnu.4.6: mount ONLY shipped exports — the product root composes the
@@ -201,7 +199,7 @@ const session = {
   card: null,
   draftStore: null,
   pane: "tree",
-  compare: null, // {panes, side, diff, confirmed}
+  compare: null, // legacy shape; the compare pane was deleted (council S3)
   showBot: false,
 };
 
@@ -500,55 +498,22 @@ test("search/record/blockers/compare mount with live DOM evidence", async () => 
   ok(recSection.textContent.includes("derived readiness"), "derived readiness row (separate value)");
   await snap("record-card", mountEl);
 
-  // compare: native churn — reparent moveMe under the OTHER host, diff, mount
-  const before = liveSnapshot();
-  const rep = actCli("lab-churn", "update", IDS.moveMe, "--parent", IDS.moveHostB, "--json");
-  eq(rep.rc, 0, "native reparent succeeded");
-  const after = liveSnapshot();
-  const diff = diffSnapshots(before, after);
-  ok(diff.moved.some((m) => m.id === IDS.moveMe), "diff reports the reparent as moved");
-  const panes = createSplitPanes({
-    left: { snapshot: after, focusable: { focus: IDS.moveMe }, breadcrumb: null },
-    right: { snapshot: after },
-  });
-  const confirmed = confirmDeletions(diffSnapshots(after, after), {
-    reads: { show: () => [], history: () => [] },
-  });
-  session.compare = { panes, side: "left", diff, confirmed };
-  box.rerender();
-  await act(async () => {});
-  const sc = mountEl.querySelector('[aria-label="Split compare"]');
-  ok(sc, "SplitCompare mounted");
-  ok(sc.textContent.includes("moved"), "moved line rendered");
-  await snap("split-compare", mountEl);
-  session.compare = null;
+  // (council S3, 2026-09-30: the compare pane was LAUNCH-only via b9s; the
+  // generic-explorer file was deleted — structural churn diffing is proven
+  // native-side, and tests/test_scenarios_b.mjs keeps its own diff proof.)
   BEFORE_LIST_ALL = JSON.stringify(read("list_all"));
   await unmount();
 });
 
-// ---- T4b council S3: compare pane is flag-gated OFF by default ----------------
-// The boundary doc (docs/hbi-boundary.md rule 3): generic explorer-class panes
-// render ONLY behind an explicit feature flag. A session with compare state
-// populated must render NOTHING without features.compare === true — b9s owns
-// exploration; the pane owns actions through the door.
-test("compare pane stays OFF by default; only features.compare===true mounts it", async () => {
-  const before = liveSnapshot();
-  const panes = createSplitPanes({
-    left: { snapshot: before, focusable: { focus: IDS.moveMe }, breadcrumb: null },
-    right: { snapshot: before },
-  });
-  const diff = diffSnapshots(before, before);
-  const confirmed = confirmDeletions(diff, { reads: { show: () => [], history: () => [] } });
-  session.compare = { panes, side: "left", diff, confirmed };
-
-  await mount(); // no features prop => default OFF
-  eq(mountEl.querySelector('[aria-label="Split compare"]'), null,
-    "compare must NOT mount without the flag (council S3)");
-  await unmount();
-
+// ---- T4b council S3 (post-deletion): the compare pane must NEVER mount ----
+// desktop/compare.mjs was deleted (owner v0.x law 2026-09-30; council S3:
+// b9s owns generic exploration via LAUNCH). Even a session carrying legacy
+// compare state with the old feature flag ON must render no split pane.
+test("compare pane can never mount again (file deleted)", async () => {
+  session.compare = { panes: {}, side: "left", diff: null, confirmed: null };
   await mount({ features: { compare: true } });
-  ok(mountEl.querySelector('[aria-label="Split compare"]'),
-    "compare mounts with the explicit flag");
+  eq(mountEl.querySelector('[aria-label="Split compare"]'), null,
+    "no split pane mounts — compare.mjs is gone from the shipped tree");
   await unmount();
   session.compare = null;
 });

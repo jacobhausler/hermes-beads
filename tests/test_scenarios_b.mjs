@@ -1,13 +1,14 @@
 // tests/test_scenarios_b.mjs — hbl-pnu.2.8 lane B scenario acceptance:
-//   S5 claim contention + dead-worker reclaim (bd reclaim --older-than),
-//   S7 structural churn (reparent moved line + confirmed tombstone via
-//      desktop/compare.mjs), S8 split compare without losing origin.
+//   S5 claim contention + dead-worker reclaim (bd reclaim --older-than).
+//   (S7/S8 split-compare scenarios were removed 2026-09-30 together with
+//    desktop/compare.mjs — council S3 / owner v0.x law: generic exploration
+//    is LAUNCH-only via b9s.)
 //
 // World: the SEEDED real-bd scenario store (tests/fixtures/scenarios/
 // make_store.py — every mutation/readback goes through its fixed-argv
 // seed/read/act/cleanup CLI driving the pinned bd v1.3.0). UI state comes
 // from the REAL desktop components rendered through the jsx shim, exactly as
-// tests/test_blockers.mjs / tests/test_compare.mjs do. Each scenario asserts
+// tests/test_blockers.mjs does. Each scenario asserts
 // UI state against a SAME-MOMENT `make_store.py read` readback.
 //
 // One store per test file (seeded once here); stores live under the
@@ -27,10 +28,6 @@ const shim = await import(pathToFileURL(path.join(here, "__shims__", "jsx-captur
 
 const { buildSnapshot, createWorkbenchState } = await import("../desktop/model.mjs");
 const { Tree } = await import("../desktop/tree.mjs");
-const {
-  createSplitPanes, diffSnapshots, confirmDeletions, SplitCompare,
-} = await import("../desktop/compare.mjs");
-
 // ---- seeder bridge ----------------------------------------------------------
 const SEEDER = path.join(here, "fixtures", "scenarios", "make_store.py");
 const py = (...args) =>
@@ -200,131 +197,11 @@ test("S5 dead worker: lease lapses, reclaim --older-than returns it to open, ano
 });
 
 // ============================================================================
-// S7 — structural churn under the view (via desktop/compare.mjs)
+// (council S3, owner v0.x law 2026-09-30): S7/S8 removed with
+// desktop/compare.mjs — the generic explorer pane is LAUNCH-only via b9s.
+// Native reparent/delete/history semantics stay proven by the seeder reads
+// above and the python native suites.
 // ============================================================================
-test("S7 churn: reparent moveMe moveHostA→moveHostB renders a moved line; delete yields tombstone citing bd history — all against same-moment readbacks", () => {
-  const { moveMe, moveHostA, moveHostB } = IDS;
-
-  // last materialized snapshot = the state the open view was rendered from
-  const before = snapshotNow();
-  assert.equal(before.nodes.get(moveMe).parent, moveHostA, "seed: moveMe under moveHostA");
-
-  // external reparent through the seeder (real bd update --parent)
-  const reparent = act("lab-churn", "update", moveMe, "--parent", moveHostB, "--json");
-  assert.equal(reparent.rc, 0, reparent.stderr);
-
-  const after = snapshotNow();
-  const d = diffSnapshots(before, after);
-  const m = d.moved.find((x) => x.id === moveMe);
-  assert.ok(m, `moved line names the reparented row; moved=${JSON.stringify(d.moved)}`);
-  assert.equal(m.from, moveHostA);
-  assert.equal(m.to, moveHostB);
-  assert.equal(d.movedLine(moveMe), `moved: ${moveMe} parent ${moveHostA} \u2192 ${moveHostB}`);
-  assert.equal(d.rows.some((r) => r.kind === "ghost"), false, "no ghost rows");
-  // same-moment native readback agrees with the UI diff
-  assert.equal(showRow(moveMe).parent, moveHostB, "readback: parent FIELD moved");
-
-  // external delete (bd delete --force is permitted on stores this lane created)
-  const del = act("lab-churn", "delete", moveMe, "--force");
-  assert.equal(del.rc, 0, del.stderr);
-
-  const after2 = snapshotNow();
-  const d2 = diffSnapshots(after, after2);
-  assert.ok(d2.absent.some((r) => r.id === moveMe && r.confirmed === false),
-    "diff alone produces absence, never a deletion claim");
-  assert.equal(d2.tombstones.length, 0, "no tombstone from the diff alone");
-
-  // native confirmation through the seeder reads: show of the deleted id is
-  // the not-found error shape; history still records commits for the id.
-  const reads = {
-    show: (id) => { const r = read("show", id); return r.rc === 0 ? r.payload : (r.payload ?? { error: "no issues found" }); },
-    history: (id) => { const r = read("history", id); return r.rc === 0 ? r.payload : null; },
-  };
-  const res = confirmDeletions(d2, { reads });
-  assert.deepEqual(res.tombstones.map((t) => t.id), [moveMe],
-    "show-not-found + surviving history confirms the tombstone");
-  assert.equal(res.tombstones[0].citation, `bd history ${moveMe}`);
-  assert.deepEqual(res.stillUnconfirmed, []);
-
-  // rendered split view: moved line + tombstone with working history link
-  const panes = createSplitPanes({
-    left: { snapshot: after2, focusable: { focus: moveHostA, originPane: "tree", draft: "keepme" } },
-    right: { snapshot: before },
-  });
-  const tree = SplitCompare({ panes, side: "left", diff: d, confirmed: res });
-  assert.ok(textIn(tree, `moved: ${moveMe} parent ${moveHostA} \u2192 ${moveHostB}`), "moved line rendered");
-  assert.ok(textIn(tree, `bd history ${moveMe}`), "tombstone cites bd history");
-  assert.ok(walk(tree).some((n) => typeof n === "object" && n.props?.href === `bd history ${moveMe}`),
-    "history link element present");
-  assert.equal(walk(tree).filter((n) => typeof n === "object" && n.props?.["data-kind"] === "ghost").length, 0,
-    "no ghost rows rendered");
-
-  // the cited history command returns real data on this store (same moment)
-  const hist = readOk("history", moveMe);
-  assert.ok(Array.isArray(hist) && hist.length > 0, "bd history survives deletion on the real store");
-  assert.ok(hist.every((e) => e.Issue?.id === moveMe), "history entries cite the deleted id");
-});
-
-// ============================================================================
-// S8 — split compare without losing origin
-// ============================================================================
-test("S8 split: edit committed on the right via native update keeps the left selection/focus byte-identical; closing the split restores the origin bundle", () => {
-  const origin = IDS.ready;      // left-side origin (plain ready task)
-  const target = IDS.conflict;   // right-side comparison row (has a description to edit)
-
-  const snap0 = snapshotNow();
-  const panes = createSplitPanes({
-    left: { snapshot: snap0, focusable: { focus: origin, originPane: "tree", draft: "left-draft" } },
-    right: { snapshot: snap0 },
-  });
-  panes.select("left", origin);
-  panes.select("right", target);
-
-  // the workbench underneath the split: origin focused, then the split opens
-  const ui = createWorkbenchState(snap0, { selection: origin, focus: origin });
-  ui.save();
-  const bundleOf = () => JSON.stringify({
-    storeKey: ui.storeKey, pane: ui.pane, selection: ui.selection,
-    focus: ui.focus, expanded: [...ui.expanded].sort(),
-    revealed: [...ui.revealed].map(([id, r]) => [id, { ...r }]),
-  });
-  const originBundle = bundleOf();
-
-  const leftBytes = () => JSON.stringify([
-    panes.selection("left"), panes.focus("left"),
-    panes.originPane("left"), panes.draft("left"),
-  ]);
-  const leftBefore = leftBytes();
-  assert.equal(leftBefore, JSON.stringify([origin, origin, "tree", "left-draft"]),
-    "precondition: left side carries the origin selection/focus/pane/draft");
-
-  // an edit committed on the RIGHT side via the native update path
-  const edited = act("lab-editor", "update", target, "--description", "edited-in-split", "--json");
-  assert.equal(edited.rc, 0, edited.stderr);
-
-  // right side re-materializes; left must be byte-identical
-  const snap1 = snapshotNow();
-  panes.applyRefresh("right", { snapshot: snap1 });
-  assert.equal(leftBytes(), leftBefore,
-    "left selection/focus (and pane/draft) byte-identical through the right-side edit");
-  assert.notEqual(panes.snapshot("right"), snap0, "right side did advance");
-
-  // same-moment native readback proves the right-side edit is real
-  const row = showRow(target);
-  assert.equal(row.description, "edited-in-split", "readback: right-side edit landed");
-  // the left-side origin row was NOT touched by the edit
-  assert.notEqual(showRow(origin).description, "edited-in-split",
-    "origin row untouched");
-
-  // closing the split restores single-pane focus+scroll on the origin —
-  // the S2-style bundle restore (focus, selection, expansion, reveal, pane)
-  ui.jump(target);            // what the split's right-side focus does
-  assert.notEqual(bundleOf(), originBundle, "split navigated away from origin");
-  ui.back();                  // closing the split = one app-back
-  assert.equal(bundleOf(), originBundle,
-    "origin bundle restored byte-identical (focus+selection+expansion+pane)");
-  assert.equal(panes.focus("left"), origin, "left pane still owns the origin focus");
-});
 
 // ---- teardown: the seeder's own cleanup for the store this file created ----
 test.after?.(() => {});

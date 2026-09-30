@@ -61,7 +61,7 @@ if (mode === "--real") {
   // source-level gate: the real desktop modules never touch innerHTML
   const srcFiles = [
     "desktop/tree.mjs", "desktop/record.mjs", "desktop/model.mjs",
-    "desktop/blockers.mjs", "desktop/compare.mjs", "desktop/drafts.mjs",
+    "desktop/blockers.mjs", "desktop/drafts.mjs",
     "desktop/history.mjs", "desktop/search.mjs", "desktop/bot_action.mjs",
   ];
   for (const f of srcFiles) {
