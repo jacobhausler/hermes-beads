@@ -21,18 +21,18 @@ Sources: ../consults/20260930-hbi-build-vs-bundle-council/READOUT.md (fable/sol/
    planning-copy` — RED = drift alarm for the owner, NOT a release block.
 3. Compare-class modules stay behind explicit flags in workbench (default OFF);
    a flag being ON requires a named Hermes-coupled reason, not habit.
-4. Deletion of any generic module requires prior pane-usage evidence at the real
-   mount (owner law: no deletion on maintenance-cost reasoning alone; council
-   fable caveat recorded in READOUT).
-   STATUS 2026-09-30: counters EXIST — `desktop/telemetry.mjs` (whitelist ring,
-   zero I/O) is wired into `WorkbenchApp` via an injected `telemetry` prop;
-   emits fire at the real action sites (search open/activate, blockers
-   card-open/jump, draft save, bot door Work/Cancel dispatch). The mounted
-   smoke proves each event fires through its real user path. The host shell
-   still owns persistence (sink + storeKey); until a host passes an instance,
-   mounts are uninstrumented and record NOTHING — absence of counts must
-   never be read as non-use.
-5. 60d/90d review triggers live in the READOUT; flip criteria are owner's call.
+4. Generic-class modules are CUT when the boundary says generic — no usage
+   evidence gate, no waiting period. (Owner law 2026-09-30: at version 0.x
+   there are no 90-day gates and nothing is deletion-law blocked; the old
+   "observed non-use at the real mount" precondition is RETIRED. Telemetry
+   (`desktop/telemetry.mjs`) stays as an honest instrument — presence of
+   counts may inform, absence of counts means nothing.)
+   The remaining discipline is mechanical, not temporal: feature-flag the
+   import OFF first, prove the flag-OFF path renders nothing, then delete
+   the file and its tests with the same commit.
+5. No standing review timers. Re-open the b9s comparison only on an event
+   (b9s ships a versioned embed API, b9s stalls, or the pane gains a named
+   Hermes-coupled feature) — never on a calendar.
 
 ## Known measurement corrections (adjudication 2026-09-30)
 - `history.mjs` is NOT a deletable orphan: the app loader/test callers construct
