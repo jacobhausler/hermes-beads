@@ -225,7 +225,7 @@ let BEFORE_LIST_ALL = null; // captured after the test's own sanctioned native w
 let root = null;
 let botView = null; // hbl-pnu.3.7: injected bot panel view (runState fixtures)
 async function mount(sessionOpts = {}) {
-  const { botView: bv, world = null, reads: rd, features = undefined, ...rest } = sessionOpts;
+  const { botView: bv, world = null, reads: rd, features = undefined, telemetry = undefined, ...rest } = sessionOpts;
   Object.assign(session, rest);
   session.features = features ?? null; // council S3: generic panes are flag-gated
   botView = bv ?? null; // reset every mount unless the fixture supplies one
@@ -241,6 +241,7 @@ async function mount(sessionOpts = {}) {
     root.render(React.createElement(WorkbenchApp, {
       ...w, session, botView,
       ...(rd !== undefined ? { reads: rd } : {}),
+      ...(telemetry !== undefined ? { telemetry } : {}),
       bindRerender: (fn) => { box.rerender = fn; },
     }));
   });
@@ -1327,6 +1328,62 @@ test("mounted session never mutated the store (before/after list_all JSON equali
   CHECKS++;
   assert.ok(rows.some((r) => r.id === IDS.epic) && rows.some((r) => r.id === HOSTILE_ID),
     "store still holds the seeded world + the one bead the harness explicitly created via the seeder act CLI");
+});
+
+// ---- T9 council S3 step 2: the shipped root emits pane telemetry -------------
+// The deletion law (docs/hbi-boundary.md rule 4) requires observed NON-USE
+// before any generic pane can be cut. This test proves the counters EXIST and
+// fire on the REAL user paths (key press + real click), on the SHIPPED root.
+test("telemetry: real user paths emit whitelisted events on the shipped root", async () => {
+  const { createTelemetry } = await import("../desktop/telemetry.mjs");
+  const tel = createTelemetry({ storeKey: "telemetry-world" });
+  session.card = null; session.searchResults = null; session.showBot = true;
+  session.draftStore = createDraftStore({ storage: makeStorage() });
+  session.compare = null;
+  const hostBot = {
+    ask: null, work: { present: true, enabled: true }, runState: null,
+    onWork: () => {}, onCancel: () => {},
+  };
+  await mount({ reads: READS211, telemetry: tel, botView: hostBot });
+
+  // search door: type + Enter through the real input (the 2.11 door path)
+  const sIn = mountEl.querySelector("#search-input");
+  await act(async () => { sIn.value = "multi blocker"; });
+  await press("Enter", {}, "#search-input");
+  ok(mountEl.querySelector('#search-panel[role="listbox"]'), "search door opened");
+  // activate a hit through the real click path
+  await act(async () => { mountEl.querySelector("#search-hit-0").click(); });
+  // blockers door: the visible USER button on the blocked row
+  await walkCursorTo(IDS.taskB);
+  const btn = document.getElementById(`blockers-open:${IDS.taskB}`);
+  ok(btn, "blocked row offers the blockers button");
+  await act(async () => { btn.click(); });
+  ok(document.getElementById(`blocker-card:${IDS.taskB}`), "card opened");
+  // drafts door: a real edit through the shipped textarea. React's
+  // value-tracker dedupes a naive .value set, so go through the native
+  // setter — React sees a genuine change and runs onChange -> saveDraft.
+  const dIn = mountEl.querySelector("#draft-input");
+  ok(dIn, "draft textarea mounted");
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      dom.window.HTMLTextAreaElement.prototype, "value").set;
+    setter.call(dIn, "telemetry draft");
+    dIn.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+  // bot door: the enabled Work click through the shipped composition
+  const workBtn = [...mountEl.querySelectorAll("button")]
+    .find(b => b.textContent.trim().startsWith("Work"));
+  ok(workBtn && !workBtn.disabled, "Work button enabled via injected botView");
+  await act(async () => { workBtn.click(); });
+
+  const uses = tel.uses()["telemetry-world"];
+  for (const e of ["search-open", "search-activate", "blockers-card-open",
+    "drafts-save", "bot-action-click"]) {
+    CHECKS++;
+    assert.ok(uses?.[e] >= 1, `telemetry recorded ${e} from the real user path (got ${JSON.stringify(uses)})`);
+  }
+  await unmount();
+  session.draftStore = null; session.showBot = false;
 });
 
 test.childChecks = () => CHECKS;

@@ -24,6 +24,14 @@ Sources: ../consults/20260930-hbi-build-vs-bundle-council/READOUT.md (fable/sol/
 4. Deletion of any generic module requires prior pane-usage evidence at the real
    mount (owner law: no deletion on maintenance-cost reasoning alone; council
    fable caveat recorded in READOUT).
+   STATUS 2026-09-30: counters EXIST — `desktop/telemetry.mjs` (whitelist ring,
+   zero I/O) is wired into `WorkbenchApp` via an injected `telemetry` prop;
+   emits fire at the real action sites (search open/activate, blockers
+   card-open/jump, draft save, bot door Work/Cancel dispatch). The mounted
+   smoke proves each event fires through its real user path. The host shell
+   still owns persistence (sink + storeKey); until a host passes an instance,
+   mounts are uninstrumented and record NOTHING — absence of counts must
+   never be read as non-use.
 5. 60d/90d review triggers live in the READOUT; flip criteria are owner's call.
 
 ## Known measurement corrections (adjudication 2026-09-30)

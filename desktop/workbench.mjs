@@ -55,8 +55,13 @@ import { botActionPanel, askDecision } from "./bot_action.mjs";
 //    facade the search input and the blockers door run through. Missing
 //    member => that door is present-but-disabled with a visible reason.
 export function WorkbenchApp({ snapshot, ui, controller, stack, session,
-  storeInfo, draftBeadId, botView = null, bindRerender, reads = null }) {
+  storeInfo, draftBeadId, botView = null, bindRerender, reads = null,
+  telemetry = null }) {
   const [, bump] = useReducer((x) => x + 1, 0);
+  // council S3 step 2: pane-usage evidence for the deletion law (boundary
+  // rule 4). Fire-and-forget; a missing instance means uninstrumented, never
+  // an error. The host owns the createTelemetry instance (and its sink).
+  const track = (name) => { try { telemetry?.emit(name); } catch { /* never breaks the action */ } };
   const rootRef = useRef(null);
   const rerender = () => bump();
   if (typeof bindRerender === "function") bindRerender(rerender);
@@ -132,6 +137,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
     });
     setSearchCursor(0);
     focusReq.current = 0;
+    track("search-open");
     rerender();
   };
   const activateHit = (hit, i) => {
@@ -139,6 +145,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
       snapshot, workbench: ui, history: stack });
     session.searchResults = null;
     focusReq.current = null;
+    track("search-activate");
     rerender();
   };
   const openCardFromRow = (id) => {
@@ -158,9 +165,32 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
     const { card } = jumpToBlocker({ snapshot, ui, stack, state: {},
       provider: reads.provider, targetId: id, pane: ui.pane });
     session.card = card;
+    track("blockers-jump");
+    track("blockers-card-open");
     rerender();
   };
   const openBlockersForSelection = () => openCardFromRow(ui.selection);
+  // council S3 step 2: the bot panel is composed here; wrap the host's door
+  // callbacks so an ACTUALLY dispatched claim/dispatch/cancel click counts
+  // (the button's own enabled gates stay authoritative — an emit fires only
+  // when the wrapped callback really runs).
+  const trackedBotView = () => {
+    const base = botView ?? {
+      ask: askDecision({ ok: false, error: "session_door_unqualified",
+        read_only: true, no_dispatch: true }),
+      work: { present: true, enabled: false,
+        disabledReason: "runner door (hbl-pnu.3.3) not bound" },
+    };
+    if (!telemetry) return base;
+    const wrapped = { ...base };
+    if (typeof base.onWork === "function") {
+      wrapped.onWork = (...a) => { track("bot-action-click"); return base.onWork(...a); };
+    }
+    if (typeof base.onCancel === "function") {
+      wrapped.onCancel = (...a) => { track("bot-action-click"); return base.onCancel(...a); };
+    }
+    return wrapped;
+  };
   const focusSearch = () => {
     if (!searchReady) return; // disabled input cannot take focus — no-op
     inputReq.current = true;
@@ -267,14 +297,10 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
         ? jsx(SplitCompare, session.compare, "compare") : null,
       session.draftStore
         ? jsx(DraftPanel, { store: session.draftStore, storeInfo,
-            beadId: draftBeadId }, "draft") : null,
+            beadId: draftBeadId,
+            onTrack: telemetry ? () => track("drafts-save") : undefined }, "draft") : null,
       jsx("div", { id: "bot-panel-slot", children: session.showBot
-        ? botActionPanel(botView ?? {
-            ask: askDecision({ ok: false, error: "session_door_unqualified",
-              read_only: true, no_dispatch: true }),
-            work: { present: true, enabled: false,
-              disabledReason: "runner door (hbl-pnu.3.3) not bound" },
-          }) : null }, "bot"),
+        ? botActionPanel(trackedBotView()) : null }, "bot"),
       controller.helpOpen ? jsx(ShortcutHelp, {}, "help") : null,
     ].filter(Boolean),
   }, "workbench");

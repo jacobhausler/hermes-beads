@@ -15,7 +15,7 @@ import { jsx } from "react/jsx-runtime";
 import { useState } from "react";
 import { editDecision, draftLimitationNotice } from "./drafts.mjs";
 
-export function DraftPanel({ store, storeInfo, beadId }) {
+export function DraftPanel({ store, storeInfo, beadId, onTrack = null }) {
   const [, bump] = useState(0);
   const d = store.getDraft(storeInfo, beadId);
   const dec = editDecision();
@@ -36,6 +36,7 @@ export function DraftPanel({ store, storeInfo, beadId }) {
       defaultValue: d ? d.text : "",
       onChange: (ev) => {
         store.saveDraft(storeInfo, beadId, ev.target.value);
+        if (onTrack) { try { onTrack(); } catch { /* telemetry never breaks a save */ } }
         bump((x) => x + 1);
       },
     }, "input"),
