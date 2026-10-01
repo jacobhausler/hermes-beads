@@ -6,6 +6,8 @@ no shell, no state mirroring. Closing work stays with plain `bd close`: the
 escape hatch is the product.
 """
 import json
+import os
+import shutil
 
 from .beads import claims, native, read_model, write_protocol
 
@@ -25,8 +27,10 @@ def _store(args):
     return _text(args or {}, "workspace")
 
 
-def _bd(args):
-    return (args or {}).get("bd_bin") or "bd"
+def _bd():
+    # The bd executable is operator config, never a tool argument: a
+    # model-chosen argv[0] would run any program with no approval.
+    return os.environ.get("HERMES_BEADS_BD_BIN") or shutil.which("bd") or "bd"
 
 
 def handle_beads_smoke(args):
@@ -34,7 +38,7 @@ def handle_beads_smoke(args):
     if not workspace:
         return json.dumps({"error": "workspace must be an explicit absolute path to a bd store"})
     try:
-        return json.dumps(native.smoke(workspace, bd_bin=_bd(args),
+        return json.dumps(native.smoke(workspace, bd_bin=_bd(),
                                        label=(args or {}).get("label")))
     except native.NativeError as exc:
         return _fail(exc)
@@ -46,7 +50,7 @@ def handle_beads_frontier(args):
         return json.dumps({"error": "workspace must be an explicit absolute path to a bd store"})
     try:
         rows = read_model.ready(workspace, label=(args or {}).get("label"),
-                                bd_bin=_bd(args))
+                                bd_bin=_bd())
         return json.dumps({"ok": True, "ready": rows})
     except native.NativeError as exc:
         return _fail(exc)
@@ -58,7 +62,7 @@ def handle_beads_show(args):
         return json.dumps({"error": "workspace and bead are required"})
     try:
         return json.dumps({"ok": True, "bead": read_model.show(
-            workspace, bead, bd_bin=_bd(args))})
+            workspace, bead, bd_bin=_bd())})
     except native.NativeError as exc:
         return _fail(exc)
 
@@ -69,7 +73,7 @@ def handle_beads_claim(args):
     if not (workspace and bead and actor):
         return json.dumps({"error": "workspace, bead and actor are required"})
     try:
-        row = claims.claim(workspace, bead, actor=actor, bd_bin=_bd(args))
+        row = claims.claim(workspace, bead, actor=actor, bd_bin=_bd())
         return json.dumps({"ok": True, "bead": row})
     except claims.ClaimConflictError as exc:
         return json.dumps({"ok": False, "conflict": True,
@@ -87,7 +91,7 @@ def handle_beads_update(args):
         return json.dumps({"error": "workspace, bead, actor and a non-empty fields object are required"})
     try:
         rec = write_protocol.update_fields(
-            workspace, bead, actor=actor, bd_bin=_bd(args),
+            workspace, bead, actor=actor, bd_bin=_bd(),
             if_assignee=args.get("if_assignee"), if_status=args.get("if_status"),
             fields=fields)
         return json.dumps(rec)
@@ -108,7 +112,7 @@ def handle_beads_comment(args):
         return json.dumps({"error": "workspace, bead, actor and text are required"})
     try:
         rows = write_protocol.append_comment(workspace, bead, actor=actor,
-                                             text=text, bd_bin=_bd(args))
+                                             text=text, bd_bin=_bd())
         return json.dumps({"ok": True, "comments": rows})
     except native.NativeError as exc:
         return _fail(exc)
@@ -116,8 +120,6 @@ def handle_beads_comment(args):
 
 _STORE = {"type": "string",
           "description": "Absolute canonical bd store dir (contains .beads/)"}
-_BD = {"type": "string",
-       "description": "Explicit bd binary path (default: 'bd' on PATH)"}
 
 
 def _schema(desc, props, required):
@@ -129,23 +131,23 @@ def _schema(desc, props, required):
 TOOLS = [
     ("beads_smoke",
      _schema("Smoke-check one bd store: installed bd version, store identity, and a bounded ready frontier (epics excluded).",
-             {"workspace": _STORE, "label": {"type": "string"}, "bd_bin": _BD},
+             {"workspace": _STORE, "label": {"type": "string"}},
              ["workspace"]),
      handle_beads_smoke),
     ("beads_frontier",
      _schema("The scoped ready frontier for one store (blocked and claimed rows excluded, epics excluded). Optional label scope.",
-             {"workspace": _STORE, "label": {"type": "string"}, "bd_bin": _BD},
+             {"workspace": _STORE, "label": {"type": "string"}},
              ["workspace"]),
      handle_beads_frontier),
     ("beads_show",
      _schema("Read one bead verbatim as bd sees it (status, assignee, notes, deps, metadata).",
-             {"workspace": _STORE, "bead": {"type": "string"}, "bd_bin": _BD},
+             {"workspace": _STORE, "bead": {"type": "string"}},
              ["workspace", "bead"]),
      handle_beads_show),
     ("beads_claim",
      _schema("Claim a bead for one actor, read back after. A held claim refuses honestly and names the holder — never steals.",
              {"workspace": _STORE, "bead": {"type": "string"},
-              "actor": {"type": "string"}, "bd_bin": _BD},
+              "actor": {"type": "string"}},
              ["workspace", "bead", "actor"]),
      handle_beads_claim),
     ("beads_update",
@@ -153,14 +155,13 @@ TOOLS = [
              {"workspace": _STORE, "bead": {"type": "string"},
               "actor": {"type": "string"},
               "if_assignee": {"type": "string"}, "if_status": {"type": "string"},
-              "fields": {"type": "object"}, "bd_bin": _BD},
+              "fields": {"type": "object"}},
              ["workspace", "bead", "actor", "fields"]),
      handle_beads_update),
     ("beads_comment",
      _schema("Append a comment to a bead (append-only — bd has no comment edit/delete).",
              {"workspace": _STORE, "bead": {"type": "string"},
-              "actor": {"type": "string"}, "text": {"type": "string"},
-              "bd_bin": _BD},
+              "actor": {"type": "string"}, "text": {"type": "string"}},
              ["workspace", "bead", "actor", "text"]),
      handle_beads_comment),
 ]

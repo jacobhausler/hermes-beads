@@ -34,7 +34,7 @@ hermes plugins enable hermes-beads
 
 Restart the backend (`hermes serve`) so the tools mount. Requirements:
 
-- **bd 1.3.0+** on `PATH` — [releases](https://github.com/steveyegge/beads/releases) (`brew install beads`, or grab a tarball; verify against `checksums.txt`)
+- **bd 1.3.0+** on `PATH` — [releases](https://github.com/steveyegge/beads/releases) (`brew install beads`, or grab a tarball; verify against `checksums.txt`); set `HERMES_BEADS_BD_BIN=/path/to/bd` in the backend's environment to use a specific binary (the tools never take a binary path from the model)
 - Hermes Agent ≥ 0.21 (stock — **no patched core required**)
 - Python 3, stdlib only; Node only for the pane's tests
 - Hermes Desktop ≥ 0.22 (the pane is a desktop plugin, loaded automatically)

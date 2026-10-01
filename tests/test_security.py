@@ -378,5 +378,51 @@ class ArgvInjection(unittest.TestCase):
         finally:
             native._argv_ok = orig
 
+
+# ---- 3. the bd executable is never a tool argument -------------------------
+
+def _load_plugin():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "hermes_beads_plugin", os.path.join(LANE, "__init__.py"),
+        submodule_search_locations=[LANE])
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class ToolExecutableNotModelControlled(unittest.TestCase):
+    """A model-chosen argv[0] is arbitrary exec: the schemas must not offer
+    bd_bin, and a smuggled bd_bin must be ignored by the handlers."""
+
+    def test_no_schema_exposes_bd_bin(self):
+        plugin = _load_plugin()
+        for name, schema, _ in plugin.TOOLS:
+            self.assertNotIn("bd_bin", schema["parameters"]["properties"], name)
+
+    def test_handler_ignores_model_bd_bin(self):
+        plugin = _load_plugin()
+        os.makedirs(FIXTURE_ROOT, exist_ok=True)
+        ws = tempfile.mkdtemp(prefix="bdbin-", dir=FIXTURE_ROOT)
+        os.makedirs(os.path.join(ws, ".beads"))
+        marker = os.path.join(ws, "pwned")
+        with open(os.path.join(ws, "version"), "w") as fh:
+            fh.write(f"touch {marker}\n")
+        saved = os.environ.get("HERMES_BEADS_BD_BIN")
+        os.environ["HERMES_BEADS_BD_BIN"] = "/nonexistent/bd-bin"
+        try:
+            out = json.loads(plugin.handle_beads_smoke(
+                {"workspace": ws, "bd_bin": "bash"}))
+        finally:
+            if saved is None:
+                os.environ.pop("HERMES_BEADS_BD_BIN", None)
+            else:
+                os.environ["HERMES_BEADS_BD_BIN"] = saved
+        self.assertFalse(os.path.exists(marker), "model bd_bin was executed")
+        self.assertEqual(out.get("error_type"), "BdNotFoundError", out)
+        self.assertIn("/nonexistent/bd-bin", out.get("error", ""))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
