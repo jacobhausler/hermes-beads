@@ -1,4 +1,4 @@
-"""Disposable-store bootstrap for tests/test_e2e.py (hbl-pnu.4.1).
+"""Disposable-store bootstrap for tests/test_e2e.py ().
 
 Every helper here drives the ACTUAL pinned bd binary (v1.3.0, f45b249ce) with
 fixed argv — no mocks, no SQL, no shadow store, no --force, no Beads
@@ -24,16 +24,16 @@ import time
 import uuid
 
 BD_BIN = os.environ.get("BEADS_LAB_BD",
-                        "/home/hermes/.hermes/work/beads-lab/bin/bd")
+                        "bd")
 FIXTURE_ROOT = os.path.dirname(os.path.abspath(__file__))
 
-# hbl-pnu.4.7: the FIXTURE_ROOT is SHARED by every suite that seeds through
+# the FIXTURE_ROOT is SHARED by every suite that seeds through
 # this bootstrap (e2e, scenarios, mounted smoke). A runner must delete ONLY
 # the stores its own process created — sweeping the root kills concurrent
 # suites' live stores mid-run (the recorded -C flake).
 RUN_STORES = set()
 
-# hbl-pnu.4.7: crashed runs used to leave stores forever (the old sweeps
+# crashed runs used to leave stores forever (the old sweeps
 # were the flake). Reclaim only AGE-OUT orphans: a live concurrent run's
 # store is fresh (bd/dolt writes refresh mtime), so the threshold guards it.
 STALE_SECONDS = 3600

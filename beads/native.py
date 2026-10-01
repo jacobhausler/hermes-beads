@@ -4,7 +4,7 @@ The only authority for how we talk to bd is the installed binary itself:
 `bd version`, `bd info`, and `bd <cmd> --help` against the pinned build
 observed in this lab (v1.3.0, f45b249ce). Do not copy flags from tutorials.
 
-Contract (hbl-pnu.1.6 / N0):
+Contract ( / N0):
   - Fixed argv lists executed with subprocess.run(shell=False). Callers pass
     path/ID/label values as separate argv entries; nothing is shell-interpolated.
   - Every invocation binds an explicit canonical workspace (cwd=) and, for
@@ -15,7 +15,7 @@ Contract (hbl-pnu.1.6 / N0):
     --if-assignee/--if-status guard (nothing written; NEVER retry the same
     guard) | 2 --max-rows circuit breaker (NOT an empty result).
 
-N1 (hbl-pnu.1.1) broadens the read/UI surface on top of run_bd(); this module
+Reads and UI-facing queries build on run_bd(); this module
 intentionally ships only what the initial smoke and capability probes need.
 """
 import json
@@ -25,7 +25,7 @@ import subprocess
 
 DEFAULT_TIMEOUT = 30
 
-# ---- fixed-argv security boundary (hbl-pnu.4.4) -----------------------------
+# ---- fixed-argv security boundary ------------------------------------
 # run_bd is the single spawn point. There is no shell, so shell metachars,
 # "../" and newlines are inert inside a token. The only injection path left is
 # a caller VALUE that bd parses as a FLAG (e.g. an id "--db=/x" or "-C/etc").

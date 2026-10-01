@@ -1,4 +1,4 @@
-// desktop/drafts_view.mjs — hbl-pnu.4.6: the SHIPPED draft panel component.
+// desktop/drafts_view.mjs — the SHIPPED draft panel component.
 //
 // drafts.mjs owns the draft store + capability gates and is pinned
 // import-free by its source audit, so the React view lives here: a thin

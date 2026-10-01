@@ -1,4 +1,4 @@
-// tests/test_scenarios_a.mjs — hbl-pnu.2.8 scenario acceptance, lane
+// tests/test_scenarios_a.mjs — scenario acceptance, lane
 // finish-scen-a: S1 (orient), S3 (derived-blocked badge), S4 (search reveals
 // ancestor path), S10 (inherited multi-blocker diagnosis) from hci.md §3.
 //
@@ -29,7 +29,7 @@ const { createHistoryStack } = await import("../desktop/history.mjs");
 const B = await import("../desktop/blockers.mjs");
 
 const BD_BIN = process.env.BEADS_LAB_BD
-  || "/home/hermes/.hermes/work/beads-lab/bin/bd";
+  || "bd";
 const SEEDER = path.join(here, "fixtures", "scenarios", "make_store.py");
 const ACTOR = "lab-hci";
 

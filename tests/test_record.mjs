@@ -1,4 +1,4 @@
-// tests/test_record.mjs — hbl-pnu.1.5: native record tolerance in the
+// tests/test_record.mjs — native record tolerance in the
 // read->render->re-emit path. Unknown statuses/issue types/edge types are
 // preserved verbatim; stored status and native derived readiness render
 // separately; divergence warns; the dep-tree [READY] badge is never

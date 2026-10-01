@@ -1,4 +1,4 @@
-"""Disposable scenario store for tests/test_scenarios.mjs (hbl-pnu.2.8).
+"""Disposable scenario store for tests/test_scenarios.mjs ().
 
 Reuses tests/fixtures/e2e-runtime/bootstrap.py verbatim — make_store, actor,
 seed_bead, raw_bd (--readonly for every readback), show_dict, comments_list.

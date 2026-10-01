@@ -1,7 +1,7 @@
-// desktop/history.mjs — hbl-pnu.2.3: clickable breadcrumb (parent-field chain
+// desktop/history.mjs — clickable breadcrumb (parent-field chain
 // over an injected snapshot) + INDEPENDENT history-stack model and panel.
 //
-// Purity rules (CONTRACTS-v3 C1, bd-expert, desktop-plugin rules):
+// Purity rules:
 //  - breadcrumb ancestry comes from the snapshot's parent-FIELD chain only,
 //    re-resolved live on every render; ID spelling is never ancestry;
 //  - the breadcrumb widget and the history stack share NO state: breadcrumb
@@ -184,7 +184,7 @@ export function HistoryPanel({ entries, index, onRestore }) {
   const rows = entries.map((e, i) =>
     jsx("button", {
       type: "button", "aria-current": i === index ? "true" : undefined,
-      id: `history-row-${i}`, 
+      id: `history-row-${i}`,
       className: i === index ? "history-row active" : "history-row",
       onClick: () => onRestore?.(e),
       children: rowLabel(e),

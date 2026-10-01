@@ -1,4 +1,4 @@
-// tests/test_visual.mjs — hbl-pnu.2.10: the shipped visual layer (unit tier).
+// tests/test_visual.mjs — the shipped visual layer (unit tier).
 // Fast, DOM-free checks of the stylesheet contract; the mounted tier
 // (test_mounted_smoke.mjs T10) proves the same facts in real mounted DOM.
 import test from "node:test";
@@ -42,7 +42,7 @@ test("theme tokens fall back to system colors; sizes are rem, never px widths", 
   }
   assert.match(WORKBENCH_CSS, /font-size:\s*1rem/, "root font-size in rem");
   assert.ok(!/width\s*:\s*\d+(\.\d+)?px/.test(WORKBENCH_CSS),
-    "stylesheet must not declare fixed px widths (reflow law)");
+    "stylesheet must not declare fixed px widths");
   assert.match(WORKBENCH_CSS, /40rem/, "wrap point declared in rem");
 });
 
@@ -74,7 +74,7 @@ test("F4-F7 field separation is structural, not paint-adjacent text", () => {
   assert.ok(bot.includes('role: "group"'), "bot panel role=group");
 });
 
-test("hbl-pnu.2.10: blocked chip border meets 3:1 non-text contrast on white (real-Chrome finding: Mark fallback = yellow, 1.07:1)", async () => {
+test("blocked chip border meets 3:1 non-text contrast on white (real-Chrome finding: Mark fallback = yellow, 1.07:1)", async () => {
   const { WORKBENCH_CSS } = await import("../desktop/workbench_css.mjs");
   const m = WORKBENCH_CSS.match(/\.blocked-chip\s*\{[^}]*var\(--danger,\s*([^)]+)\)/);
   assert.ok(m, "blocked chip border uses a --danger token with an explicit fallback");

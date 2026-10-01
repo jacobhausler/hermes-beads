@@ -1,7 +1,7 @@
-// tests/test_scenarios_b.mjs — hbl-pnu.2.8 lane B scenario acceptance:
+// tests/test_scenarios_b.mjs — lane B scenario acceptance:
 //   S5 claim contention + dead-worker reclaim (bd reclaim --older-than).
 //   (S7/S8 split-compare scenarios were removed 2026-09-30 together with
-//    desktop/compare.mjs — council S3 / owner v0.x law: generic exploration
+//    desktop/compare.mjs — generic exploration
 //    is LAUNCH-only via b9s.)
 //
 // World: the SEEDED real-bd scenario store (tests/fixtures/scenarios/
@@ -197,7 +197,7 @@ test("S5 dead worker: lease lapses, reclaim --older-than returns it to open, ano
 });
 
 // ============================================================================
-// (council S3, owner v0.x law 2026-09-30): S7/S8 removed with
+// ( ): S7/S8 removed with
 // desktop/compare.mjs — the generic explorer pane is LAUNCH-only via b9s.
 // Native reparent/delete/history semantics stay proven by the seeder reads
 // above and the python native suites.

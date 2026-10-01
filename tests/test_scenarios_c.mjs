@@ -1,10 +1,10 @@
-// tests/test_scenarios_c.mjs — hbl-pnu.2.8 lane C: scenarios S2, S6, S9
+// tests/test_scenarios_c.mjs — lane C: scenarios S2, S6, S9
 // (hci.md §3) as machine-checkable acceptance against the seeded REAL-bd
 // scenario world (tests/fixtures/scenarios/make_store.py — seed/read/act/
 // cleanup CLI over the pinned bd v1.3.0). Every UI assertion is checked
 // against a SAME-MOMENT `make_store.py read` readback of the store.
 //
-// Honesty laws pinned here (owner contracts, hbl-pnu.2.5 / .3.5):
+// Honesty laws pinned here (owner contracts, / .3.5):
 //  - Content Save is NEVER asserted as saved: runContentSave must return the
 //    typed unsupported result (reason unsupported:no-atomic-content-guard)
 //    and the store must read back unchanged.
@@ -42,7 +42,7 @@ const { resolveKey } = await import("../desktop/tree.mjs");
 const REPO = path.join(here, "..");
 const SEEDER = path.join(here, "fixtures", "scenarios", "make_store.py");
 const BD_BIN = process.env.BEADS_LAB_BD
-  || "/home/hermes/.hermes/work/beads-lab/bin/bd";
+  || "bd";
 
 // ---- seeder bridge (child_process.execFileSync python3, per the seeder CLI) --
 const py = (args, timeout = 180_000) =>
@@ -145,7 +145,7 @@ test("S2: x-jump to the cross-branch blocker card, Esc restores the bundle byte-
 
   // press Esc → the app-back gesture resolves to ONE history-back and the
   // full bundle comes back byte-identical
-  // hbl-pnu.2.9: Escape is now bound to close-help (overlay dismissal); the
+  // Escape is now bound to close-help (overlay dismissal); the
   // app-back-on-Esc mapping below remains the app's own gesture choice.
   assert.equal(resolveKey({ key: "Escape" }), "close-help",
     "Escape is bound in the KEYMAP to close-help");
@@ -236,91 +236,6 @@ test("S6: external CLI edit surfaces a conflict; reload only after explicit conf
   assert.equal(server().description, external);
 });
 
-// ============================================================================
-// S9 — bot Ask / Refine / Work (desktop/bot_action.mjs + bot_handoff.py)
-// ============================================================================
-const botpy = (expr) => JSON.parse(execFileSync("python3", ["-c", expr],
-  { encoding: "utf8", cwd: REPO, timeout: 120_000,
-    env: { ...process.env, BEADS_LAB_BD: BD_BIN } }));
-
-test("S9 Ask: bot_handoff.ask carries the exact typed refusal session_door_unqualified; the panel renders it read-only", () => {
-  const out = botpy(`
-import json, os, sys
-sys.path.insert(0, ".")
-import bot_handoff
-out = bot_handoff.ask(${JSON.stringify(store)}, ${JSON.stringify(ids.taskB)},
-  question="what blocks this?", bd_bin=os.environ["BEADS_LAB_BD"])
-print(json.dumps(out))`);
-  assert.equal(out.ok, false, "ask is NEVER ok:true");
-  assert.equal(out.error, "session_door_unqualified");
-  assert.equal(out.route, "hermes_session_door");
-  assert.equal(out.read_only, true);
-  assert.equal(out.no_dispatch, true);
-  assert.equal(out.bead, ids.taskB, "ask is scoped to the selected bead");
-  assert.equal(out.context.id, ids.taskB, "scoped read-only context rode along");
-  const view = askDecision(out);
-  assert.equal(view.readOnly, true);
-  assert.equal(view.ok, false);
-  assert.equal(view.error, "session_door_unqualified");
-});
-
-test("S9 Refine: the bot proposal lands ONLY in the human draft store; store readback byte-identical", () => {
-  const before = recOf(read(store, "show", ids.conflict));
-  const commentsBefore = readRaw(store, "comments", ids.conflict);
-  const out = botpy(`
-import json, os, sys
-sys.path.insert(0, ".")
-import bot_handoff
-out = bot_handoff.refine(${JSON.stringify(store)}, ${JSON.stringify(ids.conflict)},
-  proposed_text="bot-proposed description", bd_bin=os.environ["BEADS_LAB_BD"])
-print(json.dumps(out))`);
-  assert.equal(out.draft.text, "bot-proposed description");
-  assert.equal(out.draft.provenance, "bot");
-  assert.equal(out.draft.requires_human_accept, true);
-  assert.equal(out.draft.neverWritesStore, true);
-  assert.equal(out.no_dispatch, true);
-  // desktop accept path: the panel routes the proposal into the draft store
-  const drafts = createDraftStore();
-  const res = refineToDraft(drafts, storeInfo, ids.conflict, out.draft);
-  assert.equal(res.landed, true);
-  assert.equal(res.botProvenance, true);
-  assert.equal(drafts.getDraft(storeInfo, ids.conflict).text, "bot-proposed description");
-  assert.equal(reopenBotDraft(drafts, storeInfo, ids.conflict).found, true,
-    "return-to-draft re-opens the bot proposal");
-  // store readback UNCHANGED — refine is draft-only
-  const after = recOf(read(store, "show", ids.conflict));
-  for (const k of Object.keys(after)) {
-    if (["updated_at", "revision"].includes(k)) continue; // volatile bookkeeping
-    assert.deepEqual(after[k], before[k], `store field ${k} must be untouched by Refine`);
-  }
-  assert.equal(after.description, before.description,
-    "the description the bot 'proposed' never reached the store");
-  assert.deepEqual(readRaw(store, "comments", ids.conflict), commentsBefore,
-    "no comment was appended either");
-});
-
-test("S9 Work: present-but-disabled with the typed hbl-pnu.3.3 reason (live bot_handoff.work_status)", () => {
-  const work = botpy(`
-import json, sys
-sys.path.insert(0, ".")
-import bot_handoff
-bot_handoff.bind_runner_door(None)
-print(json.dumps(bot_handoff.work_status()))`);
-  assert.equal(work.present, true);
-  assert.equal(work.enabled, false);
-  assert.match(work.disabledReason, /hbl-pnu\.3\.3/);
-  const tree = botActionPanel({ ask: askDecision({
-    ok: false, error: "session_door_unqualified", read_only: true, no_dispatch: true,
-  }), work });
-  const texts = walk(tree).map((n) => n.props?.children).flat(9)
-    .filter((c) => typeof c === "string");
-  assert.ok(texts.some((t) => t.includes("Work")));
-  assert.ok(texts.some((t) => t.includes("hbl-pnu.3.3")), "typed reason rendered");
-  const workBtn = walk(tree).filter((n) => n.type === "button")
-    .find((b) => JSON.stringify(b).includes("Work"));
-  assert.ok(workBtn, "Work control rendered");
-  assert.equal(workBtn.props.disabled, true, "Work is present-but-disabled");
-});
 
 // ============================================================================
 // NEGATIVE CONTROL — deliberately broken, gated by SCENARIO_NEGATIVE=1.

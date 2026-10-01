@@ -1,4 +1,4 @@
-// tests/test_bot_action.mjs — hbl-pnu.3.5 (Ask/Refine half): the bot action
+// tests/test_bot_action.mjs — (Ask/Refine half): the bot action
 // panel surface.
 //  - Ask renders read-only, carries the EXACT typed session-door refusal
 //    (never ok:true);
@@ -8,8 +8,7 @@
 //    the module performs zero I/O (purity source-audit pinned here);
 //  - Return-to-draft: reopenBotDraft re-opens the stored bot draft for the
 //    human and never discards it;
-//  - Work control renders present-but-disabled with the typed hbl-pnu.3.3
-//    reason; enabling requires the admitted runner door (presentation only
+//  - Work control renders present-but-disabled with the typed //    reason; enabling requires the admitted runner door (presentation only
 //    — this module spawns nothing).
 // Run: node --test tests/test_bot_action.mjs   (Node built-in runner, no deps)
 import test from "node:test";
@@ -33,7 +32,7 @@ const TYPED_REFUSAL = {
   route: "hermes_session_door", execution_authority: false,
   read_only: true,
   delivery: false, no_dispatch: true,
-  workspace: SI.workspace, bead: "hbl-pnu.3.5", intent: "ask",
+  workspace: SI.workspace, bead: "", intent: "ask",
 };
 
 // ---- Ask -------------------------------------------------------------------
@@ -45,7 +44,7 @@ test("askDecision reports read-only ask with the exact typed refusal", () => {
   assert.equal(d.executionAuthority, false);
   assert.equal(d.delivery, false);
   assert.equal(d.noDispatch, true);
-  assert.equal(d.bead, "hbl-pnu.3.5");
+  assert.equal(d.bead, "");
 });
 
 test("askDecision refuses an ok:true ask as a fabricated delivery", () => {
@@ -57,48 +56,48 @@ test("askDecision refuses an ok:true ask as a fabricated delivery", () => {
 // ---- Refine -> human draft store --------------------------------------------
 test("refineToDraft lands the bot proposal in the human draft store only", () => {
   const store = createDraftStore(); // memory-only adapter path
-  const res = refineToDraft(store, SI, "hbl-pnu.3.5", {
+  const res = refineToDraft(store, SI, "", {
     text: "improved text", baseText: "original text",
     provenance: "bot", requires_human_accept: true, neverWritesStore: true,
   });
   assert.equal(res.landed, true);
   assert.equal(res.botProvenance, true);
-  const draft = store.getDraft(SI, "hbl-pnu.3.5");
+  const draft = store.getDraft(SI, "");
   assert.equal(draft.text, "improved text");
   assert.equal(draft.baseText, "original text");
   // provenance rides the panel's own registry (drafts.mjs owns persistence
   // and has no provenance field): reopen proves it is the bot's draft.
-  assert.equal(reopenBotDraft(store, SI, "hbl-pnu.3.5").found, true);
+  assert.equal(reopenBotDraft(store, SI, "").found, true);
 });
 
 test("refineToDraft without human-accept requirement is refused", () => {
   const store = createDraftStore();
-  const res = refineToDraft(store, SI, "hbl-pnu.3.5", {
+  const res = refineToDraft(store, SI, "", {
     text: "x", baseText: "", provenance: "bot",
   });
   assert.equal(res.landed, false);
   assert.match(res.reason, /requires_human_accept/);
-  assert.equal(store.getDraft(SI, "hbl-pnu.3.5"), null);
+  assert.equal(store.getDraft(SI, ""), null);
 });
 
 // ---- Return-to-draft ---------------------------------------------------------
 test("reopenBotDraft returns the stored draft and preserves it", () => {
   const store = createDraftStore();
-  refineToDraft(store, SI, "hbl-pnu.3.5", {
+  refineToDraft(store, SI, "", {
     text: "proposal", baseText: "base", provenance: "bot",
     requires_human_accept: true,
   });
-  const view = reopenBotDraft(store, SI, "hbl-pnu.3.5");
+  const view = reopenBotDraft(store, SI, "");
   assert.equal(view.found, true);
   assert.equal(view.diff.text, "proposal");
   assert.equal(view.diff.baseText, "base");
   // re-opening never discards: still there, cancel preserves too
-  assert.equal(store.getDraft(SI, "hbl-pnu.3.5") !== null, true);
+  assert.equal(store.getDraft(SI, "") !== null, true);
 });
 
 test("reopenBotDraft on a missing draft is honest, never fabricated", () => {
   const store = createDraftStore();
-  const view = reopenBotDraft(store, SI, "hbl-pnu.3.5");
+  const view = reopenBotDraft(store, SI, "");
   assert.equal(view.found, false);
   assert.equal(view.diff, null);
 });
@@ -106,7 +105,7 @@ test("reopenBotDraft on a missing draft is honest, never fabricated", () => {
 // ---- Work control --------------------------------------------------------------
 const DISABLED = {
   present: true, enabled: false,
-  disabledReason: "Work disabled: the runner binding (hbl-pnu.3.3) is not merged; no admitted runner door is bound via bot_handoff.bind_runner_door. Ask/Refine remain available; the door is never invoked while disabled.",
+  disabledReason: "Work disabled: the runner binding () is not merged; no admitted runner door is bound via bot_handoff.bind_runner_door. Ask/Refine remain available; the door is never invoked while disabled.",
 };
 
 test("work control renders present-but-disabled with the typed reason", () => {
@@ -116,7 +115,7 @@ test("work control renders present-but-disabled with the typed reason", () => {
   assert.ok(texts.some((t) => t.includes("Ask")));
   assert.ok(texts.some((t) => t.includes("Refine")));
   assert.ok(texts.some((t) => t.includes("Work")));
-  assert.ok(texts.some((t) => t.includes("hbl-pnu.3.3")));
+  assert.ok(texts.some((t) => t.includes("")));
   assert.ok(texts.some((t) => t.includes("session_door_unqualified")));
   const buttons = [...shim.walk(tree)].filter((n) => n.type === "button");
   const work = buttons.find((b) => JSON.stringify(b).includes("Work"));
@@ -134,12 +133,12 @@ test("work control flips to enabled only when the runner door is bound", () => {
   assert.equal(work.props.disabled, false);
 });
 
-// ---- Purity law (CONTRACTS-v3 C1): only react/jsx-runtime; zero I/O --------
+// ---- Purity rule: only react/jsx-runtime; zero I/O --------
 test("bot_action.mjs imports ONLY react/jsx-runtime and is I/O-free (purity source audit)", () => {
   const src = readFileSync(
     path.join(here, "..", "desktop", "bot_action.mjs"), "utf8");
   const imports = src.match(/^\s*import\s.*$/gm) ?? [];
-  // hbl-pnu.4.6: the hand-rolled records were replaced by REAL jsx so React
+  // the hand-rolled records were replaced by REAL jsx so React
   // can mount the panel unconverted; react/jsx-runtime is the single allowed
   // import (same loader-mapped specifier as every other desktop component).
   for (const line of imports) {

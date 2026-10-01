@@ -1,7 +1,7 @@
-// tests/test_blockers.mjs — hbl-pnu.2.4: cross-branch blocker jump with
+// tests/test_blockers.mjs — cross-branch blocker jump with
 // blocker CARD + one-press return.
 //
-// Evidence layers (kept honest, CONTRACTS-v3 C1 + bd-expert):
+// Evidence layers (kept honest, the boundary contract):
 //  - SYNTHETIC fixtures: S2 full-context restore equality, card composition,
 //    read-only refusal, truth-vs-badge (dep-tree READY badge never trusted).
 //  - GENUINE native (disposable store, real bd): external close flips the
@@ -27,7 +27,7 @@ const { createHistoryStack } = await import("../desktop/history.mjs");
 const B = await import("../desktop/blockers.mjs");
 
 const BD_BIN = process.env.BEADS_LAB_BD
-  || "/home/hermes/.hermes/work/beads-lab/bin/bd";
+  || "bd";
 const FIXTURE_ROOT = new URL("./fixtures/blockers-runtime", import.meta.url).pathname;
 
 // ---- helpers ---------------------------------------------------------------
@@ -289,7 +289,7 @@ test("BlockerCard renders target, ancestors, blockers, lease; NO mutation afford
 });
 
 // ============================================================================
-// 6. one-nav-state law: jump rides THE existing stacks; no parallel copy
+// 6. one-nav-state rule: jump rides THE existing stacks; no parallel copy
 // ============================================================================
 test("jump pushes onto the single history stack in lockstep with the model", () => {
   const f = fixture("cross-branch.json");
@@ -385,7 +385,7 @@ test("native external close: refresh flips derived badge; focus never auto-jumps
 });
 
 // ============================================================================
-// hbl-pnu.2.11 — the user-reachable door (JSX shim: structure only). The card
+// the user-reachable door (JSX shim: structure only). The card
 // was host-injectable only; a human now opens it via the row door, and the
 // Return button must actually invoke onReturn (the shipped bug wired
 // onReturn=rerender at the root, which never cleared the card).
@@ -421,7 +421,7 @@ test("BlockersDoor: renders on blocked rows, absent on clean rows, disabled-with
   assert.deepEqual(opened, ["victim"], "the disabled click reached nobody");
 });
 
-test("hbl-pnu.2.11 Return law: the card's ONLY affordance calls onReturn (root wires returnFromCard, not rerender)", () => {
+test("Return rule: the card's ONLY affordance calls onReturn (root wires returnFromCard, not rerender)", () => {
   const f = fixture("cross-branch.json");
   const snap = buildSnapshot(baseReads(f.reads));
   const card = B.buildBlockerCard({ snapshot: snap, targetId: "liveB1",

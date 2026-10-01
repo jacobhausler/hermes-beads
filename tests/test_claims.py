@@ -1,4 +1,4 @@
-"""Stdlib tests for the claim/lease wrapper (hbl-pnu.1.2 / N2).
+"""Stdlib tests for the claim/lease wrapper ().
 
 Real evidence, not mocks: every case runs the ACTUAL pinned bd (1.3.0)
 against a fresh disposable fixture store under tests/.claims-fixtures
@@ -33,12 +33,10 @@ import uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-import claims  # noqa: E402
-import native  # noqa: E402
-import read_model  # noqa: E402
+from beads import claims, native, read_model  # noqa: E402
 
 BD_BIN = os.environ.get("BEADS_LAB_BD",
-                        "/home/hermes/.hermes/work/beads-lab/bin/bd")
+                        "bd")
 FIXTURE_ROOT = os.path.join(HERE, ".claims-fixtures")
 
 
@@ -293,7 +291,7 @@ class BoundaryContract(unittest.TestCase):
 
     def test_no_force_flags_anywhere(self):
         # EXCLUSION contract: this module must never reach for --force.
-        with open(os.path.join(os.path.dirname(HERE), "claims.py")) as f:
+        with open(os.path.join(os.path.dirname(HERE), "beads", "claims.py")) as f:
             src = f.read()
         code = src.split('"""')[2]  # after the module docstring
         self.assertNotIn("--force", code)

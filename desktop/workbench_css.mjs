@@ -1,4 +1,4 @@
-// desktop/workbench_css.mjs — hbl-pnu.2.10: THE shipped stylesheet (F1).
+// desktop/workbench_css.mjs — THE shipped stylesheet (F1).
 //
 // The mounted evidence showed the workbench rendering with zero CSS:
 // browser-default serif text, no visible focus (WCAG 2.4.7 fail), fused
@@ -6,13 +6,13 @@
 // assertions passed because they checked attributes, not paint.
 //
 // This module is the single source of truth for the visual layer. It is a
-// pure string constant — no fs, no fetch — so the purity law holds (desktop
+// pure string constant — no fs, no fetch — so the purity rule holds (desktop
 // modules keep I/O at zero) and ANY host that mounts WorkbenchApp gets the
 // styles for free: the root renders jsx('style', {children: WORKBENCH_CSS})
 // exactly once. desktop/workbench.css is the byte-identical copy for
 // hosts that prefer a file; the packaging suite keeps them in lockstep.
 //
-// Laws encoded here:
+// Rules encoded here:
 //  - theme integration with fallbacks: var(--foreground, CanvasText),
 //    var(--accent, Highlight), var(--border, GrayText) — a host theme wins,
 //    the browser system colors answer when no token exists;

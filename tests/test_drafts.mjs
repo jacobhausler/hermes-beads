@@ -1,10 +1,10 @@
-// tests/test_drafts.mjs — hbl-pnu.2.5: draft store keyed by canonical store
+// tests/test_drafts.mjs — draft store keyed by canonical store
 // identity + bead ID, durable-storage-or-honest-warning, capability-proven
 // guarded submission (CONTENT_CAS_SUPPORTED=False ⇒ Save disabled), and
 // diff/reload/cancel never silently discard the draft.
 // Run: node --test tests/test_drafts.mjs   (Node built-in runner, no deps)
 //
-// Purity law (CONTRACTS-v3 C1, bd-expert): this module performs ZERO I/O.
+// Purity rule: this module performs ZERO I/O.
 // Durability comes ONLY through an injected storage adapter — the supported
 // SDK storage surface provided by the host loader. Tests inject an in-memory
 // fake; nothing here touches localStorage/window/DOM or spawns bd.
@@ -58,7 +58,7 @@ function fakeStorage(opts = {}) {
 const okSave = (beadId, text = "body") => ({ beadId, text, savedAt: "t0" });
 
 // ---- capability truth ---------------------------------------------------------
-test("capability truth: CONTENT_CAS_SUPPORTED is a hard false (docs/content-guard-contract.md owns it)", () => {
+test("capability truth: CONTENT_CAS_SUPPORTED is a hard false", () => {
   assert.strictEqual(CONTENT_CAS_SUPPORTED, false);
   const d = createDraftStore({ storage: fakeStorage() });
   d.saveDraft(SI_A, "abc", "draft body", { baseText: "orig" });

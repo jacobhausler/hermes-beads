@@ -12,3 +12,5 @@ tests/fixtures/drafts-runtime/
 tests/fixtures/runner-binding-runtime/
 tests/fixtures/runner-runtime/
 tests/.work-bridge/
+__pycache__/
+tests/fixtures/shots/out/

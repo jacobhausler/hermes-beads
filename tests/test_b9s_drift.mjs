@@ -1,6 +1,6 @@
-// tests/test_b9s_drift.mjs — council S3 drift guard (2026-09-30): the pinned
+// tests/test_b9s_drift.mjs — drift guard: the pinned
 // b9s binary must still read our store class. RED = drift ALARM for the owner,
-// NOT a release block (docs/hbi-boundary.md rule 2). The suite skips cleanly
+// NOT a release block. The suite skips cleanly
 // when the binary or fixture is absent, so an external project can never
 // become a silent hard dependency.
 //

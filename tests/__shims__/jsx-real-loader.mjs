@@ -1,4 +1,4 @@
-// jsx-real-loader.mjs — hbl-pnu.4.5 mounted smoke: the REAL-code path of
+// jsx-real-loader.mjs — mounted-smoke shim: the REAL-code path of
 // tests/__shims__/jsx-loader.mjs. Instead of mapping react/jsx-runtime onto
 // the capture shim, this hook resolves react / react-dom / scheduler / jsdom
 // onto the READ-ONLY node_modules of the rich-ui plugin (never installed,
@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url";
 import path from "node:path";
 
 const RU = process.env.RICH_UI_NODE_MODULES
-  || "/home/hermes/.hermes/work/rich-ui/hermes-rich-ui-plugin/node_modules";
+  || "node_modules";
 const req = createRequire(pathToFileURL(path.join(RU, "hermes-rich-ui-anchor.js")).href);
 const HEADS = ["react", "react-dom", "scheduler", "jsdom"];
 

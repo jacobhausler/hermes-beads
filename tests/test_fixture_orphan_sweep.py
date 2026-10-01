@@ -1,4 +1,4 @@
-"""Regression (hbl-pnu.4.7 part 2): make_store sweeps ORPHANED stores
+"""Regression (part 2): make_store sweeps ORPHANED stores
 (older than the stale threshold) and nothing else — fresh foreign stores
 (concurrent runs) are never touched."""
 import json

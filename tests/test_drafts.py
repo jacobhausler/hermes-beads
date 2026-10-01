@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draft-store contract tests (hbl-pnu.2.5) — Python wrapper.
+"""Draft-store contract tests () — Python wrapper.
 
 Two jobs:
 
@@ -192,12 +192,13 @@ class StaticContractPins(unittest.TestCase):
     """Docs own capability truth; no second write backend may appear."""
 
     def test_docs_contract_owns_capability_truth(self):
-        doc = os.path.join(os.path.dirname(HERE), "docs",
-                           "content-guard-contract.md")
-        with open(doc, encoding="utf-8") as f:
+        # Capability truth lives inline where the boundary is crossed.
+        src = os.path.join(os.path.dirname(HERE), "beads",
+                           "write_protocol.py")
+        with open(src, encoding="utf-8") as f:
             text = f.read()
-        self.assertIn("UNSUPPORTED", text)
-        self.assertIn("--if-revision", text)
+        self.assertIn("unsupported", text.lower())
+        self.assertIn("--if-assignee", text)
 
     def test_drafts_module_declares_no_second_backend(self):
         src = os.path.join(os.path.dirname(HERE), "desktop", "drafts.mjs")

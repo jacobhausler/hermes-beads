@@ -1,4 +1,4 @@
-"""Guarded-write protocol (hbl-pnu.1.3) — the worker-side write discipline.
+"""Guarded-write protocol — the worker-side write discipline.
 
 Every field-group write goes through exactly one fixed-argv `bd update`
 carrying BOTH native guards --if-assignee <self> and --if-status <expected>.
@@ -29,8 +29,8 @@ receipts R1/U4/Q-series):
 """
 import json
 
-import native
-import read_model
+from . import native
+from . import read_model
 
 GUARD_IF_ASSIGNEE = "--if-assignee"
 GUARD_IF_STATUS = "--if-status"

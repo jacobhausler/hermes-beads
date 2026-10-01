@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Negative control suite (hbl-pnu.4.2): refusal honesty + no-lost-update discipline.
+"""Negative control suite (): refusal honesty + no-lost-update discipline.
 
 Every case asserts (a) the exact process exit code, (b) the exact --json
 envelope shape, and (c) that the native business fields of the bead are
@@ -15,7 +15,7 @@ tests/fixtures/negative-runtime/, each with its own `git init` so the
 embedded-dolt home never falls through to the lab repo's databases. The
 planning store is NEVER touched here. Unique actor per run/attempt.
 
-Threat-model discipline (CONTRACTS-v3): the worker-closure refusal and the
+Threat-model discipline: the worker-closure refusal and the
 authorized-close preconditions are TRUSTED-AGENT POLICY at the plugin
 surface — cooperative, bypassable via the native CLI, and tested as such.
 They are NOT hostile-isolation/ACL claims; test_policy_is_policy below proves
@@ -37,16 +37,12 @@ import uuid
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-import native            # noqa: E402
-import claims            # noqa: E402
-import write_protocol    # noqa: E402
-import evidence          # noqa: E402
+from beads import native, claims, write_protocol  # noqa: E402
 
 BD_BIN = os.environ.get("BEADS_LAB_BD",
-                        "/home/hermes/.hermes/work/beads-lab/bin/bd")
+                        "bd")
 FIXTURE_ROOT = os.path.join(HERE, "fixtures", "negative-runtime")
 os.makedirs(FIXTURE_ROOT, exist_ok=True)
-DOCS = os.path.join(os.path.dirname(HERE), "docs", "negative-qualification.md")
 
 VOLATILE = {"updated_at", "lease_expires_at", "heartbeat_at"}
 
@@ -99,7 +95,7 @@ def show_dict(store, iid):
 
 def business(row):
     """Canonical business fields only: volatile bookkeeping excluded
-    (owner contract — unchanged business fields, not byte identity)."""
+    (unchanged business fields, not byte identity)."""
     return {k: v for k, v in row.items() if k not in VOLATILE}
 
 
@@ -343,76 +339,12 @@ class EmptyVsBackendFailure(unittest.TestCase):
             native.ready_frontier(empty_dir, bd_bin=BD_BIN)
 
 
-class WorkerClosureImpossibleByArgv(unittest.TestCase):
-    """close-on-cancel / close-on-worker is impossible BY AUDIT: the worker
-    surface refuses closure and the actual constructed argv contains no
-    close/update write — only the append-only REQUEST-CLOSURE comment."""
-
-    def setUp(self):
-        self.store = make_store()
-        self.iid = create(self.store, "worker bead")
-        self.worker = actor("worker")
-        claims.claim(self.store, self.iid, actor=self.worker, bd_bin=BD_BIN)
-        self.before = show_dict(self.store, self.iid)
-
-    def test_request_closure_raises_and_argv_has_no_close(self):
-        surf = evidence.WorkerSurface(self.store, actor=self.worker,
-                                      bd_bin=BD_BIN)
-        with ArgvAudit() as audit:
-            with self.assertRaises(evidence.WorkerClosureRefusedError):
-                surf.request_closure(self.iid, detail="cancel requested")
-        for argv in audit.argvs:
-            self.assertNotIn("close", argv,
-                             f"worker surface constructed close argv: {argv}")
-            self.assertNotIn("--force", argv)
-        # the refusal is honest and durable: a REQUEST-CLOSURE comment landed
-        comments = json.loads(raw(self.store, ["--readonly", "comments",
-                                               self.iid, "--json"]).stdout)
-        self.assertTrue(any(c["author"] == self.worker
-                            and c["text"].startswith(evidence.REQUEST_PREFIX)
-                            for c in comments), comments)
-        back = show_dict(self.store, self.iid)
-        self.assertEqual(back["status"], "in_progress")
-        self.assertEqual(business(back)["status"], business(self.before)["status"])
-
-    def test_worker_surface_has_no_close_or_reopen_method(self):
-        surf = evidence.WorkerSurface(self.store, actor=self.worker,
-                                      bd_bin=BD_BIN)
-        for name in ("close", "reopen", "authorized_close",
-                     "authorized_reopen", "force_close"):
-            self.assertFalse(hasattr(surf, name),
-                             f"worker surface must not expose {name}")
-
-    def test_authorized_close_preconditions_make_zero_subprocess_calls(self):
-        # every refused precondition stops BEFORE any bd subprocess runs:
-        # no silent partial write, no probe side effect.
-        kw = dict(bd_bin=BD_BIN, actor="parent-x", evidence_actor=self.worker,
-                  attempt="a1", artifacts=["rep.md"])
-        cases = [
-            (dict(kw, authorization="", reason="r"), "authorization"),
-            (dict(kw, authorization="auth", reason="  "), "reason"),
-            (dict(kw, authorization="auth", reason="done",
-                 artifacts=["rep.md"]), "cite"),
-            (dict(kw, authorization="auth",
-                  reason="verified rep.md",
-                  artifacts=["missing-report.md"]), "evidence"),
-        ]
-        for kwargs, _label in cases:
-            with ArgvAudit() as audit:
-                with self.assertRaises(evidence.ClosureRefusedError):
-                    evidence.authorized_close(self.store, self.iid, **kwargs)
-            self.assertEqual(audit.argvs, [],
-                             "precondition refusals must touch nothing")
-        back = show_dict(self.store, self.iid)
-        self.assertEqual(business(back), business(self.before))
-
-
 class AstForceAudit(unittest.TestCase):
     """grep-audit acceptance: zero --force occurrences in plugin argv call
     sites, and close/reopen argv built ONLY in the authorized surface."""
 
-    MODULES = ["native.py", "claims.py", "write_protocol.py", "evidence.py",
-               "read_model.py", "correlation.py", "interop.py"]
+    MODULES = ["beads/native.py", "beads/claims.py", "beads/write_protocol.py",
+               "beads/read_model.py"]
     BANNED = ("--force", "--if-revision", "--if-content", "--cas")
     AUTHZ_FUNCS = {"authorized_close", "authorized_reopen"}
 
@@ -448,25 +380,15 @@ class AstForceAudit(unittest.TestCase):
                     f"{mod}:{lineno}: {seg!r}")
                 self.assertNotIn(banned, toks)
 
-    def test_close_argv_only_in_authorized_surface(self):
-        total_close = 0
+    def test_no_close_or_reopen_argv_anywhere(self):
+        """v0.1.1: the plugin ships NO close/reopen surface at all — closure
+        belongs to plain `bd close` (see README). Any close-shaped argv in a
+        shipped module is a regression."""
         for mod in self.MODULES:
             path = os.path.join(os.path.dirname(HERE), mod)
             with open(path) as fh:
                 src = fh.read()
             tree = ast.parse(src)
-
-            def enclosing(node):
-                best = None
-                for fn in ast.walk(tree):
-                    if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        if any(sub is node for sub in ast.walk(fn)):
-                            if best is None or (
-                                    fn.lineno <= node.lineno
-                                    and fn.lineno >= best.lineno):
-                                best = fn
-                return best.name if best else "<module>"
-
             for node in ast.walk(tree):
                 if (isinstance(node, ast.Call)
                         and isinstance(node.func, ast.Attribute)
@@ -474,36 +396,28 @@ class AstForceAudit(unittest.TestCase):
                         and isinstance(node.args[0], ast.List)):
                     toks = [e.value for e in node.args[0].elts
                             if isinstance(e, ast.Constant)]
-                    if "close" in toks or "reopen" in toks:
-                        total_close += 1
-                        self.assertEqual(
-                            mod, "evidence.py",
-                            f"close/reopen argv outside evidence.py at "
-                            f"{mod}:{node.lineno}")
-                        self.assertIn(
-                            enclosing(node), self.AUTHZ_FUNCS,
-                            f"close/reopen argv in non-authorized function "
-                            f"at {mod}:{node.lineno}")
-        self.assertGreaterEqual(total_close, 2,
-                                "audit vacuous — no authorized close/reopen "
-                                "argv sites found")
+                    self.assertNotIn(
+                        "close", toks,
+                        f"close argv in {{mod}}:{{node.lineno}} — the plugin "
+                        f"must not close beads; plain bd close is the path")
+                    self.assertNotIn(
+                        "reopen", toks,
+                        f"reopen argv in {{mod}}:{{node.lineno}}")
 
 
 class PolicyIsPolicyNotIsolation(unittest.TestCase):
-    """Trusted-agent POLICY vs hostile isolation (CONTRACTS-v3 boundary):
+    """Trusted-agent policy vs hostile isolation:
     the worker-closure refusal is plugin-surface cooperation, and the native
     CLI escape hatch provably stays open. No sandbox, no ACL claim."""
 
     def test_native_close_escape_hatch_stays_open(self):
+        # The plugin ships NO close/reopen verb at all — closure lives only
+        # in the native CLI. That absence is the proof this is policy, not
+        # an isolation boundary: the escape hatch is the only path.
         store = make_store()
         iid = create(store, "escape hatch")
         holder = actor("holder")
         claims.claim(store, iid, actor=holder, bd_bin=BD_BIN)
-        surf = evidence.WorkerSurface(store, actor=holder, bd_bin=BD_BIN)
-        with self.assertRaises(evidence.WorkerClosureRefusedError):
-            surf.request_closure(iid)
-        # policy refused; native remains fully usable — this is what proves
-        # the refusal is policy, NOT an isolation boundary.
         p = raw(store, ["--actor", holder, "close", iid,
                         "--reason", "native escape hatch", "--json"])
         self.assertEqual(p.returncode, 0, p.stderr)
@@ -522,24 +436,8 @@ class PolicyIsPolicyNotIsolation(unittest.TestCase):
         self.assertEqual(allowed.returncode, 0, allowed.stderr)
 
 
-class DeclaredTopologyGate(unittest.TestCase):
-    """Declared-topology precondition before any future parallel enablement:
-    one effecting writer per disposable store per test; unique actor per
-    run/attempt; concurrent multi-writer and CAS are explicitly UNQUALIFIED.
-    This test fails if the qualification doc stops saying so."""
-
-    def test_doc_declares_topology_and_unqualified_claims(self):
-        self.assertTrue(os.path.isfile(DOCS),
-                        f"missing {DOCS}")
-        with open(DOCS) as fh:
-            doc = fh.read()
-        for phrase in ("declared topology", "single effecting writer",
-                       "concurrent multi-writer: UNQUALIFIED",
-                       "CAS: UNQUALIFIED",
-                       "trusted-agent policy",
-                       "not a security boundary"):
-            self.assertIn(phrase, doc,
-                          f"negative-qualification.md must state {phrase!r}")
+class FixtureHygiene(unittest.TestCase):
+    """Unique actor per use: one effecting writer per store per test."""
 
     def test_suite_fixture_helper_uses_unique_actors(self):
         seen = {actor("u") for _ in range(50)}

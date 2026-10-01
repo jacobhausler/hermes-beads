@@ -1,4 +1,4 @@
-// tests/test_model.mjs — targeted checks for desktop/model.mjs (hbl-pnu.2.1).
+// tests/test_model.mjs — targeted checks for desktop/model.mjs ().
 // Run: node tests/test_model.mjs   (Node built-in test runner, no deps)
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -183,7 +183,7 @@ test("claimed-not-ready regression: absent from ready AND blocked => unknown, ne
 });
 
 test("search reveal API: revealed hit rows are workbench state, NEVER snapshot nodes; unknown parentage renders as an honest boundary row", () => {
-  // model half of the hbl-pnu.2.6 reveal gap: jump alone can't make an
+  // model half of the reveal gap: jump alone can't make an
   // out-of-snapshot hit a visible row (it has no node). reveal(id,parent)
   // hangs a transient row under a snapshot parent; the snapshot's nodes/
   // byId are never touched (no invented node, no crowned parent); unreveal

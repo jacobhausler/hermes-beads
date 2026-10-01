@@ -1,4 +1,4 @@
-// tests/security_render_probe.mjs — hbl-pnu.4.4 hostile-content render gate.
+// tests/security_render_probe.mjs — hostile-content render gate.
 // Renders hostile bead payloads through the REAL desktop components
 // (model.mjs buildSnapshot -> tree.mjs Tree + record.mjs RecordCard) under
 // the jsx-capture shim and asserts the payload is INERT: present only as a

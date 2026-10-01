@@ -1,7 +1,7 @@
-// desktop/tree.mjs — hbl-pnu.2.2: conventional ARIA tree + navigation
+// desktop/tree.mjs — conventional ARIA tree + navigation
 // controller for the beads workbench.
 //
-// Purity rules (CONTRACTS-v3 C1, bd-expert, desktop-plugin rules):
+// Purity rules:
 //  - hierarchy comes from the snapshot's parent FIELD only (model.mjs);
 //    ID-dot spelling is never ancestry and is never parsed here;
 //  - zero I/O: native data arrives through an injected `provider`
@@ -104,9 +104,9 @@ export const KEYMAP = [
   { keys: ["Tab"], command: "exit-tree", desc: "Leave the tree (never intercepted)" },
   { keys: ["Alt+ArrowLeft"], command: "history-back", desc: "App back" },
   { keys: ["Alt+ArrowRight"], command: "history-forward", desc: "App forward" },
-  // hbl-pnu.2.11 user doors (app commands: the workbench root resolves them,
+  //  user doors (app commands: the workbench root resolves them,
   // the tree controller ignores them). Modifier combos only — the bare-letter
-  // law keeps plain '/' and 'b' OUT of this table; the root's app-gesture
+  // rule keeps plain '/' and 'b' OUT of this table; the root's app-gesture
   // pass resolves those under the same isTextTarget swallow.
   { keys: ["Ctrl+/"], command: "focus-search", desc: "Focus the search box" },
   { keys: ["Ctrl+b"], command: "open-blockers", desc: "Open the blocker card for the selected row" },
@@ -266,7 +266,7 @@ export function createTreeController({ snapshot, ui }) {
         if (!box.helpOpen) box.helpReturnFocus = ui.focus; // prior row, captured at open
         box.helpOpen = !box.helpOpen;
         break;
-      case "close-help": // hbl-pnu.2.9: Esc closes help; focus returns to the prior row
+      case "close-help": // : Esc closes help; focus returns to the prior row
         if (box.helpOpen) {
           box.helpOpen = false;
           const prior = box.helpReturnFocus;
@@ -422,7 +422,7 @@ export function Tree({ snapshot, ui, scheduler }) {
       tabIndex: r.id === selId ? 0 : -1, // roving tab stop
       style: { paddingInlineStart: `${r.depth * INDENT_PX}px` },
       children: [
-        // hbl-pnu.2.10 (F4): every field is its OWN element — the gap and
+        //  (F4): every field is its OWN element — the gap and
         // borders come from the shipped stylesheet, so no field ever paints
         // fused against its neighbour ("title○ open" was the failure).
         jsx("span", { className: "row-title", "data-indent-px": r.depth * INDENT_PX,

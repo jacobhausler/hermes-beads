@@ -1,4 +1,4 @@
-// desktop/record.mjs — hbl-pnu.1.5: record-tolerance card for the beads
+// desktop/record.mjs — record-tolerance card for the beads
 // workbench. Renders ONE native record from an injected snapshot so that:
 //  - unknown statuses, issue types and edge types appear verbatim (the
 //    snapshot's byId raw records are the only source; model.mjs is reused

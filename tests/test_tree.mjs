@@ -1,4 +1,4 @@
-// tests/test_tree.mjs — hbl-pnu.2.2: conventional ARIA tree + navigation
+// tests/test_tree.mjs — conventional ARIA tree + navigation
 // controller for the beads workbench.
 // Run: node --test tests/test_tree.mjs   (Node built-in runner, no deps)
 import test from "node:test";
@@ -232,7 +232,7 @@ test("controller executes exactly the bound commands; Tab exits without preventD
   c.press({ key: "?", isComposing: false, target: buttonTarget() });
   assert.equal(c.helpOpen, false);
 
-  // hbl-pnu.2.9: Esc closes the overlay and returns keyboard focus to the
+  // Esc closes the overlay and returns keyboard focus to the
   // prior tree row (the row that held focus when help opened).
   const f2snap = snapOf(f);
   const w2 = createWorkbenchState(f2snap);
@@ -253,7 +253,7 @@ test("controller executes exactly the bound commands; Tab exits without preventD
   assert.equal(P2("Escape"), "close-help");
   assert.deepEqual({ sel: w2.selection, foc: w2.focus, hist: w2.history.length }, before2,
     "Esc with help closed changes nothing");
-  // Esc never works from a text target (editor swallow law)
+  // Esc never works from a text target (editor swallow rule)
   assert.equal(c2.press({ key: "Escape", isComposing: false, target: editableTarget("INPUT") }), null,
     "Escape is swallowed while a text input has focus");
 
@@ -587,18 +587,16 @@ test("P6: buildTreeRows renders the same collapsed view as Tree, with per-parent
 // ============================================================================
 // E. Native reproduction: Ready/Mine tabs reproduce their bd commands
 // ============================================================================
-const LAB = "/home/hermes/.hermes/work/beads-lab";
-const BIN = path.join(LAB, "bin", "bd");
+const BIN = process.env.BEADS_LAB_BD || "bd";
 const ACTOR = "lane-s5-tree-native-20260928a";
 const FIX = path.join(here, ".tree-fixtures");
 
 const bdRead = (cwd, ...args) =>
-  JSON.parse(execFileSync("flock", [path.join(LAB, "planning-access.lock"),
-    BIN, "-C", cwd, "--readonly", "--actor", ACTOR, ...args, "--json"],
-    { encoding: "utf8" }));
+  JSON.parse(execFileSync(BIN, ["-C", cwd, "--readonly", "--actor", ACTOR,
+    ...args, "--json"], { encoding: "utf8" }));
 const bdMutate = (cwd, ...args) =>
-  execFileSync("flock", [path.join(LAB, "planning-access.lock"),
-    BIN, "-C", cwd, "--actor", ACTOR, ...args], { encoding: "utf8" });
+  execFileSync(BIN, ["-C", cwd, "--actor", ACTOR, ...args],
+    { encoding: "utf8" });
 
 function nativeStore(name) {
   const cwd = path.join(FIX, name);
@@ -678,7 +676,7 @@ test("native parity: Ready tab rows === `bd ready --exclude-type=epic`, Mine tab
   }
 });
 
-test("hbl-pnu.2.10: Tab onto the fallback tab stop, first ArrowDown moves FROM that row (real-Chrome finding: first arrow was swallowed)", () => {
+test("Tab onto the fallback tab stop, first ArrowDown moves FROM that row (real-Chrome finding: first arrow was swallowed)", () => {
   const f = fixture("hierarchy.json");
   const snap = snapOf(f);
   const w = createWorkbenchState(snap);

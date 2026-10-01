@@ -1,4 +1,4 @@
-"""Claim/lease wrapper on native.run_bd + read_model (hbl-pnu.1.2 / N2).
+"""Claim/lease wrapper on native.run_bd + read_model ( / N2).
 
 Thin, deliberate: claim, read-back, heartbeat, conditional (CAS) release, and
 honest post-claim inspection. NO timers, NO daemon, NO queue, NO close
@@ -46,8 +46,8 @@ DISCLOSED NATIVE LIMITS (not invented around, not advertised as supported):
 """
 import os
 
-import native
-import read_model
+from . import native
+from . import read_model
 
 # Observed lease TTL on the pinned binary is ~5min (interop Q-series); the
 # caller-facing guidance keeps heartbeat intervals comfortably under TTL/2.

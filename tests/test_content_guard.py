@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Content-guard contract tests (hbl-pnu.1.7).
+"""Content-guard contract tests ().
 
 Verdict under test — bd 1.3.0 (f45b249ce) has NO atomic expected-content /
 revision-conditional mutation. `bd update` guards only actor + status
@@ -190,7 +190,7 @@ class TwoActorSameDescription(unittest.TestCase):
                             "--json"], actor=self.b)
         self.assertEqual((pa.returncode, pb.returncode), (0, 0),
                          "unexpected refusal — bd may have gained a content "
-                         "guard; re-qualify docs/content-guard-contract.md")
+                         "guard; re-verify against bd --help")
         row = read(self.store, self.iid)
         self.assertEqual(row["description"], "B-EDIT")
         self.assertEqual(row.get("assignee", ""), "")

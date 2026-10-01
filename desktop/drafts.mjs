@@ -1,4 +1,4 @@
-// desktop/drafts.mjs — hbl-pnu.2.5: draft store + capability-proven guarded
+// desktop/drafts.mjs — draft store + capability-proven guarded
 // submission for the beads workbench.
 //
 // Replacement contract (pinned by tests/test_drafts.mjs):
@@ -11,18 +11,18 @@
 //    durability with an explicit warning — never a fake durable success;
 //  - Save (replacement content write) is gated on a PROVEN atomic content
 //    guard. For bd 1.3.0 that capability does not exist
-//    (docs/content-guard-contract.md owns the truth; CONTENT_CAS_SUPPORTED
+//    (CONTENT_CAS_SUPPORTED is the single source of truth;
 //    below is a hard false), so Save is DISABLED and the UI must show the
 //    limitation; draft/copy/export and the append-only suggestion/comment
 //    remain usable;
 //  - diff/reload/cancel never silently discard a draft. The only clears are
 //    explicit discard, or save-success backed by a read-back proof.
 //
-// Purity law (CONTRACTS-v3 C1, bd-expert): zero I/O, zero imports; host
+// purity rule : zero I/O, zero imports; host
 // browsers, DOM globals, node built-ins and bd spawns are all banned (pinned
 // by the source-audit tests). Adapters are injected by the app loader.
 
-// docs/content-guard-contract.md owns capability truth: bd 1.3.0 (f45b249ce)
+// Capability truth, probed on bd 1.3.0 (f45b249ce):
 // exposes no atomic expected-content/revision mutation — assignee/status
 // guards pass over stale content, `revision` is telemetry, not a token.
 // Any editor built on this module MUST NOT offer blind replacement as Save.
@@ -33,7 +33,7 @@ const PROBE_KEY = "hbl.draft.v1.__probe__";
 
 // Same canonical form as model.mjs storeIdentityKey: JSON of {v, workspace,
 // db}, tolerant of bd info / bd info-equivalent field spellings. Inlined
-// (import-free module law); the Python wrapper pins byte equality with the
+// (import-free module rule); the Python wrapper pins byte equality with the
 // model's version.
 export function draftKey(storeInfo, beadId) {
   const ws = storeInfo?.workspace ?? storeInfo?.workspace_path;
@@ -60,7 +60,7 @@ export function editDecision({ contentCasSupported = CONTENT_CAS_SUPPORTED } = {
       : {
           enabled: false,
           disabledReason:
-            "Save disabled: no N6-proven atomic content guard (docs/content-guard-contract.md). " +
+            "Save disabled: bd has no atomic content guard (no --if-content). " +
             "Native assignee/status guards cannot detect a description changed under unchanged owner/status.",
         },
   };
@@ -73,7 +73,7 @@ export function draftLimitationNotice() {
     saveDisabled: !CONTENT_CAS_SUPPORTED,
     collaborativeEditClaimed: false,
     text:
-      "NO ATOMIC CONTENT GUARD (bd 1.3.0 — see docs/content-guard-contract.md): " +
+      "NO ATOMIC CONTENT GUARD (bd 1.3.0): " +
       "replacement Save is disabled; two actors can silently lose one description edit. " +
       "Draft, copy and export stay available; the safe channel is the append-only suggestion/comment.",
   };

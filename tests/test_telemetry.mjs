@@ -1,8 +1,5 @@
-// tests/test_telemetry.mjs — council S3 step 2 (2026-09-30): pane telemetry is
-// the PRECONDITION for any future generic-pane deletion (fable caveat in the
-// council READOUT: delete on observed non-use, never on maintenance-cost alone).
-// Pure ring buffer + emit-whitelist + serialise; NO I/O in the desktop layer
-// (the host shell owns persistence through the injected slot).
+// tests/test_telemetry.mjs — pane telemetry is
+// the PRECONDITION for any future generic-pane deletion .
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createTelemetry, EVENTS, serialise } from "../desktop/telemetry.mjs";

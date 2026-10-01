@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guarded-write protocol tests (hbl-pnu.1.3).
+"""Guarded-write protocol tests ().
 
 Verdict under test — bd 1.3.0 (f45b249ce) exposes exactly two conditional
 guards on `bd update` (--if-assignee / --if-status). A stale guard writes
@@ -32,12 +32,10 @@ import uuid
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-import native            # noqa: E402  (reuse anchor — not rewritten)
-import claims            # noqa: E402  (reuse anchor — not rewritten)
-import write_protocol    # noqa: E402  (the module under test)
+from beads import native, claims, write_protocol  # noqa: E402
 
 BD_BIN = os.environ.get("BEADS_LAB_BD",
-                        "/home/hermes/.hermes/work/beads-lab/bin/bd")
+                        "bd")
 FIXTURE_ROOT = os.path.join(HERE, ".write-fixtures")
 os.makedirs(FIXTURE_ROOT, exist_ok=True)
 

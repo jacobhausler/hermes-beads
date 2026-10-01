@@ -1,4 +1,4 @@
-"""Regression (hbl-pnu.4.7): fixture-runner teardown must delete ONLY the
+"""Regression (): fixture-runner teardown must delete ONLY the
 stores this process created — never foreign dirs in the shared fixture root.
 
 Red state: teardown sweeps all of FIXTURE_ROOT, so a concurrent suite's

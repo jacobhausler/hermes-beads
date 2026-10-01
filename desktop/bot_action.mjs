@@ -1,9 +1,9 @@
-// desktop/bot_action.mjs — hbl-pnu.3.5 (Ask/Refine half): bot action panel
+// desktop/bot_action.mjs —  (Ask/Refine half): bot action panel
 // for the beads workbench.
 //
 //  - Ask: read-only question scoped to the selected bead. The panel reports
-//    the EXACT typed routing/refusal produced by the plugin (bot_handoff.ask
-//    -> interop.submit_request); an unqualified session door is shown as its
+//    the EXACT typed routing/refusal produced by the plugin host; an
+//    unqualified session door is shown as its
 //    typed refusal, and an ok:true ask is refused as a fabricated delivery.
 //  - Refine: a bot proposal lands ONLY in the human draft store
 //    (desktop/drafts.mjs, injected) carrying provenance=bot and
@@ -12,15 +12,15 @@
 //    injected by the app loader.
 //  - Return-to-draft: reopenBotDraft re-opens a stored bot draft (diff via
 //    the draft store) and never discards it — the only clears stay the
-//    human's explicit discard or proof-backed save (drafts.mjs law).
+//    human's explicit discard or proof-backed save (drafts rule).
 //  - Work control: rendered present-but-disabled with the typed
-//    hbl-pnu.3.3 reason; the enabled flag comes verbatim from the plugin's
-//    work_status() (single injection point bot_handoff.bind_runner_door).
+//     reason; the enabled flag comes verbatim from the plugin's
+//    host-injected work status object (single injection point at the host).
 //
-// Purity law (CONTRACTS-v3 C1): the ONLY import is react/jsx-runtime (the
+// purity rule : the ONLY import is react/jsx-runtime (the
 // same specifier the app loader maps, as in every other desktop component;
 // the source audit in tests/test_bot_action.mjs pins that and bans node
-// built-ins, DOM, fetch/spawn). hbl-pnu.4.6: elements are built via jsx()
+// built-ins, DOM, fetch/spawn). Elements are built via jsx()
 // so real React can mount the panel UNCONVERTED — the old hand-rolled
 // {type, props, key} records lacked $$typeof and were unmountable. Tests
 // keep walking the output (the capture shim implements the same jsx shape).
@@ -90,7 +90,7 @@ export function refineToDraft(draftStore, storeInfo, beadId, proposal = {}) {
 }
 
 // Return-to-draft path: re-open the stored bot draft for the human editor.
-// diff()/openEdit preserve the draft (drafts.mjs law); nothing here clears
+// diff()/openEdit preserve the draft (drafts rule); nothing here clears
 // anything.
 export function reopenBotDraft(draftStore, storeInfo, beadId) {
   if (!draftStore || typeof draftStore.getDraft !== "function") {
@@ -114,12 +114,12 @@ export function reopenBotDraft(draftStore, storeInfo, beadId) {
   };
 }
 
-// Work control presentation. `work` is the plugin's work_status() verbatim:
+// Work control presentation. `work` is the host's work-status object verbatim:
 // present is always true; enabled flips only when the admitted runner door
-// (hbl-pnu.3.3 binding) is bound. The button is presentation-only — this
+// ( binding) is bound. The button is presentation-only — this
 // module spawns nothing.
 //
-// hbl-pnu.3.7 truthful run state: `runState` is bot_handoff.work_run_state()
+//  truthful run state: `runState` is the host-injected run-state object
 // verbatim ({state: admitted|running|succeeded|failed|uncertain|
 // cancel_requested|cancelled|unknown|unavailable, ...}) and renders VERBATIM
 // in a role=status element — never 'delivered', never 'done', and no success
@@ -129,9 +129,9 @@ export function reopenBotDraft(draftStore, storeInfo, beadId) {
 // is latched by the host via `cancelRequested:true`, which keeps the
 // display on cancel_requested through a lagging door poll until a LATER
 // state says cancelled; the shipped WorkbenchApp owns that latch).
-// hbl-pnu.3.7 (mounted smoke): a Work click routes to the injected
-// host `onWork(bead)` — same law as onCancel: the component calls, the
-// host owns all door I/O (work_bridge.py); this module spawns nothing.
+//  (mounted smoke): a Work click routes to the injected
+// host `onWork(bead)` — same rule as onCancel: the component calls, the
+// host owns all door I/O; this module spawns nothing.
 const CANCELABLE = new Set(["admitted", "running"]);
 const CANCEL_PHASE = new Set(["admitted", "running", "cancel_requested"]);
 
@@ -151,7 +151,7 @@ export function botActionPanel({ ask, work, refineLanded = false,
   const workLabel = work && work.enabled ? "Work (runner door bound)" : "Work";
   return el("div", {
     className: "bot-action-panel",
-    // hbl-pnu.2.10 (F7): a labelled group so the controls announce as one
+    //  (F7): a labelled group so the controls announce as one
     // cluster with gaps (stylesheet), not fused inline text.
     role: "group", "aria-label": "Bot actions",
     children: [

@@ -1,0 +1,522 @@
+[
+ {
+  "label": "heartbeat-hbl-9g2.2",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:01:13-0500",
+  "note": ""
+ },
+ {
+  "label": "help-update",
+  "cmd": "bd update --help",
+  "exit_code": 0,
+  "stdout": "Update one or more issues.\n\nIf no issue ID is provided, updates the last touched issue (from most recent\ncreate, update, show, or close operation). This fallback only applies in\ninteractive sessions (stdin is a terminal); in scripts and agent sessions a\nmissing ID is an error, so a command built from an empty variable cannot\nsilently mutate an unrelated issue. Set BD_LAST_TOUCHED_FALLBACK=1 to allow\nthe fallback anywhere, or =0 to disable it entirely.\n\nUpdates are applied per issue ID, not atomically across IDs: when some IDs\nfail, the remaining issues are still updated, every failed ID is reported on\nstderr, and the command exits nonzero.\n\nExit codes: 1 for general failures; 13 when every failure is a stale\n--if-assignee/--if-status guard (the precondition no longer held, nothing was\nwritten \u2014 another actor won the race, so retrying the same guard is\npointless).\n\nUsage:\n  bd update [id...] [flags]\n\nFlags:\n      --acceptance string            Acceptance criteria\n      --add-label strings            Add labels (repeatable)\n      --allow-empty-description      Allow empty description replacement when reading from stdin or file\n      --append-notes string          Append to existing notes (with newline separator)\n  -a, --assignee string              Assignee\n      --await-id string              Set gate await_id (e.g., GitHub run ID for gh:run gates)\n      --body-file string             Read description from file (use - for stdin)\n      --claim                        Atomically claim the issue (sets assignee to you, status to in_progress; idempotent if already claimed by you; issues assigned to a pool alias listed in the claim.pools config are claimable too)\n      --defer string                 Defer until date (empty to clear). Issue hidden from bd ready until then, then auto-wakes to open\n  -d, --description string           Issue description\n      --design string                Design notes\n      --design-file string           Read design from file (use - for stdin)\n      --due string                   Due date/time (empty to clear). Formats: +6h, +1d, +2w, tomorrow, next monday, 2025-01-15\n      --ephemeral                    Mark issue as ephemeral (wisp) - not exported to JSONL\n  -e, --estimate int                 Time estimate in minutes (e.g., 60 for 1 hour)\n      --external-ref string          External reference (e.g., 'gh-9', 'jira-ABC', Linear URL)\n      --force                        Override two refusals: let -a/--assignee overwrite another actor's live in_progress claim (use only for abandoned claims \u2014 crashed agent, expired lease; prefer bd reclaim), and let -s/--status move the issue into closed (or a configured done status) despite open children or a live blocker (same as bd close --force)\n  -h, --help                         help for update\n      --history                      Clear no-history flag (re-enable Dolt commit history)\n      --if-assignee string           Apply the update only if the current assignee equals this value (--if-assignee '' requires unassigned); a mismatch writes nothing and exits 13 (vs 1 for other failures). Requires a field update; cannot combine with --claim\n      --if-status string             Apply the update only if the current status equals this value; a mismatch writes nothing and exits 13 (vs 1 for other failures). Requires a field update; cannot combine with --claim\n      --metadata string              Set custom metadata (JSON string or @file.json to read from file)\n      --no-history                   Mark issue as no-history (skip Dolt commits, not GC-eligible)\n      --notes string                 Additional notes (replaces existing notes; use --append-notes to append)\n      --parent string                New parent issue ID (reparents the issue, use empty string to remove parent)\n      --persistent                   Mark issue as persistent (promote wisp to regular issue)\n  -p, --priority string              Priority (0-4 or P0-P4, 0=highest)\n      --remove-label strings    ",
+  "ts": "2026-09-27T16:01:13-0500",
+  "note": ""
+ },
+ {
+  "label": "help-create",
+  "cmd": "bd create --help",
+  "exit_code": 0,
+  "stdout": "Create a new issue (or batch from markdown/graph JSON)\n\nUsage:\n  bd create [title] [flags]\n\nAliases:\n  create, new\n\nFlags:\n      --acceptance string         Acceptance criteria\n      --allow-empty-description   Allow empty description input from stdin or file\n      --append-notes string       Append to existing notes (with newline separator)\n  -a, --assignee string           Assignee\n      --body-file string          Read description from file (use - for stdin)\n      --context string            Additional context for the issue\n      --defer string              Defer until date (issue hidden from bd ready until then). Same formats as --due\n      --deps strings              Dependencies as 'type:id' or bare 'id'. Bare 'id', 'depends-on:id', and 'blocked-by:id' all make THIS issue depend on id; 'blocks:id' reverses direction (id depends on this issue). E.g. 'blocked-by:bd-20,discovered-from:bd-15'\n  -d, --description string        Issue description\n      --design string             Design notes\n      --design-file string        Read design from file (use - for stdin)\n      --dry-run                   Preview what would be created without actually creating\n      --due string                Due date/time. Formats: +6h, +1d, +2w, tomorrow, next monday, 2025-01-15\n      --ephemeral                 Create as ephemeral (short-lived, subject to TTL compaction)\n  -e, --estimate int              Time estimate in minutes (e.g., 60 for 1 hour)\n      --event-actor string        Entity URI who caused this event (requires --type=event)\n      --event-category string     Event category (e.g., patrol.muted, agent.started) (requires --type=event)\n      --event-payload string      Event-specific JSON data (requires --type=event)\n      --event-target string       Entity URI or bead ID affected (requires --type=event)\n      --external-ref string       External reference (e.g., 'gh-9', 'jira-ABC', Linear URL)\n  -f, --file string               Create multiple issues from markdown file\n      --force                     Force creation even if prefix doesn't match database prefix\n      --graph string              Create a graph of issues with dependencies from JSON plan file\n  -h, --help                      help for create\n      --id string                 Explicit issue ID (e.g., 'bd-42' for partitioning)\n  -l, --labels strings            Labels (comma-separated)\n      --metadata string           Set custom metadata (JSON string or @file.json to read from file)\n      --mol-type string           Molecule type: swarm (multi-agent), patrol (recurring ops), work (default)\n      --no-history                Skip Dolt commit history without making GC-eligible (for permanent agent beads)\n      --no-inherit-labels         Don't inherit labels from parent issue\n      --notes string              Additional notes\n      --parent string             Parent issue ID for hierarchical child (e.g., 'bd-a3f8e9')\n  -p, --priority string           Priority (0-4 or P0-P4, 0=highest) (default \"2\")\n      --repo string               Target repository for issue (overrides auto-routing)\n      --silent                    Output only the issue ID (for scripting)\n      --skills string             Required skills for this issue\n      --spec-id string            Link to specification document\n  -s, --status string             Initial status\n      --stdin                     Read description from stdin (alias for --body-file -)\n      --storage-class string      Storage class: versioned, unversioned, or ephemeral (default: storage-class.<type> config, else versioned)\n      --title string              Issue title (alternative to positional argument)\n  -t, --type string               Issue type (bug|feature|task|epic|chore|decision|spike|story|milestone); custom types require types.custom config; aliases: enhancement/feat\u2192feature, dec/adr\u2192decision (default \"task\")\n      --validate                  Validate description contains required sections for issue type\n      --waits-for string      ",
+  "ts": "2026-09-27T16:01:13-0500",
+  "note": ""
+ },
+ {
+  "label": "heartbeat2",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:01:41-0500",
+  "note": ""
+ },
+ {
+  "label": "P1-create-fixture-epic",
+  "cmd": "bd --actor lab-interop create LAB-FIXTURE interop epic: chained dispatch demo -t epic -d lab-fixture epic for interop probes --json",
+  "exit_code": 1,
+  "stdout": "Error: accepts at most 1 arg(s), received 10",
+  "ts": "2026-09-27T16:01:41-0500",
+  "note": ""
+ },
+ {
+  "label": "P1-create-fixture-epic",
+  "cmd": "bd --actor lab-interop create 'LAB-FIXTURE interop epic: chained dispatch demo' -t epic -d 'lab-fixture epic for interop probes' --json",
+  "exit_code": 0,
+  "stdout": "{\n  \"created_at\": \"2026-09-27T21:01:48.640962112Z\",\n  \"created_by\": \"lab-interop\",\n  \"description\": \"lab-fixture epic for interop probes\",\n  \"id\": \"hbl-x3s\",\n  \"issue_type\": \"epic\",\n  \"priority\": 2,\n  \"schema_version\": 1,\n  \"status\": \"open\",\n  \"title\": \"LAB-FIXTURE interop epic: chained dispatch demo\",\n  \"updated_at\": \"2026-09-27T21:01:48.640962112Z\"\n}",
+  "ts": "2026-09-27T16:01:48-0500",
+  "note": ""
+ },
+ {
+  "label": "P2-create-child",
+  "cmd": "bd --actor lab-interop create 'LAB-FIXTURE interop child: worker task' -t task --parent hbl-x3s -d 'lab-fixture child under epic' --json",
+  "exit_code": 0,
+  "stdout": "{\n  \"created_at\": \"2026-09-27T21:01:50.159179975Z\",\n  \"created_by\": \"lab-interop\",\n  \"description\": \"lab-fixture child under epic\",\n  \"id\": \"hbl-x3s.1\",\n  \"issue_type\": \"task\",\n  \"priority\": 2,\n  \"schema_version\": 1,\n  \"status\": \"open\",\n  \"title\": \"LAB-FIXTURE interop child: worker task\",\n  \"updated_at\": \"2026-09-27T21:01:50.159179975Z\"\n}",
+  "ts": "2026-09-27T16:01:50-0500",
+  "note": ""
+ },
+ {
+  "label": "P3-create-prereq",
+  "cmd": "bd --actor lab-interop create 'LAB-FIXTURE interop prerequisite: env setup' -t task -d 'lab-fixture prereq; close to unblock' --json",
+  "exit_code": 0,
+  "stdout": "{\n  \"created_at\": \"2026-09-27T21:01:52.146685606Z\",\n  \"created_by\": \"lab-interop\",\n  \"description\": \"lab-fixture prereq; close to unblock\",\n  \"id\": \"hbl-8yq\",\n  \"issue_type\": \"task\",\n  \"priority\": 2,\n  \"schema_version\": 1,\n  \"status\": \"open\",\n  \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n  \"updated_at\": \"2026-09-27T21:01:52.146685606Z\"\n}",
+  "ts": "2026-09-27T16:01:52-0500",
+  "note": ""
+ },
+ {
+  "label": "P4-label-lab-fixture",
+  "cmd": "bd --actor lab-interop update hbl-x3s --add-label lab-fixture --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s\",\n    \"title\": \"LAB-FIXTURE interop epic: chained dispatch demo\",\n    \"description\": \"lab-fixture epic for interop probes\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"epic\",\n    \"created_at\": \"2026-09-27T21:01:49Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:01:49Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:01:53-0500",
+  "note": ""
+ },
+ {
+  "label": "P4-label-lab-fixture",
+  "cmd": "bd --actor lab-interop update hbl-x3s.1 --add-label lab-fixture --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:01:50Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:01:54-0500",
+  "note": ""
+ },
+ {
+  "label": "P4-label-lab-fixture",
+  "cmd": "bd --actor lab-interop update hbl-8yq --add-label lab-fixture --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:01:52Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:01:56-0500",
+  "note": ""
+ },
+ {
+  "label": "P5-dep-add-blocker-on-epic",
+  "cmd": "bd --actor lab-interop dep add hbl-x3s hbl-8yq --json",
+  "exit_code": 0,
+  "stdout": "{\n  \"depends_on_id\": \"hbl-8yq\",\n  \"issue_id\": \"hbl-x3s\",\n  \"schema_version\": 1,\n  \"status\": \"added\",\n  \"type\": \"blocks\"\n}",
+  "ts": "2026-09-27T16:01:58-0500",
+  "note": "epic depends on prereq (blocks edge)"
+ },
+ {
+  "label": "P6b-ready-explain",
+  "cmd": "bd --actor lab-interop ready --explain",
+  "exit_code": 0,
+  "stdout": "\ud83d\udcca Ready Work Explanation\n\n\u25cf Ready (10 issues):\n\n  hbl-9g2 [P2] Hermes Beads: disposable design and implementation laboratory\n    Reason: no blocking dependencies\n\n  hbl-9g2.3 [P2] Create atomic implementation epics, sub-epics and dependency chains\n    Reason: no blocking dependencies\n\n  hbl-ibv [P2] PROBE FIXTURE: nav probe epic\n    Reason: no blocking dependencies\n\n  hbl-9g2.4 [P2] PROBE FIXTURE: branch A\n    Reason: no blocking dependencies\n\n  hbl-9g2.5 [P2] PROBE FIXTURE: branch B\n    Reason: no blocking dependencies\n\n  hbl-ibv.1 [P2] PROBE FIXTURE: keyboard map spec\n    Reason: no blocking dependencies\n\n  hbl-0uf [P2] PROBE FIXTURE: focus model spec\n    Reason: no blocking dependencies\n\n  hbl-9g2.4.1 [P2] PROBE FIXTURE: blocker in branch A\n    Reason: no blocking dependencies\n    Unblocks: 1 issue(s)\n\n  hbl-9g2.1.1 [P2] PROBE FIXTURE: discovery under 9g2.1\n    Reason: no blocking dependencies\n\n  hbl-8yq [P2] LAB-FIXTURE interop prerequisite: env setup\n    Reason: no blocking dependencies\n    Unblocks: 1 issue(s)\n\n\u25cf Blocked (3 issues):\n\n  hbl-x3s.1 [P2] LAB-FIXTURE interop child: worker task\n    \u2190 blocked by hbl-x3s: LAB-FIXTURE interop epic: chained dispatch demo [open]\n\n  hbl-x3s [P2] LAB-FIXTURE interop epic: chained dispatch demo\n    \u2190 blocked by hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [open]\n\n  hbl-9g2.5.1 [P2] PROBE FIXTURE: blocked worker in branch B\n    \u2190 blocked by hbl-9g2.4.1: PROBE FIXTURE: blocker in branch A [open]\n\n\u2500 Summary: 10 ready, 3 blocked",
+  "ts": "2026-09-27T16:01:59-0500",
+  "note": "per-issue ready reasoning"
+ },
+ {
+  "label": "P6c-blocked",
+  "cmd": "bd --actor lab-interop blocked",
+  "exit_code": 0,
+  "stdout": "\ud83d\udeab Blocked issues (3):\n\n[P2] hbl-x3s.1: LAB-FIXTURE interop child: worker task\n  Blocked by 1 open dependencies: [hbl-x3s]\n\n[P2] hbl-x3s: LAB-FIXTURE interop epic: chained dispatch demo\n  Blocked by 1 open dependencies: [hbl-8yq]\n\n[P2] hbl-9g2.5.1: PROBE FIXTURE: blocked worker in branch B\n  Blocked by 1 open dependencies: [hbl-9g2.4.1]",
+  "ts": "2026-09-27T16:02:00-0500",
+  "note": "blocked listing"
+ },
+ {
+  "label": "P6d-deptree-child",
+  "cmd": "bd --actor lab-interop dep tree hbl-x3s.1",
+  "exit_code": 0,
+  "stdout": "\ud83c\udf32 Dependency tree for hbl-x3s.1:\n\nhbl-x3s.1: LAB-FIXTURE interop child: worker task [P2] (open) [READY]\n    \u2514\u2500\u2500 hbl-x3s: LAB-FIXTURE interop epic: chained dispatch demo [P2] (open) [parent-child]\n        \u2514\u2500\u2500 hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2] (open) [blocks]",
+  "ts": "2026-09-27T16:02:01-0500",
+  "note": "child dep tree (ancestry+blocker view)"
+ },
+ {
+  "label": "H-heartbeat3",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:02:31-0500",
+  "note": ""
+ },
+ {
+  "label": "Q1-claim-child-lab-interop-1st",
+  "cmd": "bd --actor lab-interop update hbl-x3s.1 --claim --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"in_progress\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-interop\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:32Z\",\n    \"started_at\": \"2026-09-27T21:02:32Z\",\n    \"lease_expires_at\": \"2026-09-27T21:07:32Z\",\n    \"heartbeat_at\": \"2026-09-27T21:02:32Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:02:32-0500",
+  "note": "claim a blocked descendant?"
+ },
+ {
+  "label": "Q2-claim-child-same-actor-retry",
+  "cmd": "bd --actor lab-interop update hbl-x3s.1 --claim --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"in_progress\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-interop\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:32Z\",\n    \"started_at\": \"2026-09-27T21:02:32Z\",\n    \"lease_expires_at\": \"2026-09-27T21:07:32Z\",\n    \"heartbeat_at\": \"2026-09-27T21:02:32Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:02:33-0500",
+  "note": "idempotent retry, expect exit 0"
+ },
+ {
+  "label": "Q3-claim-child-distinct-actor",
+  "cmd": "bd --actor lab-other2 update hbl-x3s.1 --claim --json",
+  "exit_code": 1,
+  "stdout": "Error updating hbl-x3s.1: issue already claimed by lab-interop\n{\"error\":\"1 of 1 issues failed to update\",\"failed\":[{\"id\":\"hbl-x3s.1\",\"error\":\"updating issue: issue already claimed by lab-interop\"}],\"schema_version\":1}",
+  "ts": "2026-09-27T16:02:34-0500",
+  "note": "serial contention demo, not concurrency qualification"
+ },
+ {
+  "label": "Q4-show-child",
+  "cmd": "bd show hbl-x3s.1 --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"in_progress\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-interop\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:32Z\",\n    \"started_at\": \"2026-09-27T21:02:32Z\",\n    \"lease_expires_at\": \"2026-09-27T21:07:32Z\",\n    \"heartbeat_at\": \"2026-09-27T21:02:32Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependencies\": [\n      {\n        \"id\": \"hbl-x3s\",\n        \"title\": \"LAB-FIXTURE interop epic: chained dispatch demo\",\n        \"description\": \"lab-fixture epic for interop probes\",\n        \"status\": \"open\",\n        \"priority\": 2,\n        \"issue_type\": \"epic\",\n        \"created_at\": \"2026-09-27T21:01:49Z\",\n        \"created_by\": \"lab-interop\",\n        \"updated_at\": \"2026-09-27T21:01:49Z\",\n        \"labels\": [\n          \"lab-fixture\"\n        ],\n        \"dependency_type\": \"parent-child\"\n      }\n    ],\n    \"parent\": \"hbl-x3s\",\n    \"dependent_count\": 0,\n    \"dependency_count\": 1,\n    \"comment_count\": 0,\n    \"revision\": \"-6608085928042129096\"\n  }\n]",
+  "ts": "2026-09-27T16:02:35-0500",
+  "note": ""
+ },
+ {
+  "label": "Q5-unclaim-owner",
+  "cmd": "bd --actor lab-interop unclaim hbl-x3s.1 --reason 'lab probe release'",
+  "exit_code": 0,
+  "stdout": "\u2713 Unclaimed hbl-x3s.1: lab probe release",
+  "ts": "2026-09-27T16:02:37-0500",
+  "note": ""
+ },
+ {
+  "label": "Q6-claim-by-other",
+  "cmd": "bd --actor lab-other2 update hbl-x3s.1 --claim --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"in_progress\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-other2\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:38Z\",\n    \"started_at\": \"2026-09-27T21:02:38Z\",\n    \"lease_expires_at\": \"2026-09-27T21:07:38Z\",\n    \"heartbeat_at\": \"2026-09-27T21:02:38Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:02:38-0500",
+  "note": ""
+ },
+ {
+  "label": "Q7-reclaim-attempt-by-loser",
+  "cmd": "bd --actor lab-interop update hbl-x3s.1 --claim --json",
+  "exit_code": 1,
+  "stdout": "Error updating hbl-x3s.1: issue already claimed by lab-other2\n{\"error\":\"1 of 1 issues failed to update\",\"failed\":[{\"id\":\"hbl-x3s.1\",\"error\":\"updating issue: issue already claimed by lab-other2\"}],\"schema_version\":1}",
+  "ts": "2026-09-27T16:02:39-0500",
+  "note": "expect refusal: held by lab-other2"
+ },
+ {
+  "label": "Q8-unclaim-cas-mismatch",
+  "cmd": "bd --actor lab-interop unclaim hbl-x3s.1 --if-assignee lab-interop",
+  "exit_code": 1,
+  "stdout": "Error unclaiming hbl-x3s.1: assignee mismatch: hbl-x3s.1 is held by \"lab-other2\", expected \"lab-interop\"",
+  "ts": "2026-09-27T16:02:40-0500",
+  "note": "CAS mismatch expected exit nonzero"
+ },
+ {
+  "label": "Q9-unclaim-holder",
+  "cmd": "bd --actor lab-other2 unclaim hbl-x3s.1 --reason 'lab probe done'",
+  "exit_code": 0,
+  "stdout": "\u2713 Unclaimed hbl-x3s.1: lab probe done",
+  "ts": "2026-09-27T16:02:41-0500",
+  "note": ""
+ },
+ {
+  "label": "H-heartbeat4",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:02:52-0500",
+  "note": ""
+ },
+ {
+  "label": "R1-if-status-mismatch",
+  "cmd": "bd --actor lab-interop update hbl-8yq --if-status in_progress --priority 1 --json",
+  "exit_code": 13,
+  "stdout": "Error updating hbl-8yq: status mismatch: hbl-8yq has status \"open\", expected \"in_progress\"\n{\"error\":\"1 of 1 issues failed to update\",\"failed\":[{\"id\":\"hbl-8yq\",\"error\":\"updating issue: status mismatch: hbl-8yq has status \\\"open\\\", expected \\\"in_progress\\\"\",\"guard_mismatch\":true}],\"schema_version\":1}",
+  "ts": "2026-09-27T16:02:54-0500",
+  "note": "expect exit 13, no write"
+ },
+ {
+  "label": "R1b-show-pre-after-guard",
+  "cmd": "bd show hbl-8yq --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:01:52Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependent_count\": 1,\n    \"dependency_count\": 0,\n    \"comment_count\": 0,\n    \"revision\": \"3898499679037463542\"\n  }\n]",
+  "ts": "2026-09-27T16:02:55-0500",
+  "note": "priority unchanged (2)"
+ },
+ {
+  "label": "R2-if-status-match",
+  "cmd": "bd --actor lab-interop update hbl-8yq --if-status open --priority 1 --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"status\": \"open\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:57Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:02:57-0500",
+  "note": "expect exit 0"
+ },
+ {
+  "label": "R3-if-assignee-empty",
+  "cmd": "bd --actor lab-interop update hbl-8yq --if-assignee '' --notes 'lab guarded note' --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"notes\": \"lab guarded note\",\n    \"status\": \"open\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:58Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:02:58-0500",
+  "note": "requires unassigned"
+ },
+ {
+  "label": "R4-set-metadata",
+  "cmd": "bd --actor lab-interop update hbl-8yq --set-metadata hermes.workflow.run_id=wf-lab-demo-001 --set-metadata hermes.workflow.node_id=plan --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"notes\": \"lab guarded note\",\n    \"status\": \"open\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:59Z\",\n    \"metadata\": {\n      \"hermes.workflow.run_id\": \"wf-lab-demo-001\",\n      \"hermes.workflow.node_id\": \"plan\"\n    },\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:02:59-0500",
+  "note": "namespaced correlation"
+ },
+ {
+  "label": "R4b-metadata-filter",
+  "cmd": "bd list --metadata-field hermes.workflow.run_id=wf-lab-demo-001 --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"notes\": \"lab guarded note\",\n    \"status\": \"open\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:59Z\",\n    \"metadata\": {\n      \"hermes.workflow.run_id\": \"wf-lab-demo-001\",\n      \"hermes.workflow.node_id\": \"plan\"\n    },\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependency_count\": 0,\n    \"dependent_count\": 1,\n    \"comment_count\": 0\n  }\n]",
+  "ts": "2026-09-27T16:03:01-0500",
+  "note": "query correlation back"
+ },
+ {
+  "label": "R4c-has-metadata-key",
+  "cmd": "bd ready --has-metadata-key hermes.workflow.run_id --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"notes\": \"lab guarded note\",\n    \"status\": \"open\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:59Z\",\n    \"metadata\": {\n      \"hermes.workflow.run_id\": \"wf-lab-demo-001\",\n      \"hermes.workflow.node_id\": \"plan\"\n    },\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependency_count\": 0,\n    \"dependent_count\": 1,\n    \"comment_count\": 0\n  }\n]",
+  "ts": "2026-09-27T16:03:01-0500",
+  "note": "ready filter by metadata key"
+ },
+ {
+  "label": "R5-ready-claim-scoped",
+  "cmd": "bd --actor lab-interop ready --claim --label lab-fixture --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"notes\": \"lab guarded note\",\n    \"status\": \"in_progress\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-interop\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:03:02Z\",\n    \"started_at\": \"2026-09-27T21:03:02Z\",\n    \"lease_expires_at\": \"2026-09-27T21:08:02Z\",\n    \"heartbeat_at\": \"2026-09-27T21:03:02Z\",\n    \"metadata\": {\n      \"hermes.workflow.run_id\": \"wf-lab-demo-001\",\n      \"hermes.workflow.node_id\": \"plan\"\n    },\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependency_count\": 0,\n    \"dependent_count\": 1,\n    \"comment_count\": 0\n  }\n]",
+  "ts": "2026-09-27T16:03:02-0500",
+  "note": "atomic claim-next, label-scoped"
+ },
+ {
+  "label": "H-heartbeat5",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:03:14-0500",
+  "note": ""
+ },
+ {
+  "label": "S1-comment-pre",
+  "cmd": "bd --actor lab-interop comment hbl-8yq 'lab-fixture evidence: probe complete, ready to close'",
+  "exit_code": 0,
+  "stdout": "\u2713 Comment added to hbl-8yq \u2014 LAB-FIXTURE interop prerequisite: env setup",
+  "ts": "2026-09-27T16:03:16-0500",
+  "note": ""
+ },
+ {
+  "label": "S2-close-pre",
+  "cmd": "bd --actor lab-interop close hbl-8yq --reason 'lab-fixture probe done: verified epic+child unblocked in P7' --suggest-next --json",
+  "exit_code": 0,
+  "stdout": "{\n  \"closed\": [\n    {\n      \"assignee\": \"lab-interop\",\n      \"close_reason\": \"lab-fixture probe done: verified epic+child unblocked in P7\",\n      \"closed_at\": \"2026-09-27T21:03:17Z\",\n      \"created_at\": \"2026-09-27T21:01:52Z\",\n      \"created_by\": \"lab-interop\",\n      \"description\": \"lab-fixture prereq; close to unblock\",\n      \"id\": \"hbl-8yq\",\n      \"issue_type\": \"task\",\n      \"labels\": [\n        \"lab-fixture\"\n      ],\n      \"metadata\": {\n        \"hermes.workflow.node_id\": \"plan\",\n        \"hermes.workflow.run_id\": \"wf-lab-demo-001\"\n      },\n      \"notes\": \"lab guarded note\",\n      \"priority\": 1,\n      \"started_at\": \"2026-09-27T21:03:02Z\",\n      \"status\": \"closed\",\n      \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n      \"updated_at\": \"2026-09-27T21:03:17Z\"\n    }\n  ],\n  \"schema_version\": 1,\n  \"unblocked\": [\n    {\n      \"created_at\": \"2026-09-27T21:01:49Z\",\n      \"created_by\": \"lab-interop\",\n      \"description\": \"lab-fixture epic for interop probes\",\n      \"id\": \"hbl-x3s\",\n      \"issue_type\": \"epic\",\n      \"labels\": [\n        \"lab-fixture\"\n      ],\n      \"priority\": 2,\n      \"status\": \"open\",\n      \"title\": \"LAB-FIXTURE interop epic: chained dispatch demo\",\n      \"updated_at\": \"2026-09-27T21:01:49Z\"\n    }\n  ]\n}",
+  "ts": "2026-09-27T16:03:17-0500",
+  "note": "closure with evidence + suggest-next"
+ },
+ {
+  "label": "S3-ready-explain-after-close",
+  "cmd": "bd --actor lab-interop ready --explain",
+  "exit_code": 0,
+  "stdout": "\ud83d\udcca Ready Work Explanation\n\n\u25cf Ready (11 issues):\n\n  hbl-9g2 [P2] Hermes Beads: disposable design and implementation laboratory\n    Reason: no blocking dependencies\n\n  hbl-9g2.3 [P2] Create atomic implementation epics, sub-epics and dependency chains\n    Reason: no blocking dependencies\n\n  hbl-ibv [P2] PROBE FIXTURE: nav probe epic\n    Reason: no blocking dependencies\n\n  hbl-9g2.4 [P2] PROBE FIXTURE: branch A\n    Reason: no blocking dependencies\n\n  hbl-9g2.5 [P2] PROBE FIXTURE: branch B\n    Reason: no blocking dependencies\n\n  hbl-ibv.1 [P2] PROBE FIXTURE: keyboard map spec\n    Reason: no blocking dependencies\n\n  hbl-0uf [P2] PROBE FIXTURE: focus model spec\n    Reason: no blocking dependencies\n\n  hbl-9g2.4.1 [P2] PROBE FIXTURE: blocker in branch A\n    Reason: no blocking dependencies\n    Unblocks: 1 issue(s)\n\n  hbl-9g2.1.1 [P2] PROBE FIXTURE: discovery under 9g2.1\n    Reason: no blocking dependencies\n\n  hbl-x3s [P2] LAB-FIXTURE interop epic: chained dispatch demo\n    Reason: 1 blocker(s) resolved\n    Resolved blockers: hbl-8yq\n\n  hbl-x3s.1 [P2] LAB-FIXTURE interop child: worker task\n    Reason: no blocking dependencies\n\n\u25cf Blocked (1 issues):\n\n  hbl-9g2.5.1 [P2] PROBE FIXTURE: blocked worker in branch B\n    \u2190 blocked by hbl-9g2.4.1: PROBE FIXTURE: blocker in branch A [open]\n\n\u2500 Summary: 11 ready, 1 blocked",
+  "ts": "2026-09-27T16:03:18-0500",
+  "note": "epic AND child should now be ready"
+ },
+ {
+  "label": "S3b-deptree-child-after",
+  "cmd": "bd dep tree hbl-x3s.1",
+  "exit_code": 0,
+  "stdout": "\ud83c\udf32 Dependency tree for hbl-x3s.1:\n\nhbl-x3s.1: LAB-FIXTURE interop child: worker task [P2] (open) [READY]\n    \u2514\u2500\u2500 hbl-x3s: LAB-FIXTURE interop epic: chained dispatch demo [P2] (open) [parent-child]\n        \u2514\u2500\u2500 hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1] (closed) [blocks]",
+  "ts": "2026-09-27T16:03:19-0500",
+  "note": "did [READY] label converge?"
+ },
+ {
+  "label": "S4-reopen-pre",
+  "cmd": "bd --actor lab-interop reopen hbl-8yq --reason 'lab probe: verify reopen re-blocks chain'",
+  "exit_code": 0,
+  "stdout": "\u21bb Reopened hbl-8yq: lab probe: verify reopen re-blocks chain",
+  "ts": "2026-09-27T16:03:21-0500",
+  "note": ""
+ },
+ {
+  "label": "S4b-blocked-after-reopen",
+  "cmd": "bd blocked",
+  "exit_code": 0,
+  "stdout": "\ud83d\udeab Blocked issues (3):\n\n[P2] hbl-x3s.1: LAB-FIXTURE interop child: worker task\n  Blocked by 1 open dependencies: [hbl-x3s]\n\n[P2] hbl-x3s: LAB-FIXTURE interop epic: chained dispatch demo\n  Blocked by 1 open dependencies: [hbl-8yq]\n\n[P2] hbl-9g2.5.1: PROBE FIXTURE: blocked worker in branch B\n  Blocked by 1 open dependencies: [hbl-9g2.4.1]",
+  "ts": "2026-09-27T16:03:22-0500",
+  "note": "chain blocked again?"
+ },
+ {
+  "label": "S4c-reclose-pre",
+  "cmd": "bd --actor lab-interop close hbl-8yq --reason 'lab-fixture final state: closed (explicit)' --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"notes\": \"lab guarded note\",\n    \"status\": \"closed\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-interop\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:03:23Z\",\n    \"started_at\": \"2026-09-27T21:03:02Z\",\n    \"closed_at\": \"2026-09-27T21:03:23Z\",\n    \"close_reason\": \"lab-fixture final state: closed (explicit)\",\n    \"metadata\": {\n      \"hermes.workflow.run_id\": \"wf-lab-demo-001\",\n      \"hermes.workflow.node_id\": \"plan\"\n    },\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:03:23-0500",
+  "note": ""
+ },
+ {
+  "label": "S4d-ready-final",
+  "cmd": "bd --actor lab-interop ready --explain",
+  "exit_code": 0,
+  "stdout": "\ud83d\udcca Ready Work Explanation\n\n\u25cf Ready (11 issues):\n\n  hbl-9g2 [P2] Hermes Beads: disposable design and implementation laboratory\n    Reason: no blocking dependencies\n\n  hbl-9g2.3 [P2] Create atomic implementation epics, sub-epics and dependency chains\n    Reason: no blocking dependencies\n\n  hbl-ibv [P2] PROBE FIXTURE: nav probe epic\n    Reason: no blocking dependencies\n\n  hbl-9g2.4 [P2] PROBE FIXTURE: branch A\n    Reason: no blocking dependencies\n\n  hbl-9g2.5 [P2] PROBE FIXTURE: branch B\n    Reason: no blocking dependencies\n\n  hbl-ibv.1 [P2] PROBE FIXTURE: keyboard map spec\n    Reason: no blocking dependencies\n\n  hbl-0uf [P2] PROBE FIXTURE: focus model spec\n    Reason: no blocking dependencies\n\n  hbl-9g2.4.1 [P2] PROBE FIXTURE: blocker in branch A\n    Reason: no blocking dependencies\n    Unblocks: 1 issue(s)\n\n  hbl-9g2.1.1 [P2] PROBE FIXTURE: discovery under 9g2.1\n    Reason: no blocking dependencies\n\n  hbl-x3s [P2] LAB-FIXTURE interop epic: chained dispatch demo\n    Reason: 1 blocker(s) resolved\n    Resolved blockers: hbl-8yq\n\n  hbl-x3s.1 [P2] LAB-FIXTURE interop child: worker task\n    Reason: no blocking dependencies\n\n\u25cf Blocked (1 issues):\n\n  hbl-9g2.5.1 [P2] PROBE FIXTURE: blocked worker in branch B\n    \u2190 blocked by hbl-9g2.4.1: PROBE FIXTURE: blocker in branch A [open]\n\n\u2500 Summary: 11 ready, 1 blocked",
+  "ts": "2026-09-27T16:03:24-0500",
+  "note": "final ready/blocked census"
+ },
+ {
+  "label": "S5-epic-status",
+  "cmd": "bd epic status hbl-x3s",
+  "exit_code": 0,
+  "stdout": "\u25cb hbl-9g2 Hermes Beads: disposable design and implementation laboratory\n   Progress: 0/5 children closed (0%)\n\n\u25cb hbl-9g2.4 PROBE FIXTURE: branch A\n   Progress: 0/1 children closed (0%)\n\n\u25cb hbl-9g2.5 PROBE FIXTURE: branch B\n   Progress: 0/1 children closed (0%)\n\n\u25cb hbl-ibv PROBE FIXTURE: nav probe epic\n   Progress: 0/1 children closed (0%)\n\n\u25cb hbl-x3s LAB-FIXTURE interop epic: chained dispatch demo\n   Progress: 0/1 children closed (0%)",
+  "ts": "2026-09-27T16:03:26-0500",
+  "note": ""
+ },
+ {
+  "label": "S6-readonly-read-ok",
+  "cmd": "bd --readonly ready -n 3",
+  "exit_code": 0,
+  "stdout": "\u25cb hbl-9g2 P2 [epic] Hermes Beads: disposable design and implementation laboratory\n\u25cb hbl-9g2.3 P2 Create atomic implementation epics, sub-epics and dependency chains \u2190 Hermes Beads: disposable design and implementation laboratory\n\u25cb hbl-ibv P2 [epic] PROBE FIXTURE: nav probe epic\n\n--------------------------------------------------------------------------------\nReady: 3 issues with no active blockers\n\nStatus: \u25cb open  \u25d0 in_progress  \u25cf blocked  \u2713 closed  \u2744 deferred\nPriority: P0\u2013P4 (label only; not a status icon)\nShowing 3 of 11 ready issues. Use -n to show more.",
+  "ts": "2026-09-27T16:03:27-0500",
+  "note": "readonly read succeeds (write-block per help text, not exercised)"
+ },
+ {
+  "label": "H-heartbeat6",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:03:43-0500",
+  "note": ""
+ },
+ {
+  "label": "T2-statuses",
+  "cmd": "bd statuses",
+  "exit_code": 0,
+  "stdout": "Built-in statuses:\n  \u25cb open           [active]  Available to work (default)\n  \u25d0 in_progress    [wip   ]  Actively being worked on\n  \u25cf blocked        [wip   ]  Blocked by a dependency\n  \u2744 deferred       [frozen]  Deliberately put on ice for later\n  \u2713 closed         [done  ]  Completed\n  \ud83d\udccc pinned         [frozen]  Persistent, stays open indefinitely\n  \u25c7 hooked         [wip   ]  Attached to an agent's hook\n\nNo custom statuses configured.\nConfigure with: bd config set status.custom \"name:category,...\"\nCategories: active, wip, done, frozen",
+  "ts": "2026-09-27T16:03:44-0500",
+  "note": "status vocabulary incl. cancelled?"
+ },
+ {
+  "label": "T3-readonly-write-blocked",
+  "cmd": "bd --readonly --actor lab-interop comment hbl-8yq 'should be blocked'",
+  "exit_code": 1,
+  "stdout": "Error: operation 'comment' is not allowed in read-only mode",
+  "ts": "2026-09-27T16:03:45-0500",
+  "note": "verify --readonly blocks writes (fixture write attempt)"
+ },
+ {
+  "label": "T4-history-pre",
+  "cmd": "bd history hbl-8yq",
+  "exit_code": 0,
+  "stdout": "\ud83d\udcdc History for hbl-8yq (18 entries)\n\nc0pfq3be 2026-09-27 21:03:23\n  Author: beads\n  \u2713 hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1 - closed]\n\ngnbit494 2026-09-27 21:03:21\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1 - open]\n\nh2m56tg8 2026-09-27 21:03:17\n  Author: beads\n  \u2713 hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1 - closed]\n\n4bisddiv 2026-09-27 21:03:15\n  Author: beads\n  \u25d0 hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1 - in_progress]\n\not5rn4cp 2026-09-27 21:03:02\n  Author: beads\n  \u25d0 hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1 - in_progress]\n\n6d37gr7b 2026-09-27 21:02:59\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1 - open]\n\n8e4stjrp 2026-09-27 21:02:58\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1 - open]\n\n49h9vtmq 2026-09-27 21:02:56\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P1 - open]\n\nbe21qsr6 2026-09-27 21:02:41\n  Author: root\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\nikf52gli 2026-09-27 21:02:37\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\na99a6ebk 2026-09-27 21:02:36\n  Author: root\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\nhsnjpoql 2026-09-27 21:02:32\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\nq93uga0s 2026-09-27 21:01:57\n  Author: root\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\nvt4o718p 2026-09-27 21:01:57\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\n0e8hublu 2026-09-27 21:01:56\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\nlsk4ivs1 2026-09-27 21:01:54\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\nmph5prqr 2026-09-27 21:01:53\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]\n\nt77dt6gf 2026-09-27 21:01:52\n  Author: beads\n  \u25cb hbl-8yq: LAB-FIXTURE interop prerequisite: env setup [P2 - open]",
+  "ts": "2026-09-27T16:03:45-0500",
+  "note": "durable audit trail after closure"
+ },
+ {
+  "label": "T5-show-child-now",
+  "cmd": "bd show hbl-x3s.1 --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:41Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependencies\": [\n      {\n        \"id\": \"hbl-x3s\",\n        \"title\": \"LAB-FIXTURE interop epic: chained dispatch demo\",\n        \"description\": \"lab-fixture epic for interop probes\",\n        \"status\": \"open\",\n        \"priority\": 2,\n        \"issue_type\": \"epic\",\n        \"created_at\": \"2026-09-27T21:01:49Z\",\n        \"created_by\": \"lab-interop\",\n        \"updated_at\": \"2026-09-27T21:01:49Z\",\n        \"labels\": [\n          \"lab-fixture\"\n        ],\n        \"dependency_type\": \"parent-child\"\n      }\n    ],\n    \"parent\": \"hbl-x3s\",\n    \"dependent_count\": 0,\n    \"dependency_count\": 1,\n    \"comment_count\": 2,\n    \"comments_omitted\": true,\n    \"revision\": \"-7904377720020461782\"\n  }\n]",
+  "ts": "2026-09-27T16:03:47-0500",
+  "note": "lease state after lab-other2 claimed"
+ },
+ {
+  "label": "H-heartbeat7",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:04:04-0500",
+  "note": ""
+ },
+ {
+  "label": "U1-comments-help",
+  "cmd": "bd comments --help",
+  "exit_code": 0,
+  "stdout": "View or manage comments on an issue.\n\nExamples:\n  # List all comments on an issue (issue id is required \u2014 there is no \"comments list\")\n  bd comments bd-123\n\n  # List comments in JSON format\n  bd comments bd-123 --json\n\n  # Add a comment\n  bd comments add bd-123 \"This is a comment\"\n\n  # Add a comment from a file\n  bd comments add bd-123 -f notes.txt\n\nUsage:\n  bd comments [issue-id] [flags]\n  bd comments [command]\n\nAvailable Commands:\n  add         Add a comment to an issue\n  list        Invalid \u2014 use bd comments <issue-id> to list comments\n\nFlags:\n  -h, --help         help for comments\n      --local-time   Show timestamps in local time instead of UTC\n\nGlobal Flags:\n      --actor string              Actor name for audit trail (default: $BEADS_ACTOR, git user.name, $USER)\n      --cpu-profile               Generate CPU profile for performance analysis\n      --database string           Run against a different server database for this invocation, without changing the project's configured database (proxied-server mode only)\n      --db string                 Database path (default: auto-discover .beads/*.db). In proxied-server mode, a value that isn't an existing path is treated as a database name override (see --database)\n  -C, --directory string          Change to this directory before running the command (like git -C)\n      --dolt-auto-commit string   Dolt auto-commit policy (off|on|batch). 'on': commit after each write. 'batch': defer commits to bd dolt commit; uncommitted changes persist in the working set until then (a live batch-mode bd process also flushes on SIGTERM/SIGHUP). Applies to embedded and direct SQL-server modes; proxied-server routes are unaffected. Default: on. Override via config key dolt.auto-commit\n      --global                    Use the global shared-server database (beads_global)\n      --ignore-schema-skew        Proceed despite forward schema drift (some queries may fail)\n      --json                      Output in JSON format\n      --mem-profile string        Write heap profile to FILE on exit (also respects BEADS_MEM_PROFILE)\n      --no-color                  Disable color output (also: NO_COLOR=1 or CLICOLOR=0)\n  -q, --quiet                     Suppress non-essential output (errors only)\n      --readonly                  Read-only mode: block write operations (for worker sandboxes)\n      --sandbox                   Sandbox mode: disables Dolt auto-push\n  -v, --verbose                   Enable verbose/debug output\n\nUse \"bd comments [command] --help\" for more information about a command.",
+  "ts": "2026-09-27T16:04:04-0500",
+  "note": "edit/delete capability? (hci UNKNOWN)"
+ },
+ {
+  "label": "U2-ready-claim-no-match",
+  "cmd": "bd --actor lab-interop ready --claim --label no-such-label-lab --json",
+  "exit_code": 0,
+  "stdout": "[]",
+  "ts": "2026-09-27T16:04:05-0500",
+  "note": "truthful empty vs error"
+ },
+ {
+  "label": "U3-dep-cycles",
+  "cmd": "bd dep cycles",
+  "exit_code": 0,
+  "stdout": "\u2713 No dependency cycles detected",
+  "ts": "2026-09-27T16:04:06-0500",
+  "note": "cycle detection for chained graphs"
+ },
+ {
+  "label": "U4-if-assignee-mismatch",
+  "cmd": "bd --actor lab-interop update hbl-x3s.1 --if-assignee ghost-actor --notes x --json",
+  "exit_code": 13,
+  "stdout": "Error updating hbl-x3s.1: assignee mismatch: hbl-x3s.1 is held by \"\", expected \"ghost-actor\"\n{\"error\":\"1 of 1 issues failed to update\",\"failed\":[{\"id\":\"hbl-x3s.1\",\"error\":\"updating issue: assignee mismatch: hbl-x3s.1 is held by \\\"\\\", expected \\\"ghost-actor\\\"\",\"guard_mismatch\":true}],\"schema_version\":1}",
+  "ts": "2026-09-27T16:04:07-0500",
+  "note": "expect exit 13 no write"
+ },
+ {
+  "label": "H-heartbeat8",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:04:20-0500",
+  "note": ""
+ },
+ {
+  "label": "V2-show-child-comments",
+  "cmd": "bd show hbl-x3s.1 --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:41Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependencies\": [\n      {\n        \"id\": \"hbl-x3s\",\n        \"title\": \"LAB-FIXTURE interop epic: chained dispatch demo\",\n        \"description\": \"lab-fixture epic for interop probes\",\n        \"status\": \"open\",\n        \"priority\": 2,\n        \"issue_type\": \"epic\",\n        \"created_at\": \"2026-09-27T21:01:49Z\",\n        \"created_by\": \"lab-interop\",\n        \"updated_at\": \"2026-09-27T21:01:49Z\",\n        \"labels\": [\n          \"lab-fixture\"\n        ],\n        \"dependency_type\": \"parent-child\"\n      }\n    ],\n    \"parent\": \"hbl-x3s\",\n    \"dependent_count\": 0,\n    \"dependency_count\": 1,\n    \"comment_count\": 2,\n    \"comments_omitted\": true,\n    \"revision\": \"-7904377720020461782\"\n  }\n]",
+  "ts": "2026-09-27T16:04:22-0500",
+  "note": "comment_count check (claimed 2, added none)"
+ },
+ {
+  "label": "V3-comments-child",
+  "cmd": "bd comments hbl-x3s.1 --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"d02b7b99-5d42-5f54-8619-c629a0ad192c\",\n    \"issue_id\": \"hbl-x3s.1\",\n    \"author\": \"lab-interop\",\n    \"text\": \"lab probe release\",\n    \"created_at\": \"2026-09-27T21:02:36Z\"\n  },\n  {\n    \"id\": \"835026da-d9a4-5f89-9355-71e5bb047ff3\",\n    \"issue_id\": \"hbl-x3s.1\",\n    \"author\": \"lab-other2\",\n    \"text\": \"lab probe done\",\n    \"created_at\": \"2026-09-27T21:02:41Z\"\n  }\n]",
+  "ts": "2026-09-27T16:04:23-0500",
+  "note": "what are those comments?"
+ },
+ {
+  "label": "V4-final-list-fixture",
+  "cmd": "bd list --label lab-fixture --all --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"notes\": \"lab guarded note\",\n    \"status\": \"closed\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-interop\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:03:23Z\",\n    \"started_at\": \"2026-09-27T21:03:02Z\",\n    \"closed_at\": \"2026-09-27T21:03:23Z\",\n    \"close_reason\": \"lab-fixture final state: closed (explicit)\",\n    \"metadata\": {\n      \"hermes.workflow.run_id\": \"wf-lab-demo-001\",\n      \"hermes.workflow.node_id\": \"plan\"\n    },\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependency_count\": 0,\n    \"dependent_count\": 1,\n    \"comment_count\": 1\n  },\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:02:41Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependencies\": [\n      {\n        \"issue_id\": \"hbl-x3s.1\",\n        \"depends_on_id\": \"hbl-x3s\",\n        \"type\": \"parent-child\",\n        \"created_at\": \"2026-09-27T21:01:50Z\",\n        \"created_by\": \"lab-interop\",\n        \"metadata\": \"{}\"\n      }\n    ],\n    \"dependency_count\": 0,\n    \"dependent_count\": 0,\n    \"comment_count\": 2,\n    \"parent\": \"hbl-x3s\"\n  },\n  {\n    \"id\": \"hbl-x3s\",\n    \"title\": \"LAB-FIXTURE interop epic: chained dispatch demo\",\n    \"description\": \"lab-fixture epic for interop probes\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"epic\",\n    \"created_at\": \"2026-09-27T21:01:49Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:01:49Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependencies\": [\n      {\n        \"issue_id\": \"hbl-x3s\",\n        \"depends_on_id\": \"hbl-8yq\",\n        \"type\": \"blocks\",\n        \"created_at\": \"2026-09-27T21:01:57Z\",\n        \"created_by\": \"lab-interop\",\n        \"metadata\": \"{}\"\n      }\n    ],\n    \"dependency_count\": 1,\n    \"dependent_count\": 0,\n    \"comment_count\": 0\n  }\n]",
+  "ts": "2026-09-27T16:04:24-0500",
+  "note": "FINAL fixture states"
+ },
+ {
+  "label": "V5-note-on-hbl-9g2.2",
+  "cmd": "bd --actor lab-interop comment hbl-9g2.2 'interop probe evidence (lab-fixture IDs: epic hbl-x3s, child hbl-x3s.1, prereq hbl-8yq closed). KEY FACTS: (1) ready --explain: child blocked by OPEN PARENT hbl-x3s = blocked-parent propagation; closed prereq hbl-8yq -> epic+child ready. (2) --claim bypasses readiness: claimed blocked child exit 0. (3) guards: --if-status/--if-assignee mismatch exit 13 + guard_mismatch:true, no write; unclaim --if-assignee CAS exit 1 names holder. (4) same-actor claim retry exit 0; distinct-actor refusal exit 1 already claimed by (serial, not concurrency-qualified). (5) ready --claim --label lab-fixture atomic scoped claim-next exit 0; no-match -> exit 0 []. (6) metadata hermes.workflow.* set/read/filter via --set-metadata/--metadata-field/--has-metadata-key. (7) NO cancelled/canceled status (bd statuses); cancellation = unclaim or reclaim. (8) dep tree shows [READY] while ready/blocked say blocked (non-authoritative). (9) readonly write refused exit 1. (10) standalone --db path works from foreign cwd (beads.role warn GH#2950). (11) comments append-only, no edit/delete (hci UNKNOWN resolved). (12) bd history author = beads/root, not --actor. Bead left in_progress per probe protocol.'",
+  "exit_code": 0,
+  "stdout": "\u2713 Comment added to hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries",
+  "ts": "2026-09-27T16:04:25-0500",
+  "note": ""
+ },
+ {
+  "label": "H-heartbeat9",
+  "cmd": "bd --actor lab-interop heartbeat hbl-9g2.2",
+  "exit_code": 0,
+  "stdout": "\u2713 Heartbeat hbl-9g2.2 \u2014 Probe native Beads and Hermes Workflow integration boundaries (lease refreshed)",
+  "ts": "2026-09-27T16:04:33-0500",
+  "note": ""
+ },
+ {
+  "label": "W1-claim-child",
+  "cmd": "bd --actor lab-interop update hbl-x3s.1 --claim --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"in_progress\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-interop\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:04:35Z\",\n    \"started_at\": \"2026-09-27T21:04:35Z\",\n    \"lease_expires_at\": \"2026-09-27T21:09:35Z\",\n    \"heartbeat_at\": \"2026-09-27T21:04:35Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ]\n  }\n]",
+  "ts": "2026-09-27T16:04:35-0500",
+  "note": "claimed again for ready-exclusion check"
+ },
+ {
+  "label": "W3-unclaim-child",
+  "cmd": "bd --actor lab-interop unclaim hbl-x3s.1 --reason 'lab-fixture final state: open, unassigned'",
+  "exit_code": 0,
+  "stdout": "\u2713 Unclaimed hbl-x3s.1: lab-fixture final state: open, unassigned",
+  "ts": "2026-09-27T16:04:37-0500",
+  "note": ""
+ },
+ {
+  "label": "W4-epic-close-eligible-dryrun",
+  "cmd": "bd epic close-eligible --dry-run",
+  "exit_code": 0,
+  "stdout": "No epics eligible for closure",
+  "ts": "2026-09-27T16:04:38-0500",
+  "note": ""
+ },
+ {
+  "label": "W5-final-fixture-census",
+  "cmd": "bd list --label lab-fixture --all --json",
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"id\": \"hbl-8yq\",\n    \"title\": \"LAB-FIXTURE interop prerequisite: env setup\",\n    \"description\": \"lab-fixture prereq; close to unblock\",\n    \"notes\": \"lab guarded note\",\n    \"status\": \"closed\",\n    \"priority\": 1,\n    \"issue_type\": \"task\",\n    \"assignee\": \"lab-interop\",\n    \"created_at\": \"2026-09-27T21:01:52Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:03:23Z\",\n    \"started_at\": \"2026-09-27T21:03:02Z\",\n    \"closed_at\": \"2026-09-27T21:03:23Z\",\n    \"close_reason\": \"lab-fixture final state: closed (explicit)\",\n    \"metadata\": {\n      \"hermes.workflow.run_id\": \"wf-lab-demo-001\",\n      \"hermes.workflow.node_id\": \"plan\"\n    },\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependency_count\": 0,\n    \"dependent_count\": 1,\n    \"comment_count\": 1\n  },\n  {\n    \"id\": \"hbl-x3s.1\",\n    \"title\": \"LAB-FIXTURE interop child: worker task\",\n    \"description\": \"lab-fixture child under epic\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"task\",\n    \"created_at\": \"2026-09-27T21:01:50Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:04:37Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependencies\": [\n      {\n        \"issue_id\": \"hbl-x3s.1\",\n        \"depends_on_id\": \"hbl-x3s\",\n        \"type\": \"parent-child\",\n        \"created_at\": \"2026-09-27T21:01:50Z\",\n        \"created_by\": \"lab-interop\",\n        \"metadata\": \"{}\"\n      }\n    ],\n    \"dependency_count\": 0,\n    \"dependent_count\": 0,\n    \"comment_count\": 3,\n    \"parent\": \"hbl-x3s\"\n  },\n  {\n    \"id\": \"hbl-x3s\",\n    \"title\": \"LAB-FIXTURE interop epic: chained dispatch demo\",\n    \"description\": \"lab-fixture epic for interop probes\",\n    \"status\": \"open\",\n    \"priority\": 2,\n    \"issue_type\": \"epic\",\n    \"created_at\": \"2026-09-27T21:01:49Z\",\n    \"created_by\": \"lab-interop\",\n    \"updated_at\": \"2026-09-27T21:01:49Z\",\n    \"labels\": [\n      \"lab-fixture\"\n    ],\n    \"dependencies\": [\n      {\n        \"issue_id\": \"hbl-x3s\",\n        \"depends_on_id\": \"hbl-8yq\",\n        \"type\": \"blocks\",\n        \"created_at\": \"2026-09-27T21:01:57Z\",\n        \"created_by\": \"lab-interop\",\n        \"metadata\": \"{}\"\n      }\n    ],\n    \"dependency_count\": 1,\n    \"dependent_count\": 0,\n    \"comment_count\": 0\n  }\n]",
+  "ts": "2026-09-27T16:04:39-0500",
+  "note": "FINAL: hbl-x3s open, hbl-x3s.1 open, hbl-8yq closed"
+ }
+]

@@ -1,4 +1,4 @@
-"""Stdlib tests for read_model.py (hbl-pnu.1.1).
+"""Stdlib tests for read_model.py ().
 
 Two evidence classes, kept explicitly separate:
 
@@ -28,14 +28,13 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
-import native        # noqa: E402
-import read_model    # noqa: E402
+from beads import native, read_model  # noqa: E402
 
 BD_BIN = os.environ.get("BEADS_LAB_BD",
-                        "/home/hermes/.hermes/work/beads-lab/bin/bd")
+                        "bd")
 FIXTURE_ROOT = os.path.join(HERE, ".fixtures-reads")
 os.makedirs(FIXTURE_ROOT, exist_ok=True)
-RECEIPTS = "/home/hermes/.hermes/work/beads-lab/reports/interop-receipts.json"
+RECEIPTS = os.path.join(HERE, "fixtures", "interop-receipts.json")
 
 
 def make_store(prefix="rdm"):
@@ -218,7 +217,7 @@ class BoundContract(unittest.TestCase):
 
 class RealStoreParity(unittest.TestCase):
     """REAL PROCESSES: actual installed bd, fresh fixture store. Parsed-
-    field comparison (owner contract), never serialized-byte comparison."""
+    field comparison, never serialized-byte comparison."""
 
     def setUp(self):
         self.store = make_store()
@@ -253,7 +252,7 @@ class RealStoreParity(unittest.TestCase):
         self.assertIn(kid_a, ids)
         self.assertNotIn(kid_b, ids)     # blocked by dep — native semantics
         self.assertNotIn(epic, ids)      # epic excluded
-        # freshness + workspace identity shown (owner contract)
+        # freshness + workspace identity shown
         ident = read_model.info(self.store, bd_bin=BD_BIN)
         self.assertEqual(ident["workspace"], os.path.realpath(self.store))
         self.assertTrue(ident["observed_at"])

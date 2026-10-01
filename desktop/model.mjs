@@ -1,8 +1,8 @@
-// desktop/model.mjs — hbl-pnu.2.1 (H1): bounded navigation/state core for the
+// desktop/model.mjs —  (H1): bounded navigation/state core for the
 // beads workbench. Pure Node ESM: no I/O, no bd import, no UI. Later H leaves
 // (tree UX, breadcrumb/history widget, blocker jump, search) consume this API.
 //
-// Laws honoured here (CONTRACTS-v3 C1, bd-expert):
+// Rules honoured here:
 //  - parentage comes from the `parent` FIELD only, never from ID-dot spelling;
 //  - all reads are bounded; absence from a bounded/filtered snapshot is
 //    UNKNOWN, never "deleted" (deleted needs an explicit tombstone signal);

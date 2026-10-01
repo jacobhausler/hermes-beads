@@ -1,4 +1,4 @@
-// tests/test_mounted_smoke.mjs — hbl-pnu.4.5: MOUNTED integration smoke of the
+// tests/test_mounted_smoke.mjs — MOUNTED integration smoke of the
 // real desktop surface against a local isolated store. jsdom 27+ + React 19 +
 // react-dom 19 (READ-ONLY from the rich-ui plugin's pinned node_modules via
 // tests/__shims__/jsx-real-loader.mjs) mount the actual desktop components
@@ -40,9 +40,9 @@ import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RU = process.env.RICH_UI_NODE_MODULES
-  || "/home/hermes/.hermes/work/rich-ui/hermes-rich-ui-plugin/node_modules";
+  || "node_modules";
 const REPORT_DIR = process.env.MOUNTED_REPORT_DIR
-  || "/home/hermes/.hermes/work/beads-lab/reports/finish-mounted";
+  || path.join(here, ".mounted-evidence");
 
 // ---- real browser-less DOM + React (pattern of rich-ui test_render_smoke) ----
 register(pathToFileURL(path.join(here, "__shims__", "jsx-real-loader.mjs")).href);
@@ -81,7 +81,7 @@ const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 
 // ---- components under test (REAL shipped modules; react/jsx-runtime real) ---
-// hbl-pnu.4.6: the ONLY app/panel imports are the shipped desktop/workbench.mjs
+// the ONLY app/panel imports are the shipped desktop/workbench.mjs
 // WorkbenchApp (which itself composes the real panels). No test-authored app,
 // panel wrapper, or record converter exists in this file.
 const { buildSnapshot, createWorkbenchState } = await import("../desktop/model.mjs");
@@ -92,7 +92,7 @@ const { searchIssues, SearchPanel, enterSearchHit } = await import("../desktop/s
 const { createHistoryStack } = await import("../desktop/history.mjs");
 const { createDraftStore } = await import("../desktop/drafts.mjs");
 const BA = await import("../desktop/bot_action.mjs");
-// hbl-pnu.4.6: mount ONLY shipped exports — the product root composes the
+// mount ONLY shipped exports — the product root composes the
 // panels and binds the keymap; the harness defines no app, panel, or converter.
 const { WorkbenchApp } = await import("../desktop/workbench.mjs");
 
@@ -114,7 +114,7 @@ async function snap(name, rootEl) {
 
 // ---- seeded world (native bd v1.3.0 through the seeder CLI) ------------------
 const SEEDER = path.join(here, "fixtures", "scenarios", "make_store.py");
-const BD_BIN = process.env.BEADS_LAB_BD || "/home/hermes/.hermes/work/beads-lab/bin/bd";
+const BD_BIN = process.env.BEADS_LAB_BD || "bd";
 const ACTOR = "lab-hci";
 const world = JSON.parse(execFileSync("python3", [SEEDER, "seed", "--prefix", "mnt"],
   { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
@@ -199,7 +199,7 @@ const session = {
   card: null,
   draftStore: null,
   pane: "tree",
-  compare: null, // legacy shape; the compare pane was deleted (council S3)
+  compare: null, // legacy shape; the compare pane was deleted
   showBot: false,
 };
 
@@ -221,15 +221,15 @@ const sharedStorage = makeStorage();
 let mountEl = document.getElementById("root");
 let BEFORE_LIST_ALL = null; // captured after the test's own sanctioned native writes
 let root = null;
-let botView = null; // hbl-pnu.3.7: injected bot panel view (runState fixtures)
+let botView = null; // injected bot panel view (runState fixtures)
 async function mount(sessionOpts = {}) {
   const { botView: bv, world = null, reads: rd, features = undefined, telemetry = undefined, ...rest } = sessionOpts;
   Object.assign(session, rest);
-  session.features = features ?? null; // council S3: generic panes are flag-gated
+  session.features = features ?? null;// generic panes are flag-gated
   botView = bv ?? null; // reset every mount unless the fixture supplies one
-  // hbl-pnu.2.11: `reads` is a Prop, never session state — it arrives
+  // `reads` is a Prop, never session state — it arrives
   // separately and lands on the shipped root's reads facade slot.
-  // hbl-pnu.3.7: an injected `world` lets the real-door smoke mount the
+  // an injected `world` lets the real-door smoke mount the
   // SHIPPED root against its own disposable store without disturbing the
   // browse world's no-mutation guarantee.
   const w = world ?? { snapshot, ui, controller, stack,
@@ -367,7 +367,7 @@ test("keyboard: arrows move the cursor, Enter promotes focus, collapse/expand vi
     "true", "ArrowRight re-expanded");
   ok(mountEl.querySelector(`[data-tree-row="${IDS.taskB}"]`), "subtree rows return");
 
-  // hbl-pnu.4.6 acceptance: app-back + help exercised on the SHIPPED root.
+  // acceptance: app-back + help exercised on the SHIPPED root.
   // Two pushes with a cursor move between them make Back observable.
   await press("Enter");                      // push bundle A (focus on cursor)
   const backTarget = ui.focus;
@@ -388,7 +388,7 @@ test("keyboard: arrows move the cursor, Enter promotes focus, collapse/expand vi
   ok(mountEl.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]') == null,
     "? again closes the overlay");
 
-  // hbl-pnu.2.9: Esc closes the help overlay and focus returns to the prior
+  // Esc closes the help overlay and focus returns to the prior
   // tree row — asserted on the SHIPPED root through the existing keybinding.
   const priorFocusRow = ui.focus;
   ok(priorFocusRow != null, "a prior tree row holds keyboard focus before help opens");
@@ -426,8 +426,7 @@ test("search/record/blockers/compare mount with live DOM evidence", async () => 
   session.searchResults = searchIssues({
     snapshot, query: "blocked", searchRead: nativeSearch, showRead: nativeShow, limit: 25,
   });
-  ok(session.searchResults.hits.length > 0, "native search returned hits");
-  // council S3 (2026-09-30): compare is a generic-pane FLAG; this legacy
+  ok(session.searchResults.hits.length > 0, "native search returned hits");// compare is a generic-pane FLAG; this legacy
   // proof keeps it ON to preserve the shipped-surface evidence.
   await mount({ features: { compare: true } });
   const panel = mountEl.querySelector('#search-panel[role="listbox"]');
@@ -438,7 +437,7 @@ test("search/record/blockers/compare mount with live DOM evidence", async () => 
   await snap("search-panel", mountEl);
 
   // Enter on a hit = a navigation entry into the tree (not a parallel world).
-  // hbl-pnu.4.6 RED: equality with the HIT id (the old `!= null` check was
+  // RED: equality with the HIT id (the old `!= null` check was
   // vacuous — ui.focus was already non-null from T3 and the dispatched Enter
   // resolved to the tree focus-cursor command, not the hit).
   const hit0id = session.searchResults.hits[0].id;
@@ -498,16 +497,15 @@ test("search/record/blockers/compare mount with live DOM evidence", async () => 
   ok(recSection.textContent.includes("derived readiness"), "derived readiness row (separate value)");
   await snap("record-card", mountEl);
 
-  // (council S3, 2026-09-30: the compare pane was LAUNCH-only via b9s; the
+  // ( 2026-09-30: the compare pane was LAUNCH-only via b9s; the
   // generic-explorer file was deleted — structural churn diffing is proven
   // native-side, and tests/test_scenarios_b.mjs keeps its own diff proof.)
   BEFORE_LIST_ALL = JSON.stringify(read("list_all"));
   await unmount();
 });
 
-// ---- T4b council S3 (post-deletion): the compare pane must NEVER mount ----
-// desktop/compare.mjs was deleted (owner v0.x law 2026-09-30; council S3:
-// b9s owns generic exploration via LAUNCH). Even a session carrying legacy
+// ---- T4b the compare pane must NEVER mount ----
+// desktop/compare.mjs was deleted. Even a session carrying legacy
 // compare state with the old feature flag ON must render no split pane.
 test("compare pane can never mount again (file deleted)", async () => {
   session.compare = { panes: {}, side: "left", diff: null, confirmed: null };
@@ -533,7 +531,7 @@ test("drafts: survive unmount/remount via the injected storage; report memory-on
   const saveBtn = mountEl.querySelector("#draft-save");
   eq(saveBtn.disabled, true, "Save disabled (no proven atomic content guard)");
 
-  // hbl-pnu.4.6 acceptance: typing in the description field STEALS letter
+  // acceptance: typing in the description field STEALS letter
   // keys — bare keys while the textarea owns focus must not move the tree
   // cursor or open help (the shipped root defers via resolveKey's swallow).
   const input = mountEl.querySelector("#draft-input");
@@ -636,14 +634,14 @@ test("prefers-reduced-motion probed via matchMedia stub; no fixed px widths in i
 
 // ---- T7 bot_action: precise incompatibility + faithful mount ------------------
 test("bot_action: botActionPanel emits REAL jsx and mounts UNCONVERTED with Work disabled", async () => {
-  // Direct mount attempt with the raw panel (no converter — hbl-pnu.4.6).
+  // Direct mount attempt with the raw panel (no converter — ).
   const raw = BA.botActionPanel({
     ask: BA.askDecision({ ok: false, error: "session_door_unqualified", read_only: true }),
     work: { present: true, enabled: false, disabledReason: "runner door not bound" },
   });
   CHECKS++;
   assert.ok(raw && raw.$$typeof && /^Symbol\(react\./.test(String(raw.$$typeof)),
-    "hbl-pnu.4.6: botActionPanel emits REAL jsx (react/jsx-runtime $$typeof), so React can mount it directly");
+    "botActionPanel emits REAL jsx (react/jsx-runtime $$typeof), so React can mount it directly");
   const scratch = document.createElement("div");
   document.body.appendChild(scratch);
   const r2 = createRoot(scratch);
@@ -679,7 +677,7 @@ test("bot_action: botActionPanel emits REAL jsx and mounts UNCONVERTED with Work
   await unmount();
 });
 
-// ---- T8 hbl-pnu.3.7: truthful run state + Cancel on the SHIPPED root ---------
+// ---- T8 truthful run state + Cancel on the SHIPPED root ---------
 test("bot runState: role=status renders the door state verbatim; Cancel enabled only in admitted/running; no success text unless succeeded", async () => {
   const VOCAB = ["admitted", "running", "succeeded", "failed", "uncertain",
     "cancel_requested", "cancelled"];
@@ -757,211 +755,7 @@ test("bot runState: role=status renders the door state verbatim; Cancel enabled 
   await unmount();
 });
 
-
-// ---- T9 hbl-pnu.3.7: mounted smoke against the REAL door (host bridge) ----
-// The shipped panel is presentation-only: runState arrives INJECTED and the
-// Work/Cancel clicks call INJECTED host handlers. Here the host handlers
-// drive the REAL work_door through work_bridge.py (execFileSync, exactly the
-// smoke's make_store.py pattern): the states asserted below exist in no
-// fixture — fake-hermes really spawns, really sleeps, really gets stopped,
-// and 'succeeded' appears only when the ledger says closed_verified.
-const BRIDGE = path.join(here, "..", "work_bridge.py");
-const BRIDGE_HOME = path.join(here, "..", "tests", ".work-bridge", "host-home");
-const VOCAB9 = ["admitted", "running", "succeeded", "failed", "uncertain",
-  "cancel_requested", "cancelled", "unknown"];
-const WORK_WORLD = JSON.parse(execFileSync("python3",
-  [SEEDER, "seed", "--prefix", "mntwork"],
-  { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
-test.after(() => {
-  execFileSync("python3", [SEEDER, "cleanup", WORK_WORLD.store], { encoding: "utf8" });
-});
-
-function bridgeCall(verb, opts = {}) {
-  const { bead, key, goalPrefix, nodeTimeout, wallDeadline } = opts;
-  const argv = [BRIDGE, verb, "--store", WORK_WORLD.store, "--bead", bead, "--key", key];
-  if (goalPrefix !== undefined) argv.push("--goal-prefix", goalPrefix);
-  if (nodeTimeout !== undefined) argv.push("--node-timeout", String(nodeTimeout));
-  if (wallDeadline !== undefined) argv.push("--wall-deadline", String(wallDeadline));
-  return JSON.parse(execFileSync("python3", argv, {
-    encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, HERMES_HOME: BRIDGE_HOME },
-  }));
-}
-
-function makeWorkBead(title) {
-  const r = actCliIn(WORK_WORLD.store, ACTOR, "create", title, "--json");
-  eq(r.rc, 0, `work bead created in the door store: ${title}`);
-  return JSON.parse(r.stdout).id;
-}
-
-function workSnapshot() {
-  return buildSnapshot({
-    issues: readIn(WORK_WORLD.store, "list_all"),
-    ready: null,
-    blocked: readIn(WORK_WORLD.store, "blocked"),
-    storeInfo: WORK_WORLD.storeInfo,
-  }, { bound: 500 });
-}
-
-async function rr() { box.rerender(); await act(async () => {}); }
-
-async function mountWorkHost(bead, key, clickOpts = {}) {
-  const snap = workSnapshot();
-  const wui = createWorkbenchState(snap);
-  const host = {
-    ask: null, work: { present: true, enabled: true, disabledReason: null },
-    bead, key, runState: null, cancelRequested: false,
-    clicks: [], clickJson: null, cancelJson: null,
-  };
-  // the ONLY host handlers the shipped panel may ever call — they do all
-  // door I/O (via the bridge CLI); the components themselves spawn nothing.
-  host.onWork = (b) => {
-    host.clicks.push(b);
-    host.clickJson = bridgeCall("click", { bead: b, key, ...clickOpts });
-  };
-  host.onCancel = () => {
-    const c = bridgeCall("cancel", { bead, key });
-    host.cancelJson = c;
-    host.runState = { state: c.state };
-    if (c.state === "cancel_requested") host.cancelRequested = true;
-    box.rerender();
-  };
-  await mount({
-    showBot: true, draftStore: null, card: null, searchResults: null,
-    compare: null, botView: host,
-    world: {
-      snapshot: snap, ui: wui,
-      controller: T.createTreeController({ snapshot: snap, ui: wui }),
-      stack: createHistoryStack({ storeKey: snap.storeKey }),
-      storeInfo: WORK_WORLD.storeInfo, draftBeadId: bead,
-    },
-  });
-  return host;
-}
-
-function statusEl() { return mountEl.querySelector('[role="status"]'); }
-function cancelBtnEl() {
-  return [...mountEl.querySelectorAll("button")]
-    .find((b) => /^Cancel$|^Cancel \(/.test(b.textContent.trim()));
-}
-function workBtnEl() {
-  return [...mountEl.querySelectorAll("button")].find((b) => b.textContent.startsWith("Work"));
-}
-
-// Poll the door THROUGH the bridge only. data-run-state equality is asserted
-// at EVERY poll: the component displays the injected bridge JSON verbatim
-// and has no other source for the state it shows (FROM THE DOOR).
-async function pollDoor(host, pred, { timeoutMs = 90000, everyMs = 400 } = {}) {
-  const end = Date.now() + timeoutMs;
-  const seen = [];
-  for (;;) {
-    const st = bridgeCall("state", host);
-    host.runState = st;
-    await rr();
-    const el = statusEl();
-    CHECKS++;
-    assert.ok(el, `role=status rendered while polling (bridge said ${st.state})`);
-    CHECKS++;
-    assert.equal(el.getAttribute("data-run-state"), st.state,
-      `rendered state mirrors the bridge JSON verbatim (bridge=${st.state})`);
-    seen.push(st.state);
-    if (pred(st)) return { st, seen };
-    if (Date.now() >= end) return { st, seen, timedOut: true };
-    await new Promise((r) => setTimeout(r, everyMs));
-  }
-}
-
-test("REAL door: Work click renders admitted/running from the door; Cancel -> cancel_requested while runner alive, cancelled only after confirmed terminal", async () => {
-  const bead = makeWorkBead("work door cancel target");
-  const host = await mountWorkHost(bead, "k-mnt-cancel",
-    { goalPrefix: "SLEEP 20 ", nodeTimeout: 60 });
-  const workBtn = workBtnEl();
-  ok(workBtn, "Work button present on the shipped root");
-  eq(workBtn.disabled, false, "Work enabled (host reports the door qualified)");
-  await act(async () => { workBtn.click(); });
-  eq(host.clicks.length, 1, "Work click reached the injected host onWork exactly once");
-  eq(host.clicks[0], bead, "onWork received the bead id");
-  CHECKS++;
-  assert.ok(host.clickJson, "the host handler called the bridge click (real door)");
-  eq(host.clickJson.ok, true, `door admitted the click: ${JSON.stringify(host.clickJson)}`);
-  eq(host.clickJson.handed_off, true, "handed_off through the real door");
-  eq(host.clickJson.door_result.delivery, false, "handed_off is never delivered");
-  eq(host.clickJson.door_result.no_dispatch, true, "no_dispatch rides along");
-  const run = await pollDoor(host, (st) => st.state === "running");
-  CHECKS++;
-  assert.ok(!run.timedOut, `the door reached running (saw ${run.seen})`);
-  CHECKS++;
-  assert.ok(run.seen.every((s) => VOCAB9.includes(s)),
-    `only the truthful vocabulary was ever rendered (${run.seen})`);
-  CHECKS++;
-  assert.ok(run.seen[0] === "admitted" || run.seen[0] === "running",
-    `first state from the door is admitted|running (saw ${run.seen[0]})`);
-  await snap("real-door-running", mountEl);
-  const cancelBtn = cancelBtnEl();
-  ok(cancelBtn, "Cancel button present");
-  eq(cancelBtn.disabled, false, "Cancel enabled while running");
-  await act(async () => { cancelBtn.click(); });
-  CHECKS++;
-  assert.ok(host.cancelJson, "Cancel click reached the injected host onCancel -> bridge cancel");
-  eq(host.cancelJson.ok, true, `door accepted the cancel: ${JSON.stringify(host.cancelJson)}`);
-  eq(host.cancelJson.state, "cancel_requested", "the door says cancel_requested");
-  eq(host.cancelJson.runner_alive, true, "the runner really is alive at the request");
-  eq(statusEl().textContent.trim(), "cancel_requested",
-    "role=status shows cancel_requested WHILE the runner is alive");
-  eq(statusEl().getAttribute("data-run-state"), "cancel_requested",
-    "the live region names the displayed state");
-  await snap("real-door-cancel-requested", mountEl);
-  const fin = await pollDoor(host, (st) => st.state === "cancelled", { timeoutMs: 120000 });
-  CHECKS++;
-  assert.ok(!fin.timedOut, `the door confirmed terminal cancelled (saw ${fin.seen})`);
-  CHECKS++;
-  assert.ok(fin.seen.every((s) => VOCAB9.includes(s)), `truthful vocabulary throughout (${fin.seen})`);
-  eq(statusEl().textContent.trim(), "cancelled",
-    "cancelled rendered ONLY after the door confirmed terminal");
-  const html = mountEl.querySelector(".bot-action-panel").innerHTML;
-  ok(!/succeeded/.test(html), "no 'succeeded' text on the cancel path");
-  ok(!/\bdone\b/.test(html), "no 'done' text on the cancel path");
-  ok(!/delivered/.test(html), "no 'delivered' text on the cancel path");
-  await snap("real-door-cancelled", mountEl);
-  await unmount();
-});
-
-test("REAL door timeout: wall deadline while the runner is alive renders 'uncertain' (never delivered)", async () => {
-  const bead = makeWorkBead("slow door target");
-  const host = await mountWorkHost(bead, "k-mnt-to",
-    { goalPrefix: "SLEEP 12 ", nodeTimeout: 60, wallDeadline: 5 });
-  await act(async () => { workBtnEl().click(); });
-  eq(host.clickJson.ok, true, `door admitted the slow run: ${JSON.stringify(host.clickJson)}`);
-  const to = await pollDoor(host, (st) => st.state === "uncertain", { timeoutMs: 60000 });
-  CHECKS++;
-  assert.ok(!to.timedOut, `the wall deadline produced uncertain (saw ${to.seen})`);
-  eq(statusEl().textContent.trim(), "uncertain", "'uncertain' rendered from the door");
-  const html = mountEl.querySelector(".bot-action-panel").innerHTML;
-  ok(!/succeeded|\bdone\b|delivered/.test(html),
-    "no success/delivered text while uncertain");
-  await snap("real-door-uncertain", mountEl);
-  const done = await pollDoor(host, (st) => st.runner_alive === false, { timeoutMs: 150000 });
-  CHECKS++;
-  assert.ok(!done.timedOut, `the runner settled before store cleanup (saw ${done.seen})`);
-  await unmount();
-});
-
-test("REAL door success: a normal run renders 'succeeded' only when the ledger says so; Cancel disabled at terminal", async () => {
-  const bead = makeWorkBead("fast door target");
-  const host = await mountWorkHost(bead, "k-mnt-ok");
-  await act(async () => { workBtnEl().click(); });
-  eq(host.clickJson.ok, true, `door admitted the run: ${JSON.stringify(host.clickJson)}`);
-  const okRun = await pollDoor(host, (st) => st.state === "succeeded", { timeoutMs: 120000 });
-  CHECKS++;
-  assert.ok(!okRun.timedOut, `the real run reached succeeded (saw ${okRun.seen})`);
-  eq(statusEl().textContent.trim(), "succeeded", "'succeeded' rendered verbatim from the door");
-  eq(statusEl().getAttribute("data-run-state"), "succeeded", "live region names succeeded");
-  eq(cancelBtnEl().disabled, true, "Cancel disabled once terminal");
-  await snap("real-door-succeeded", mountEl);
-  await unmount();
-});
-
-// ---- T10 hbl-pnu.2.10: shipped stylesheet, visible focus, separated fields ----
+// ---- T10 shipped stylesheet, visible focus, separated fields ----
 test("visual layer (F1-F7): one shipped <style> with :focus-visible; roving document focus; separated card/row fields", async () => {
   const cardJump = B.jumpToBlocker({ snapshot, ui, stack, state: {}, provider,
     targetId: IDS.taskB, pane: "tree" });
@@ -1071,7 +865,7 @@ test("visual layer (F1-F7): one shipped <style> with :focus-visible; roving docu
 });
 
 // ============================================================================
-// hbl-pnu.2.11 — user doors: search box, user-opened blocker card, working
+// user doors: search box, user-opened blocker card, working
 // Return, roving listbox cursor. RED first: every assertion below fails on the
 // pre-bead root (onReturn=rerender, cursor pinned 0, both surfaces
 // host-injected only).
@@ -1104,7 +898,7 @@ test("doors: type query into the search input -> listbox; ArrowDown moves aria-s
   ok((input.getAttribute("aria-label") ?? "").toLowerCase().includes("search"),
     "the search input is labelled");
   const treeSelBefore = ui.selection;
-  // text-target law: keys typed in the input are swallowed, never tree commands
+  // text-target rule: keys typed in the input are swallowed, never tree commands
   await press("ArrowDown", {}, "#search-input");
   await press("k", {}, "#search-input");
   await press("?", {}, "#search-input");
@@ -1156,7 +950,7 @@ test("doors: '/' and Ctrl+/ focus the search input from the tree; ShortcutHelp l
   eq(document.activeElement, mountEl.querySelector("#search-input"),
     "Ctrl+/ (the keymap row) focuses the search input");
   // '?' inside the input must NOT open help; from a tree row it must, and the
-  // overlay must list the new commands (hbl-pnu.2.11: no invisible keys)
+  // overlay must list the new commands (no invisible keys)
   await press("?", {}, "#search-input");
   eq(controller.helpOpen, false, "? inside the search input is swallowed");
   const treeRow = mountEl.querySelector('[data-tree-focusable="true"]');
@@ -1200,7 +994,7 @@ test("doors: blocked row shows a visible blockers button AND Ctrl+b opens the ca
   eq(session.card, null, "Return cleared the session view box");
   eq(ui.focus, origin.focus, "Return restored the origin keyboard focus");
   eq(ui.selection, IDS.taskB, "cursor stays on the blocked row the card was opened from");
-  // hbl-pnu.2.11 real-Chrome finding: document focus must land on the ROVING
+  // real-Chrome finding: document focus must land on the ROVING
   // TAB STOP (the cursor row the card was opened from), never on a different
   // row — else the ring sits on one row while the next arrow moves from
   // another (observed: ring on wt-aqh, ArrowDown jumped 3 rows).
@@ -1267,7 +1061,7 @@ test("doors: missing facade => controls present-but-disabled with a visible reas
   await press("b", { ctrlKey: true });        // honest no-op, never a throw
   ok(document.getElementById(`blocker-card:${IDS.taskB}`) == null,
     "Ctrl+b with no facade opens nothing (disabled truth)");
-  // host-injected surfaces keep working (zero-I/O law preserved)
+  // host-injected surfaces keep working (zero-I/O preserved)
   const jump = B.jumpToBlocker({ snapshot, ui, stack, state: {}, provider,
     targetId: IDS.taskB, pane: "tree" });
   session.card = jump.card;
@@ -1295,8 +1089,8 @@ test("mounted session never mutated the store (before/after list_all JSON equali
     "store still holds the seeded world + the one bead the harness explicitly created via the seeder act CLI");
 });
 
-// ---- T9 council S3 step 2: the shipped root emits pane telemetry -------------
-// The deletion law (docs/hbi-boundary.md rule 4) requires observed NON-USE
+// ---- T9 the shipped root emits pane telemetry -------------
+// Deletion policy at 0.x is mechanical, not temporal: flag OFF, prove inert, cut.
 // before any generic pane can be cut. This test proves the counters EXIST and
 // fire on the REAL user paths (key press + real click), on the SHIPPED root.
 test("telemetry: real user paths emit whitelisted events on the shipped root", async () => {

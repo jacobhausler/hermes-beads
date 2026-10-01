@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# open-in-b9s.sh — council S3 affordance (2026-09-30): LAUNCH b9s against the
+# open-in-b9s.sh — convenience wrapper: LAUNCH b9s (git browser) against the
 # active beads store; never bundle, never iframe. Prints the pairing URL.
 # Usage: open-in-b9s.sh <store-dir-containing-.beads> [listen-addr]
 # b9s is an EXTERNAL recommendation: this script fails with an install hint,

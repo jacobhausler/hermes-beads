@@ -1,12 +1,9 @@
-// desktop/telemetry.mjs — council S3 step 2 (2026-09-30): pane-usage telemetry.
-// WHY this exists: the deletion law (docs/hbi-boundary.md rule 4) forbids
-// cutting a generic pane on maintenance-cost reasoning alone — a cut needs
-// observed NON-USE at the real mount. Without counters, "nobody uses it" is
-// unfalsifiable, so every future cut decision would stall. This is the minimal
-// instrument that makes the evidence exist.
+// desktop/telemetry.mjs — pane-usage counters (honest instrument, no upload).
+// WHY this exists: whether a pane earns its keep is a question about real use,
+// and without counters "nobody uses it" is unfalsifiable in both directions.
 //
-// Laws:
-//  - NO I/O here (desktop modules keep I/O at zero; model.mjs law). The host
+// Rules:
+//  - NO I/O here (every desktop module keeps I/O at zero). The host
 //    shell owns persistence via the injected slot, serialise() is pure.
 //  - Whitelist-only event names (EVENTS): an untrusted caller can never grow
 //    the key space (no unbounded-object, no prototype keys).

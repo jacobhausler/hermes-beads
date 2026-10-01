@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Security qualification (hbl-pnu.4.4): hostile content + argv/path injection.
+"""Security qualification (): hostile content + argv/path injection.
 
 Two threat classes, each with a live negative control proving the assertion
 would actually fail if the defence broke:
@@ -7,7 +7,7 @@ would actually fail if the defence broke:
   1. Hostile bead content — HTML <script>/onerror, markdown javascript:
      links, ANSI escapes, RTL overrides, 64KB titles, shell metacharacters —
      round-trips through read_model as VERBATIM inert text (field-preservation
-     law) and renders inert through the real desktop components: the render
+     contract) and renders inert through the real desktop components: the render
      probe asserts no dangerouslySetInnerHTML anywhere and the payload present
      as an escaped text child. The control mode of the probe renders the same
      payload through dangerouslySetInnerHTML and must be caught.
@@ -39,14 +39,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LANE = os.path.dirname(HERE)
 sys.path.insert(0, LANE)
 
-import native            # noqa: E402
-import read_model        # noqa: E402
-import claims            # noqa: E402
-import write_protocol    # noqa: E402
-import evidence          # noqa: E402
+from beads import native, read_model, claims, write_protocol  # noqa: E402
 
 BD_BIN = os.environ.get("BEADS_LAB_BD",
-                        "/home/hermes/.hermes/work/beads-lab/bin/bd")
+                        "bd")
 NODE = os.environ.get("NODE_BIN", "node")
 FIXTURE_ROOT = os.path.join(HERE, "security-runtime")
 
@@ -143,7 +139,7 @@ class HostileContentReadModel(unittest.TestCase):
                                  f"{name}: description not verbatim")
 
     def test_list_rows_survive_verbatim(self):
-        """Field-preservation law: list rows carry hostile content exactly
+        """Field preservation: list rows carry hostile content exactly
         as bd emitted it — no whitelist/coercion eats or rewrites it."""
         rows = read_model.list_issues(self.store, include_closed=True,
                                        bd_bin=BD_BIN)
@@ -287,7 +283,7 @@ class ArgvInjection(unittest.TestCase):
                 self.assertNotIn("--db=/etc/x", call)
 
     def test_plugin_paths_spawn_only_fixed_argv(self):
-        """Full legit loop through claims/write_protocol/evidence surfaces:
+        """Full legit loop through claims/write_protocol surfaces:
         every spawned argv[0] is the pinned binary, no token was ever built
         by concatenation of a value into a flag, and every --actor value is
         the exact actor we passed."""
@@ -299,9 +295,8 @@ class ArgvInjection(unittest.TestCase):
             write_protocol.update_fields(
                 self.store, iid, actor=a, bd_bin=BD_BIN, if_assignee=a,
                 if_status="in_progress", fields={"notes": "sec note"})
-            ws = evidence.WorkerSurface(self.store, actor=a, bd_bin=BD_BIN)
-            ws.record_evidence(iid, attempt="a-sec",
-                               artifacts=["tests/test_security.py"])
+            write_protocol.append_comment(
+                self.store, iid, actor=a, bd_bin=BD_BIN, text="sec note")
         self.assertTrue(spy.calls, "no spawn recorded — spy broken")
         for argv in spy.calls:
             self.assertEqual(argv[0], BD_BIN)
@@ -334,8 +329,8 @@ class ArgvInjection(unittest.TestCase):
         is in the gate's flag sets (else a legit call would be refused)."""
         import ast
         known = native._VALUE_FLAGS | native._BOOL_FLAGS
-        for mod in ("native", "read_model", "claims", "write_protocol",
-                    "evidence", "correlation", "interop", "bot_handoff"):
+        for mod in ("beads/native", "beads/read_model", "beads/claims",
+                    "beads/write_protocol", "__init__"):
             path = os.path.join(LANE, mod + ".py")
             if not os.path.exists(path):
                 continue

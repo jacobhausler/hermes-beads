@@ -1,4 +1,4 @@
-// tests/test_history.mjs — hbl-pnu.2.3: clickable breadcrumb (parent-field
+// tests/test_history.mjs — clickable breadcrumb (parent-field
 // chain, re-resolved live) + INDEPENDENT history stack with full restore
 // bundle (filter/search/tab/pane/selection/focus/scroll/expansion),
 // immutability, and workspace isolation.
@@ -276,18 +276,16 @@ test("read-once: breadcrumb render performs no new reads (snapshot injected, cha
 });
 
 // ---- native reproduction: hci reparent case (create-without-parent, --parent move)
-const LAB = "/home/hermes/.hermes/work/beads-lab";
-const BIN = path.join(LAB, "bin", "bd");
+const BIN = process.env.BEADS_LAB_BD || "bd";
 const ACTOR = "lane-sprint3-history-20260928a";
 const FIX = path.join(here, ".history-fixtures");
 
 const bdRead = (cwd, ...args) =>
-  JSON.parse(execFileSync("flock", [path.join(LAB, "planning-access.lock"),
-    BIN, "-C", cwd, "--readonly", "--actor", ACTOR, ...args, "--json"],
-    { encoding: "utf8" }));
+  JSON.parse(execFileSync(BIN, ["-C", cwd, "--readonly", "--actor", ACTOR,
+    ...args, "--json"], { encoding: "utf8" }));
 const bdMutate = (cwd, ...args) =>
-  execFileSync("flock", [path.join(LAB, "planning-access.lock"),
-    BIN, "-C", cwd, "--actor", ACTOR, ...args], { encoding: "utf8" });
+  execFileSync(BIN, ["-C", cwd, "--actor", ACTOR, ...args],
+    { encoding: "utf8" });
 
 // own `git init` + `bd init --prefix tst` per store (test_native.py pattern):
 // without its own .git the embedded dolt home falls through to the parent repo.

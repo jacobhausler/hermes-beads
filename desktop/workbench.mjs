@@ -1,4 +1,4 @@
-// desktop/workbench.mjs — hbl-pnu.4.6: THE shipped workbench root.
+// desktop/workbench.mjs — THE shipped workbench root.
 //
 // Before this bead no desktop/*.mjs component attached the keyboard
 // contract: the mounted smoke's WorkbenchApp was test-authored, so a human
@@ -11,7 +11,7 @@
 // resolveKey's text-target swallow is the single gate (reimplemented
 // nowhere).
 //
-// hbl-pnu.2.11 (user doors): a human — not only the host — reaches search
+//  (user doors): a human — not only the host — reaches search
 // and the blocker card. The root owns the ONLY new state: the search query
 // input, the listbox roving cursor, and where document focus must go next
 // (focusReq/originReq). Everything else stays the same single truth:
@@ -28,10 +28,10 @@
 //    letters in the search input never reach the tree keymap (the single
 //    resolveKey/isTextTarget swallow).
 //
-// Laws: zero I/O (snapshot/ui/stack/session/reads arrive injected; search
+// Rules: zero I/O (snapshot/ui/stack/session/reads arrive injected; search
 // activation delegates to enterSearchHit, the model-owned navigation
 // entry — search never owns a parallel world); selection ≠ focus stays
-// model.mjs's law; the bot panel mounts UNCONVERTED real jsx.
+// model.mjs's rule; the bot panel mounts UNCONVERTED real jsx.
 import { jsx } from "react/jsx-runtime";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { WORKBENCH_CSS } from "./workbench_css.mjs";
@@ -50,14 +50,14 @@ import { botActionPanel, askDecision } from "./bot_action.mjs";
 //    rerender() (the root owns the only bump);
 //  - bindRerender(rerender): hands the live re-render handle to the host
 //    loader (optional; tests embed through it like the app shell does);
-//  - reads: { searchRead, showRead, provider } (hbl-pnu.2.11) — the read
+//  - reads: { searchRead, showRead, provider } — the read
 //    facade the search input and the blockers door run through. Missing
 //    member => that door is present-but-disabled with a visible reason.
 export function WorkbenchApp({ snapshot, ui, controller, stack, session,
   storeInfo, draftBeadId, botView = null, bindRerender, reads = null,
   telemetry = null }) {
   const [, bump] = useReducer((x) => x + 1, 0);
-  // council S3 step 2: pane-usage evidence for the deletion law (boundary
+  // pane-usage counters for the deletion rule (boundary
   // rule 4). Fire-and-forget; a missing instance means uninstrumented, never
   // an error. The host owns the createTelemetry instance (and its sink).
   const track = (name) => { try { telemetry?.emit(name); } catch { /* never breaks the action */ } };
@@ -68,7 +68,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
   const reduced = typeof window !== "undefined" && window.matchMedia
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
     : false;
-  // ---- hbl-pnu.2.11 root-owned UI state (the ONLY new state) ---------------
+  // ----  root-owned UI state (the ONLY new state) ---------------
   // roving cursor of the search listbox + where document focus must land on
   // the next render (a search hit, or the origin row after a card return).
   const [searchCursor, setSearchCursor] = useState(0);
@@ -78,7 +78,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
   const searchReady = typeof reads?.searchRead === "function";
   const providerReady = reads?.provider?.run != null;
   // One decision point for document focus: a pending request always beats
-  // the tree marker law (the two must never fight over the ring).
+  // the tree marker rule (the two must never fight over the ring).
   useEffect(() => {
     const rootEl = rootRef.current;
     if (!rootEl || typeof document === "undefined") return;
@@ -102,10 +102,10 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
       if (row) row.focus({ preventScroll: false });
       return;
     }
-    // hbl-pnu.2.10 (F3): the keyboard-focus MARKER and document focus must
+    //  (F3): the keyboard-focus MARKER and document focus must
     // never diverge — whenever the controller moves the marker, the row takes
     // real document focus (WCAG 2.4.7: the ring paints on activeElement).
-    // A text target keeps focus (same swallow law the keymap enforces).
+    // A text target keeps focus (same swallow rule the keymap enforces).
     const tree = rootEl.querySelector('[role="tree"]');
     const marker = rootEl.querySelector('[role="treeitem"][tabindex="0"]')
       ?? rootEl.querySelector('[data-keyboard-focus="true"]');
@@ -116,8 +116,8 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
     const ae = document.activeElement;
     if (ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT"
         || ae.isContentEditable)) return;
-    // hbl-pnu.2.11: a roving listbox cursor keeps document focus while the
-    // search door is open (the same keep-focus law the input/draft field
+    // : a roving listbox cursor keeps document focus while the
+    // search door is open (the same keep-focus rule the input/draft field
     // obey) — the tree marker must never steal it back mid-walk.
     const activePanel = rootEl.querySelector("#search-panel");
     if (session.searchResults && activePanel && activePanel.contains(ae)) return;
@@ -169,7 +169,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
     rerender();
   };
   const openBlockersForSelection = () => openCardFromRow(ui.selection);
-  // council S3 step 2: the bot panel is composed here; wrap the host's door
+  // the bot panel is composed here; wrap the host's door
   // callbacks so an ACTUALLY dispatched claim/dispatch/cancel click counts
   // (the button's own enabled gates stay authoritative — an emit fires only
   // when the wrapped callback really runs).
@@ -178,7 +178,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
       ask: askDecision({ ok: false, error: "session_door_unqualified",
         read_only: true, no_dispatch: true }),
       work: { present: true, enabled: false,
-        disabledReason: "runner door (hbl-pnu.3.3) not bound" },
+        disabledReason: "runner door not bound" },
     };
     if (!telemetry) return base;
     const wrapped = { ...base };
@@ -210,7 +210,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
     rerender();
   };
 
-  // plain app gestures ('/' and 'b'): the bare-letter law keeps them OUT of
+  // plain app gestures ('/' and 'b'): the bare-letter rule keeps them OUT of
   // the data KEYMAP (test_tree's binding audit), so the root resolves them
   // itself — under the SAME swallow: we ask resolveKey (isTextTarget's single
   // gate) whether a plain ArrowDown would resolve for this event's target;
@@ -249,10 +249,10 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
       if (c) rerender();
     },
     children: [
-      // hbl-pnu.2.10 (F1): THE shipped stylesheet, rendered exactly once so
+      //  (F1): THE shipped stylesheet, rendered exactly once so
       // every host that mounts this root gets the visual layer for free.
       jsx("style", { children: WORKBENCH_CSS }, "workbench-css"),
-      // hbl-pnu.2.11 search door: a labelled input + the results listbox.
+      //  search door: a labelled input + the results listbox.
       // Enter runs searchIssues through the facade; the panel's own option
       // handlers drive the roving cursor (onCursor) and document focus
       // (focusHit) together. Missing facade => disabled + visible reason.
@@ -275,7 +275,7 @@ export function WorkbenchApp({ snapshot, ui, controller, stack, session,
         ].filter(Boolean),
       }, "search-door"),
       jsx(Tree, { snapshot, ui, scheduler: null }, "tree"),
-      // hbl-pnu.2.11: the visible blockers door for the selected row (the
+      // : the visible blockers door for the selected row (the
       // ONLY user-reachable way to open a card besides Ctrl+b, besides
       // host injection).
       jsx(BlockersDoor, { snapshot, id: ui.selection, providerReady,

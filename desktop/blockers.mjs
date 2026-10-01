@@ -1,7 +1,7 @@
-// desktop/blockers.mjs — hbl-pnu.2.4: cross-branch blocker jump with a
+// desktop/blockers.mjs — cross-branch blocker jump with a
 // read-only blocker CARD and one-press return.
 //
-// Sole-state law (CONTRACTS-v3 C1, bd-expert): the ONLY state touched is the
+// Sole-state rule : the ONLY state touched is the
 // existing model (model.mjs createWorkbenchState: selection/focus/pane/
 // expansion, its push-based back stack), the independent history stack
 // (history.mjs createHistoryStack) and the tree renderers. This module keeps
@@ -49,7 +49,7 @@ export function blockersFor(snapshot, id) {
 }
 
 // Distinguish incoming blockers from outgoing dependents and parent-child
-// edges (owner contract). Edges kept verbatim, unknown types surfaced as-is.
+// edges. Edges kept verbatim, unknown types surfaced as-is.
 export function blockerEdges(snapshot, id) {
   const node = snapshot?.nodes?.get(id);
   const rec = snapshot?.byId?.get(id);
@@ -155,7 +155,7 @@ export function resolveReturnKey(ev) {
 }
 export function appBack(opts) { return returnFromCard(opts); }
 
-// hbl-pnu.2.11: the visible door a human uses to OPEN a card. Rendered by
+// : the visible door a human uses to OPEN a card. Rendered by
 // WorkbenchApp beside the tree for the selected row when that row has open
 // blockers. Without the injected read provider the control is present-but-
 // DISABLED with a visible reason — never a throw, never an invisible key.
@@ -182,7 +182,7 @@ export function BlockersDoor({ snapshot, id, providerReady, onOpen }) {
 }
 
 // ---- component (evidence: rendered structure only — no mount/usability claim)
-// hbl-pnu.2.10 (F5): blocker items are 'title (id)', never a bare id, and the
+//  (F5): blocker items are 'title (id)', never a bare id, and the
 // ancestor path is rendered as separated elements with a ' › ' connector —
 // the failure mode was ids painting fused ("shot-janshot-32xshot-0q6").
 function BlockerRow({ b, snapshot }) {

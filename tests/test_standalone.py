@@ -1,4 +1,4 @@
-"""STANDALONE ISOLATION + foreign-cwd parity (hbl-pnu.3.2).
+"""STANDALONE ISOLATION + foreign-cwd parity ().
 
 Claim under test: the hermes-beads plugin needs NOTHING from
 hermes-workflows. Two halves, both run against the REAL binaries — no mocks,
@@ -59,10 +59,14 @@ LANE = os.path.dirname(HERE)
 sys.path.insert(0, LANE)
 
 BD_BIN = os.environ.get(
-    "BEADS_LAB_BD", "/home/hermes/.hermes/work/beads-lab/bin/bd")
+    "BEADS_LAB_BD", "bd")
 HERMES_ROOT = os.environ.get("HERMES_ROOT", "/opt/hermes")
-VENV_PY = os.environ.get(
-    "HERMES_VENV_PY", os.path.join(HERMES_ROOT, ".venv", "bin", "python"))
+# The driver subprocess needs an interpreter that can `import hermes_cli`:
+# explicit pin > hermes venv if it exists > this interpreter (CI: pip-installed).
+VENV_PY = os.environ.get("HERMES_VENV_PY") or (
+    os.path.join(HERMES_ROOT, ".venv", "bin", "python")
+    if os.path.exists(os.path.join(HERMES_ROOT, ".venv", "bin", "python"))
+    else sys.executable)
 FIXTURE_ROOT = os.path.join(HERE, ".standalone-runtime")
 # Foreign cwd must sit OUTSIDE every git repo: bd stamps `owner` from the cwd's
 # git identity, so an in-repo cwd is not "foreign" (probed: owner diverged).
@@ -75,9 +79,9 @@ WORKER, PARENT = "sa-worker", "sa-parent"
 NOTE = "standalone: guarded edit"
 ATTEMPT = "a-standalone"
 REASON = "Verified: " + " + ".join(ARTIFACTS)
-CORE_MODULES = ["__init__.py", "native.py", "read_model.py", "claims.py",
-                "evidence.py", "write_protocol.py", "correlation.py",
-                "interop.py"]
+CORE_MODULES = ["__init__.py", "beads/__init__.py", "beads/native.py",
+                "beads/read_model.py", "beads/claims.py",
+                "beads/write_protocol.py"]
 # Volatile = per-run clock values and per-store generated identities ONLY.
 # Everything else (status/assignee/notes/title/labels/priority/issue_type/
 # close_reason/comment author+text) participates in the EXACT comparison.
@@ -88,7 +92,7 @@ VOLATILE = {"created_at", "updated_at", "closed_at", "started_at",
 # ---- subprocess driver: isolated SDK import + full native loop -------------
 
 PLUGIN_DRIVER = r'''
-import json, os, sys
+import json, os, subprocess, sys
 home, store, label = sys.argv[1], sys.argv[2], sys.argv[3]
 CFG = json.loads(os.environ["SA_CFG"])
 os.environ["HERMES_HOME"] = home
@@ -111,7 +115,8 @@ except Exception as exc:
     bail("sdk_discover", exc)
 
 try:
-    import claims, evidence, read_model, write_protocol
+    import beads
+    from beads import claims, read_model, write_protocol
     ready = [r["id"] for r in read_model.ready(store, label=label, bd_bin=BD)]
     gate = ready[0]
     row = claims.claim(store, gate, actor=W, bd_bin=BD)
@@ -124,26 +129,35 @@ try:
         if_assignee=W, if_status="in_progress", fields={"notes": NOTE})
     if not edited.get("readback_verified"):
         raise AssertionError("guarded update not readback_verified")
-    ws = evidence.WorkerSurface(store, actor=W, bd_bin=BD)
-    ws.record_evidence(gate, attempt=ATT, artifacts=ARTS,
-                       summary="standalone loop")
-    rec = evidence.authorized_close(
-        store, gate, actor=P, bd_bin=BD,
-        authorization="parent-verified: hbl-pnu.3.2 standalone",
-        reason=REASON, evidence_actor=W, attempt=ATT, artifacts=ARTS)
+    text = ("EVIDENCE attempt=" + ATT + " artifacts=" + ";".join(ARTS)
+            + " summary=standalone loop")
+    rows = write_protocol.append_comment(store, gate, actor=W, bd_bin=BD,
+                                         text=text)
+    if not any(c.get("author") == W and c.get("text") == text
+               for c in rows):
+        raise AssertionError("append_comment read-back missing: " + repr(rows))
+    # bd refuses close by a non-assignee: worker releases via the native CAS,
+    # the parent claims, then closes (same hand-off the stock driver proves).
+    claims.release(store, gate, actor=W, bd_bin=BD)
+    claims.claim(store, gate, actor=P, bd_bin=BD)
+    p = subprocess.run([BD, "-C", store, "--actor", P, "close", gate,
+                        "--reason", REASON, "--json"],
+                       capture_output=True, text=True, cwd=store)
+    if p.returncode != 0:
+        raise AssertionError("native close refused: " + p.stderr)
     final = read_model.show(store, gate, bd_bin=BD)
     comments = read_model.comments(store, gate, bd_bin=BD)
     after = [r["id"] for r in read_model.ready(store, label=label, bd_bin=BD)]
     hits = sorted(m for m in sys.modules if "workflow" in m.lower())
     origins = {m: getattr(sys.modules[m], "__file__", None)
-               for m in ("native", "claims", "evidence", "read_model",
-                         "write_protocol")}
+               for m in ("beads", "beads.native", "beads.claims",
+                         "beads.read_model", "beads.write_protocol")}
     print(json.dumps({
         "loop_ok": True, "loaded": loaded, "hits": hits, "gate": gate,
         "origins": origins,
         "claim_row": {k: row.get(k) for k in ("assignee", "status")},
         "edited_verified": bool(edited.get("readback_verified")),
-        "close_verified": bool(rec.get("readback_verified")),
+        "close_verified": final.get("status") == "closed",
         "final": final, "comments": comments, "after": after}))
 except Exception as exc:
     bail("loop", exc)

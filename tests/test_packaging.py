@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Packaging qualification (hbl-pnu.4.4): exact candidate archive, stock admission
+"""Packaging qualification (): exact candidate archive, stock admission
 validator, stock SDK load + uninstall in a disposable HERMES_HOME, JS syntax.
 
 Nothing is installed or published. The candidate archive, extracted tree and
@@ -31,7 +31,7 @@ NAME = "hermes-beads"
 # Shipped = runtime modules + manifest + desktop source + docs. Tests, fixtures,
 # lab scripts and dev scaffolding stay out of the distributable.
 SHIP_TOP = ("plugin.yaml", "__init__.py", "README.md")
-SHIP_DIRS = ("desktop",)  # docs/ are lab evidence ledgers; README.md is the shipped doc
+SHIP_DIRS = ("beads", "desktop")  # README.md is the shipped doc
 NEVER_SHIP = re.compile(r"(^|/)(tests|fixtures|scripts|__pycache__|\.beads|"
                         r"\.git|node_modules|dist)(/|$)|\.pyc$")
 # Private/lab strings that must never appear in the portable package.
@@ -88,9 +88,10 @@ class Package(unittest.TestCase):
             names = [m.name for m in tar.getmembers() if m.isfile()]
         rel = sorted(n.split("/", 1)[1] for n in names)
         self.assertEqual(rel, sorted(shipped_files()))
-        for must in ("plugin.yaml", "__init__.py", "native.py",
-                     "read_model.py", "claims.py", "write_protocol.py",
-                     "evidence.py", "desktop/model.mjs", "desktop/tree.mjs"):
+        for must in ("plugin.yaml", "__init__.py", "beads/__init__.py",
+                     "beads/native.py", "beads/read_model.py",
+                     "beads/claims.py", "beads/write_protocol.py",
+                     "desktop/model.mjs", "desktop/tree.mjs"):
             self.assertIn(must, rel)
         for n in rel:
             self.assertIsNone(NEVER_SHIP.search(n), f"dev file shipped: {n}")

@@ -1,4 +1,4 @@
-// tests/test_search.mjs — hbl-pnu.2.6: search reveals the resolved ancestor
+// tests/test_search.mjs — search reveals the resolved ancestor
 // path (parent-FIELD chain from the H1 snapshot, no per-hit show loop) and
 // Enter lands IN the tree with history push + byte-identical Back.
 // Run: node --test tests/test_search.mjs   (Node built-in runner, no deps)
@@ -606,18 +606,16 @@ test("Enter on an out-of-filter hit still lands in the tree (jump works without 
 // Fixture store under tests/.search-fixtures (lane-unique, gitignored): the
 // no-dot bead is created WITHOUT a parent, then reparented via
 // `bd update --parent` — exactly the FACT-4 shape (hbl-0uf under hbl-ibv.1).
-const LAB = "/home/hermes/.hermes/work/beads-lab";
-const BIN = path.join(LAB, "bin", "bd");
+const BIN = process.env.BEADS_LAB_BD || "bd";
 const ACTOR = "lane-s5-search-20260928a";
 const FIX = path.join(here, ".search-fixtures");
 
 const bdRead = (cwd, ...args) =>
-  JSON.parse(execFileSync("flock", [path.join(LAB, "planning-access.lock"),
-    BIN, "-C", cwd, "--readonly", "--actor", ACTOR, ...args, "--json"],
-    { encoding: "utf8" }));
+  JSON.parse(execFileSync(BIN, ["-C", cwd, "--readonly", "--actor", ACTOR,
+    ...args, "--json"], { encoding: "utf8" }));
 const bdMutate = (cwd, ...args) =>
-  execFileSync("flock", [path.join(LAB, "planning-access.lock"),
-    BIN, "-C", cwd, "--actor", ACTOR, ...args], { encoding: "utf8" });
+  execFileSync(BIN, ["-C", cwd, "--actor", ACTOR, ...args],
+    { encoding: "utf8" });
 
 function nativeStore(name) {
   const cwd = path.join(FIX, name);
@@ -647,8 +645,8 @@ test("native S4: real bd search hits enriched with snapshot paths; call-bound as
     const mid = createNative(st.cwd, "PROBE FIXTURE: keyboard map spec", epicN);
     const nodot = createNative(st.cwd, "PROBE FIXTURE: focus model spec"); // NO parent at creation
     // reparent AFTER creation (FACT 4): ID never gains dots, parent FIELD moves
-    execFileSync("flock", [path.join(LAB, "planning-access.lock"),
-      BIN, "-C", st.cwd, "--actor", ACTOR, "update", nodot, "--parent", mid]);
+    execFileSync(BIN, ["-C", st.cwd, "--actor", ACTOR, "update", nodot,
+      "--parent", mid]);
 
     // one bounded native search through the facade — count every call
     const calls = [];
@@ -739,11 +737,11 @@ test("native fallback path: out-of-page ancestor resolved under budget, exhausti
 });
 
 // ============================================================================
-// hbl-pnu.2.11 — SearchPanel gains a roving cursor: ArrowUp/ArrowDown move
+// SearchPanel gains a roving cursor: ArrowUp/ArrowDown move
 // aria-selected AND document focus together (RED against the pinned-cursor
 // component: onKeyDown undefined + no focus() call).
 // ============================================================================
-test("hbl-pnu.2.11 SearchPanel: ArrowDown/ArrowUp move the cursor AND focus the hit; onKeyDown is wired", async () => {
+test("SearchPanel: ArrowDown/ArrowUp move the cursor AND focus the hit; onKeyDown is wired", async () => {
   const { createWorkbenchState } = await import("../desktop/model.mjs");
   const snapshot = buildSnapshot(baseReads({ issues: [
     { id: "root", parent: null }, { id: "mid", parent: "root" },
@@ -779,7 +777,7 @@ test("hbl-pnu.2.11 SearchPanel: ArrowDown/ArrowUp move the cursor AND focus the 
   assert.ok(prevented >= 1, "ArrowDown is preventDefault-ed (never reaches the tree)");
   prevented = 0;
   nativeFocusCalls = [];
-  // FOCUS law: keydown arrives on the DOCUMENT-FOCUSED option — after the
+  // FOCUS rule: keydown arrives on the DOCUMENT-FOCUSED option — after the
   // ArrowDown above, that is hit 2, so the ArrowUp is dispatched from it.
   optsFor(1)[1].props.onKeyDown({ key: "ArrowUp", target: fakeFocusable(), preventDefault: () => { prevented += 1; } });
   assert.deepEqual(seen, [1, 0], "ArrowUp on the selected hit retreats the cursor to hit 1");

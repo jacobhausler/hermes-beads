@@ -1,4 +1,4 @@
-"""Bounded fixed-argv read facade on native.run_bd (hbl-pnu.1.1 / N1).
+"""Bounded fixed-argv read facade on native.run_bd ( / N1).
 
 Every verb here is one native `bd` invocation with a argv list built in THIS
 module — values (IDs, labels, parent IDs) are separate tokens, never shell
@@ -6,7 +6,7 @@ composited. There is deliberately NO per-verb framework: no registries, no
 base classes, no dispatch tables; just functions that call run_bd and return
 the parsed native JSON verbatim.
 
-Field-preservation law (owner contract): rows are returned exactly as bd's
+Field-preservation contract: rows are returned exactly as bd's
 --json emitted them. Statuses, issue types, and edge types that this plugin
 has never seen are passed through untouched — no whitelist, no coercion, no
 reconstruction of readiness. If bd says it, we say it.
@@ -43,7 +43,7 @@ no direct DB/SQL, no plugin-minted IDs, no Workflow imports.
 """
 from datetime import datetime, timezone
 
-import native
+from . import native
 
 # Default bounds are explicit and mandatory: 0/unbounded is rejected.
 DEFAULT_LIMIT = 100

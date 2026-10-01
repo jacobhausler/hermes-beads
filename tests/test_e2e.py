@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""END-TO-END SLICE (hbl-pnu.4.1): scoped ready -> claim -> guarded edit ->
+"""END-TO-END SLICE (): scoped ready -> claim -> guarded edit ->
 evidence -> authorized close -> verifier read-back -> newly ready successors.
 
 Verdict under test — the thin dispatch->work->evidence->closure loop holds on
@@ -18,22 +18,15 @@ against the exact native state it must show:
                      guards --if-assignee/--if-status -> read-back equal.
                      Replacement (description/title) stays DISABLED — a
                      supported guarded metadata update satisfies "edit".
-  4. evidence        evidence.WorkerSurface.record_evidence -> append-only
-                     EVIDENCE envelope comment, read back via comments API.
-  5. authorized close evidence.authorized_close with explicit authorization +
-                     artifact-citing reason.
-  6. verifier        read-back: status=closed, closed_at, close_reason, and
-                     the evidence comment still present (readback_verified).
-  7. successors      re-query frontier: gate gone, successor now ready
+  4. close           plain native `bd close` (the plugin ships no close
+                     surface; escape-hatch first).
+  5. verifier        read-back: status=closed, closed_at, close_reason.
+  6. successors      re-query frontier: gate gone, successor now ready
                      (complete causal loop: the close released the dep).
 
-Negative controls (plugin verifier, never native bd close — native closure
-remains permitted): a bead native-closed WITHOUT an evidence comment is
-rejected by evidence.verify_closure (ClosureAmbiguityError) and refused by
-authorized_close (ClosureRefusedError, store byte-identical); the separate
-negative fixture is built by never appending the envelope — bd 1.3.0 has NO
-comment edit/delete verb (probed: only add/list; deletion attempts exit
-nonzero and the comment remains — no deletion capability was invented).
+Negative control: bd 1.3.0 has NO comment edit/delete verb (probed: only
+add/list; deletion attempts exit nonzero and the comment remains — no
+deletion capability was invented).
 
 Real pinned bd (v1.3.0, f45b249ce) against fresh disposable stores under
 tests/fixtures/e2e-runtime (gitignored; bootstrap lives there, databases
@@ -56,11 +49,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(HERE, "fixtures", "e2e-runtime"))
 
 import bootstrap                      # noqa: E402  (fresh real stores)
-import claims                         # noqa: E402  (the loop under test)
-import evidence                       # noqa: E402
-import native                         # noqa: E402
-import read_model                     # noqa: E402
-import write_protocol                 # noqa: E402
+from beads import claims, native, read_model, write_protocol  # noqa: E402
 
 BD_BIN = bootstrap.BD_BIN
 FIXTURE_ROOT = bootstrap.FIXTURE_ROOT
@@ -138,34 +127,19 @@ class FullCausalLoop(unittest.TestCase):
         self.assertEqual(show_dict(self.store, gate)["notes"],
                          "e2e: guarded metadata edit under live claim")
 
-        # 4. append-only evidence comment + comments-API read-back.
-        wsurf = evidence.WorkerSurface(self.store, actor=w, bd_bin=BD_BIN)
-        att = f"a-{actor('run')}"
-        wsurf.record_evidence(gate, attempt=att, artifacts=ARTIFACTS,
-                              summary="full loop green")
-        cs = comments_list(self.store, gate)
-        env = [c for c in cs if c["author"] == w
-               and c["text"].startswith(f"EVIDENCE attempt={att} "
-                                        f"artifacts={';'.join(ARTIFACTS)}")]
-        self.assertEqual(len(env), 1, "exact envelope read back on this bead")
+        # 4-5. close via plain native bd close (the plugin ships no close
+        #      surface — `bd close` is the escape hatch; the verifier era is
+        #      on the door-stack branch).
+        reason = "e2e: full loop green, closed through native bd"
+        p = bootstrap.raw_bd(self.store, "close", gate, "--reason", reason,
+                             "--json", actor_name=w)
+        self.assertEqual(p.returncode, 0, f"native close refused: {p.stderr}")
 
-        # 5. authorized closure WITH evidence reason (parent actor).
-        parent = actor("parent")
-        reason = f"Verified: {' + '.join(ARTIFACTS)} green on full loop"
-        rec = evidence.authorized_close(
-            self.store, gate, actor=parent, bd_bin=BD_BIN,
-            authorization="parent-verified: hbl-pnu.4.1 e2e review",
-            reason=reason, evidence_actor=w, attempt=att,
-            artifacts=ARTIFACTS)
-
-        # 6. verifier read-back: closed_at, reason, comment still present.
-        self.assertTrue(rec["readback_verified"])
+        # 6. read-back: closed, closed_at, reason.
         closed = show_dict(self.store, gate)
         self.assertEqual(closed["status"], "closed")
         self.assertTrue(closed["closed_at"], "closed_at required")
         self.assertEqual(closed["close_reason"], reason)
-        self.assertTrue([c for c in comments_list(self.store, gate)
-                         if c["text"].startswith("EVIDENCE")])
 
         # 7. re-query frontier: gate gone, successor now ready (causal loop).
         frontier2 = [r["id"] for r in
@@ -213,66 +187,6 @@ class ReplacementStaysDisabled(unittest.TestCase):
                                     sort_keys=True), before)
 
 
-class NativeCloseWithoutEvidenceRejected(unittest.TestCase):
-    """OWNER CONTRACT: the negative control applies to the plugin verifier,
-    not native bd close. Native closure remains permitted (probed, exit 0);
-    the verifier must DISTINGUISH completed-without-evidence. There is no
-    comment-deletion verb, so the negative fixture is a separate store whose
-    bead simply never received an envelope comment — deletion is never
-    invented."""
-
-    def setUp(self):
-        self.store = make_store()
-
-    def _native_close(self, iid, reason):
-        p = bootstrap.raw_bd(self.store, "close", iid, "--reason", reason,
-                             "--json", actor_name="native-closer")
-        self.assertEqual(p.returncode, 0,
-                         f"native close must stay permitted: {p.stderr}")
-
-    def test_native_closed_without_evidence_rejected_by_verifier(self):
-        iid = seed_bead(self.store, "closed-no-evidence", labels=("impl",))
-        self._native_close(iid, "shipped: reports/anything.json")
-        self.assertEqual(show_dict(self.store, iid)["status"], "closed",
-                         "native state is closed — the rejection is the "
-                         "verifier's, not native's")
-        with self.assertRaises(evidence.ClosureAmbiguityError) as cm:
-            evidence.verify_closure(self.store, iid,
-                                    reason="shipped: reports/anything.json",
-                                    evidence_actor="worker-absent",
-                                    attempt="a1", artifacts=ARTIFACTS,
-                                    bd_bin=BD_BIN)
-        self.assertIn("evidence comment absent", str(cm.exception))
-        # and the authorized surface refuses to close an evidenced-looking
-        # bead whose evidence was never appended (negative fixture)
-        iid2 = seed_bead(self.store, "refused-no-evidence", labels=("impl",))
-        before = json.dumps(show_dict(self.store, iid2), sort_keys=True)
-        with self.assertRaises(evidence.ClosureRefusedError):
-            evidence.authorized_close(
-                self.store, iid2, actor=actor("parent"), bd_bin=BD_BIN,
-                authorization="parent ok",
-                reason=f"done: {' '.join(ARTIFACTS)}",
-                evidence_actor="worker-who-never-wrote", attempt="a1",
-                artifacts=ARTIFACTS)
-        self.assertEqual(json.dumps(show_dict(self.store, iid2),
-                                    sort_keys=True), before)
-
-    def test_native_closed_WITH_evidence_passes_verifier(self):
-        """Positive control on the same negative fixture: the verifier's
-        rejection is specifically the absent evidence, not native closure."""
-        iid = seed_bead(self.store, "closed-with-evidence", labels=("impl",))
-        w = actor("worker")
-        att = "a-final"
-        evidence.WorkerSurface(self.store, actor=w, bd_bin=BD_BIN) \
-            .record_evidence(iid, attempt=att, artifacts=ARTIFACTS)
-        reason = f"shipped: {' '.join(ARTIFACTS)}"
-        self._native_close(iid, reason)
-        rec = evidence.verify_closure(self.store, iid, reason=reason,
-                                      evidence_actor=w, attempt=att,
-                                      artifacts=ARTIFACTS, bd_bin=BD_BIN)
-        self.assertTrue(rec["readback_verified"])
-
-
 class AppendOnlyNegativeProbe(unittest.TestCase):
     """No comment-deletion capability is invented: bd 1.3.0 exposes only
     comments add/list; any deletion-shaped argv fails nonzero and the
@@ -292,12 +206,15 @@ class AppendOnlyNegativeProbe(unittest.TestCase):
                                 f"{argv[:3]} unexpectedly succeeded")
         self.assertEqual(len(comments_list(store, iid)), 1,
                          "comment survives every deletion-shaped attempt")
-        with open(os.path.join(os.path.dirname(HERE), "evidence.py")) as f:
-            src = f.read()
-        for banned in ("comments\", \"delete", "\"delete\"", "rm \""):
-            self.assertNotIn(banned, src,
-                             "plugin surface must never build a comment "
-                             "deletion verb — none is supported")
+        for mod in ("native", "read_model", "claims", "write_protocol"):
+            with open(os.path.join(os.path.dirname(HERE), "beads",
+                           f"{mod}.py")) as f:
+                src = f.read()
+            for banned in ('"delete"', '"rm "'):
+                self.assertNotIn(
+                    banned, src,
+                    f"{mod}: plugin surface must never build a comment "
+                    f"deletion verb — none is supported")
 
 
 class FailureSurfacesAsNonzeroExit(unittest.TestCase):
@@ -328,7 +245,7 @@ if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)
     finally:
-        # hbl-pnu.4.7: own-dir cleanup only — the root is shared with the
+        # own-dir cleanup only — the root is shared with the
         # scenarios/mounted suites; sweeping it killed their live stores.
         if not os.environ.get("E2E_KEEP_FIXTURES"):
             bootstrap.cleanup_run_stores()

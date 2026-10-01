@@ -1,4 +1,4 @@
-"""Stdlib tests for the native bd boundary (hbl-pnu.1.6 / N0).
+"""Stdlib tests for the native bd boundary ().
 
 Real evidence, not mocks: every positive case runs the ACTUAL installed bd
 against a disposable store created under tests/.fixtures (never the real
@@ -16,10 +16,10 @@ import uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-import native  # noqa: E402
+from beads import native  # noqa: E402
 
 BD_BIN = os.environ.get("BEADS_LAB_BD",
-                        "/home/hermes/.hermes/work/beads-lab/bin/bd")
+                        "bd")
 FIXTURE_ROOT = os.path.join(HERE, ".fixtures")
 os.makedirs(FIXTURE_ROOT, exist_ok=True)
 

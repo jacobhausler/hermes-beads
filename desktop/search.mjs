@@ -1,4 +1,4 @@
-// desktop/search.mjs — hbl-pnu.2.6: search reveals the resolved ancestor path
+// desktop/search.mjs — search reveals the resolved ancestor path
 // and lands IN the tree (search is a navigation entry, not a parallel list world).
 //
 // Truth it stands on (hci.md FACTs 4–6): `bd search` hits are flat and
@@ -9,7 +9,7 @@
 // node.path / node.pathStatus / snapshot.byId), with zero per-hit native
 // calls on the warm path (owner ruling on N+1).
 //
-// Owner contract honoured:
+// Contract honoured:
 //  - one direct native query with a bounded result count, injected as
 //    searchRead(query, bound) — the read facade owns the fixed argv; this
 //    module never builds bd commands;
@@ -320,8 +320,8 @@ function pathLabel(hit) {
 // per enriched hit; truncation and unavailable ancestry are explicit visible
 // banners (owner: visible state, not a show loop). Selection (cursor) ≠
 // focus: activation is delegated to onActivate → enterSearchHit.
-// hbl-pnu.2.11: ArrowUp/ArrowDown move the roving cursor through onCursor AND
-// move DOCUMENT focus through the focusHit delegate (F3 law for the listbox:
+// : ArrowUp/ArrowDown move the roving cursor through onCursor AND
+// move DOCUMENT focus through the focusHit delegate (F3 rule for the listbox:
 // aria-selected and document focus never diverge). The panel keeps no cursor
 // of its own — the caller (WorkbenchApp) owns the cursor state.
 export function SearchPanel({ results, cursor = -1, onActivate, onCursor, focusHit }) {
@@ -370,10 +370,10 @@ export function SearchPanel({ results, cursor = -1, onActivate, onCursor, focusH
     kids.push(jsx("div", {
       role: "option", id: `search-hit-${i}`, "data-path-status": h.pathStatus,
       "aria-selected": i === cursor ? "true" : "false",
-      // hbl-pnu.4.6: roving tabIndex + Enter/Space activate through the
+      // : roving tabIndex + Enter/Space activate through the
       // SAME entry as click (onActivate -> enterSearchHit). Keyboard hits
       // are activatable, not click-only.
-      // hbl-pnu.2.11: ArrowUp/ArrowDown drive the roving cursor here
+      // : ArrowUp/ArrowDown drive the roving cursor here
       // (onCursor + focusHit); without them non-first hits were unreachable
       // (tabIndex -1, no arrows — defect 4).
       tabIndex: i === cursor ? 0 : -1,
