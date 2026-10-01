@@ -424,5 +424,62 @@ class ToolExecutableNotModelControlled(unittest.TestCase):
         self.assertIn("/nonexistent/bd-bin", out.get("error", ""))
 
 
+class ToolHandlersReturnFailJson(unittest.TestCase):
+    """Handler-boundary honesty: the argv/actor gate and the field-group
+    allowlist raise ValueError; that must come back as the _fail() JSON
+    envelope (ok:false + error_type), never escape the tool handler."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.store = make_store("failjson")
+        cls.a = actor("failjson")
+        cls.iid = raw_create(cls.store, "fail-json control", "d", cls.a)
+
+    def test_hostile_bead_id_returns_fail_json_not_raise(self):
+        plugin = _load_plugin()
+        with _SpawnSpy() as spy:
+            out = json.loads(plugin.handle_beads_show(
+                {"workspace": self.store, "bead": "--db=/etc/x"}))
+            self.assertEqual(spy.calls, [], "spawned with hostile id")
+        self.assertFalse(out.get("ok", False), out)
+        self.assertEqual(out.get("error_type"), "ValueError", out)
+
+    def test_bad_actor_returns_fail_json_not_raise(self):
+        plugin = _load_plugin()
+        with _SpawnSpy() as spy:
+            out = json.loads(plugin.handle_beads_comment(
+                {"workspace": self.store, "bead": self.iid,
+                 "actor": "--db=/etc/x", "text": "must not spawn"}))
+            self.assertEqual(spy.calls, [], "spawned with hostile actor")
+        self.assertFalse(out.get("ok", False), out)
+        self.assertEqual(out.get("error_type"), "ValueError", out)
+
+    def test_update_with_illegal_field_returns_fail_json_not_raise(self):
+        plugin = _load_plugin()
+        with _SpawnSpy() as spy:
+            out = json.loads(plugin.handle_beads_update(
+                {"workspace": self.store, "bead": self.iid, "actor": self.a,
+                 "if_assignee": self.a, "if_status": "open",
+                 "fields": {"status": "closed"}}))
+            self.assertEqual(spy.calls, [],
+                             "spawned with a field outside the allowlist")
+        self.assertFalse(out.get("ok", False), out)
+        self.assertEqual(out.get("error_type"), "ValueError", out)
+        self.assertIn("status", out.get("error", ""), out)
+
+    def test_update_schema_description_lists_only_allowed_fields(self):
+        plugin = _load_plugin()
+        desc = dict((n, s) for n, s, _ in plugin.TOOLS)["beads_update"][
+            "description"]
+        for field in write_protocol.FIELD_FLAGS:
+            self.assertIn(field, desc,
+                          f"allowed field {field} missing from description")
+        low = desc.lower()
+        self.assertIn("not status", low,
+                      "description must tell the model status is not writable")
+        self.assertNotIn("notes, status", low,
+                         "description must not list status as settable")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
