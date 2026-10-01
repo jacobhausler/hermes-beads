@@ -97,7 +97,7 @@ class BdNotFoundError(NativeError):
     def __init__(self, bd_bin, attempted):
         super().__init__(
             f"bd backend unavailable: {bd_bin!r} not found or not executable. "
-            f"Install Beads or pass an explicit bd_bin; attempted argv: {attempted}"
+            f"Install Beads or set HERMES_BEADS_BD_BIN; attempted argv: {attempted}"
         )
         self.bd_bin = bd_bin
 
