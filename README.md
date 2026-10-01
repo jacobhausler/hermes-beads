@@ -100,8 +100,8 @@ for t in tests/test_*.py; do python3 "$t" || exit 1; done
 node --test tests/test_*.mjs
 ```
 
-Both halves run in [CI](.github/workflows/ci.yml) against a pinned Hermes
-commit; `hermes plugins validate .` is the admission gate.
+Both halves run in CI (GitHub Actions) against a pinned Hermes commit;
+`hermes plugins validate .` is the admission gate.
 
 ## License
 

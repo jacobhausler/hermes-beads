@@ -14,3 +14,6 @@ tests/fixtures/runner-runtime/
 tests/.work-bridge/
 __pycache__/
 tests/fixtures/shots/out/
+
+# staged out of main: ships via owner token with workflow scope (#2)
+.github/workflows/

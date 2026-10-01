@@ -32,7 +32,7 @@ const TYPED_REFUSAL = {
   route: "hermes_session_door", execution_authority: false,
   read_only: true,
   delivery: false, no_dispatch: true,
-  workspace: SI.workspace, bead: "", intent: "ask",
+  workspace: SI.workspace, bead: "demo-12.3", intent: "ask",
 };
 
 // ---- Ask -------------------------------------------------------------------
@@ -44,7 +44,7 @@ test("askDecision reports read-only ask with the exact typed refusal", () => {
   assert.equal(d.executionAuthority, false);
   assert.equal(d.delivery, false);
   assert.equal(d.noDispatch, true);
-  assert.equal(d.bead, "");
+  assert.equal(d.bead, "demo-12.3");
 });
 
 test("askDecision refuses an ok:true ask as a fabricated delivery", () => {
@@ -56,48 +56,48 @@ test("askDecision refuses an ok:true ask as a fabricated delivery", () => {
 // ---- Refine -> human draft store --------------------------------------------
 test("refineToDraft lands the bot proposal in the human draft store only", () => {
   const store = createDraftStore(); // memory-only adapter path
-  const res = refineToDraft(store, SI, "", {
+  const res = refineToDraft(store, SI, "demo-12.3", {
     text: "improved text", baseText: "original text",
     provenance: "bot", requires_human_accept: true, neverWritesStore: true,
   });
   assert.equal(res.landed, true);
   assert.equal(res.botProvenance, true);
-  const draft = store.getDraft(SI, "");
+  const draft = store.getDraft(SI, "demo-12.3");
   assert.equal(draft.text, "improved text");
   assert.equal(draft.baseText, "original text");
   // provenance rides the panel's own registry (drafts.mjs owns persistence
   // and has no provenance field): reopen proves it is the bot's draft.
-  assert.equal(reopenBotDraft(store, SI, "").found, true);
+  assert.equal(reopenBotDraft(store, SI, "demo-12.3").found, true);
 });
 
 test("refineToDraft without human-accept requirement is refused", () => {
   const store = createDraftStore();
-  const res = refineToDraft(store, SI, "", {
+  const res = refineToDraft(store, SI, "demo-12.3", {
     text: "x", baseText: "", provenance: "bot",
   });
   assert.equal(res.landed, false);
   assert.match(res.reason, /requires_human_accept/);
-  assert.equal(store.getDraft(SI, ""), null);
+  assert.equal(store.getDraft(SI, "demo-12.3"), null);
 });
 
 // ---- Return-to-draft ---------------------------------------------------------
 test("reopenBotDraft returns the stored draft and preserves it", () => {
   const store = createDraftStore();
-  refineToDraft(store, SI, "", {
+  refineToDraft(store, SI, "demo-12.3", {
     text: "proposal", baseText: "base", provenance: "bot",
     requires_human_accept: true,
   });
-  const view = reopenBotDraft(store, SI, "");
+  const view = reopenBotDraft(store, SI, "demo-12.3");
   assert.equal(view.found, true);
   assert.equal(view.diff.text, "proposal");
   assert.equal(view.diff.baseText, "base");
   // re-opening never discards: still there, cancel preserves too
-  assert.equal(store.getDraft(SI, "") !== null, true);
+  assert.equal(store.getDraft(SI, "demo-12.3") !== null, true);
 });
 
 test("reopenBotDraft on a missing draft is honest, never fabricated", () => {
   const store = createDraftStore();
-  const view = reopenBotDraft(store, SI, "");
+  const view = reopenBotDraft(store, SI, "demo-12.3");
   assert.equal(view.found, false);
   assert.equal(view.diff, null);
 });
@@ -105,7 +105,7 @@ test("reopenBotDraft on a missing draft is honest, never fabricated", () => {
 // ---- Work control --------------------------------------------------------------
 const DISABLED = {
   present: true, enabled: false,
-  disabledReason: "Work disabled: the runner binding () is not merged; no admitted runner door is bound via bot_handoff.bind_runner_door. Ask/Refine remain available; the door is never invoked while disabled.",
+  disabledReason: "Work disabled: the runner binding is not merged; no admitted runner door is bound via bot_handoff.bind_runner_door. Ask/Refine remain available; the door is never invoked while disabled.",
 };
 
 test("work control renders present-but-disabled with the typed reason", () => {
@@ -115,7 +115,7 @@ test("work control renders present-but-disabled with the typed reason", () => {
   assert.ok(texts.some((t) => t.includes("Ask")));
   assert.ok(texts.some((t) => t.includes("Refine")));
   assert.ok(texts.some((t) => t.includes("Work")));
-  assert.ok(texts.some((t) => t.includes("")));
+  assert.ok(texts.some((t) => t.includes("runner door is bound")), "typed reason rendered");
   assert.ok(texts.some((t) => t.includes("session_door_unqualified")));
   const buttons = [...shim.walk(tree)].filter((n) => n.type === "button");
   const work = buttons.find((b) => JSON.stringify(b).includes("Work"));
