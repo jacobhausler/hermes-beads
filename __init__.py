@@ -40,7 +40,9 @@ def handle_beads_smoke(args):
     try:
         return json.dumps(native.smoke(workspace, bd_bin=_bd(),
                                        label=(args or {}).get("label")))
-    except native.NativeError as exc:
+    except (native.NativeError, ValueError) as exc:
+        # ValueError: fixed-argv/actor gate or field-group refusal — an
+        # honest named failure, never an escape out of the tool handler.
         return _fail(exc)
 
 
@@ -52,7 +54,7 @@ def handle_beads_frontier(args):
         rows = read_model.ready(workspace, label=(args or {}).get("label"),
                                 bd_bin=_bd())
         return json.dumps({"ok": True, "ready": rows})
-    except native.NativeError as exc:
+    except (native.NativeError, ValueError) as exc:
         return _fail(exc)
 
 
@@ -63,7 +65,7 @@ def handle_beads_show(args):
     try:
         return json.dumps({"ok": True, "bead": read_model.show(
             workspace, bead, bd_bin=_bd())})
-    except native.NativeError as exc:
+    except (native.NativeError, ValueError) as exc:
         return _fail(exc)
 
 
@@ -79,7 +81,7 @@ def handle_beads_claim(args):
         return json.dumps({"ok": False, "conflict": True,
                            "holder": getattr(exc, "holder", None),
                            "error": str(exc)})
-    except native.NativeError as exc:
+    except (native.NativeError, ValueError) as exc:
         return _fail(exc)
 
 
@@ -100,7 +102,9 @@ def handle_beads_update(args):
         return json.dumps({"ok": False, "stale": True,
                            "holder": getattr(exc, "holder", None),
                            "error": str(exc)})
-    except native.NativeError as exc:
+    except (native.NativeError, ValueError) as exc:
+        # ValueError from update_fields (field-group allowlist) or the
+        # argv/actor gate: an honest named failure, never an escape.
         return _fail(exc)
 
 
@@ -114,7 +118,7 @@ def handle_beads_comment(args):
         rows = write_protocol.append_comment(workspace, bead, actor=actor,
                                              text=text, bd_bin=_bd())
         return json.dumps({"ok": True, "comments": rows})
-    except native.NativeError as exc:
+    except (native.NativeError, ValueError) as exc:
         return _fail(exc)
 
 
@@ -151,7 +155,7 @@ TOOLS = [
              ["workspace", "bead", "actor"]),
      handle_beads_claim),
     ("beads_update",
-     _schema("Guarded metadata update (notes, status, dates) under --if-assignee/--if-status: a stale guard reports stale=true and writes nothing. Replacing description/title is unsupported by design — edit content with bd directly.",
+     _schema("Guarded metadata update over the allowed field group (priority, notes, due, estimate, external_ref, defer — nothing else, notably NOT status/title/description) under the required --if-assignee/--if-status guard pair: a stale guard reports stale=true and writes nothing. Replacing description/title is unsupported by design — edit content with bd directly.",
              {"workspace": _STORE, "bead": {"type": "string"},
               "actor": {"type": "string"},
               "if_assignee": {"type": "string"}, "if_status": {"type": "string"},

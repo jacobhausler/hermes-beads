@@ -37,7 +37,11 @@ Restart the backend (`hermes serve`) so the tools mount. Requirements:
 - **bd 1.3.0+** on `PATH` — [releases](https://github.com/steveyegge/beads/releases) (`brew install beads`, or grab a tarball; verify against `checksums.txt`); set `HERMES_BEADS_BD_BIN=/path/to/bd` in the backend's environment to use a specific binary (the tools never take a binary path from the model)
 - Hermes Agent ≥ 0.21 (stock — **no patched core required**)
 - Python 3, stdlib only; Node only for the pane's tests
-- Hermes Desktop ≥ 0.22 (the pane is a desktop plugin, loaded automatically)
+- Hermes Desktop: **not required today.** The pane's modules (tree, search,
+  blockers, drafts) ship and run under `node --test`, but no `desktop/plugin.js`
+  registered through `@hermes/plugin-sdk` exists yet, so Hermes Desktop does
+  not load the pane. Shipping that entry point is a stated future slice; the
+  tools above do not depend on it.
 
 Then ask your agent: *"show me the ready frontier in ~/code/myproj"* →
 `beads_frontier` answers with what `bd ready` sees, epics excluded.
