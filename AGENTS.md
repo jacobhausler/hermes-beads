@@ -57,3 +57,6 @@ hermes plugins validate .                # admission gate
 ```
 
 `BEADS_LAB_BD=/path/to/bd` pins the binary for probes (default: `bd` on PATH).
+CI must export `BEADS_LAB_BD`: `test_standalone.py` derives `FOREIGN_CWD`
+from the bd binary's directory, so an unpinned PATH-relative binary changes
+that fixture's location. Run the Node gate on Node 26.
