@@ -1,0 +1,142 @@
+# Team-standard CI for hermes-beads (issue #2). Reports ONE check, `gates`, which
+# the protect-main ruleset requires — without it the watcher computes ci=none and
+# the independent merge lane can never fire.
+#
+# The four gates mirror AGENTS.md ## Commands verbatim (the repo IS the standard):
+#   1. python3 tests/test_standalone.py        — standalone-without-Workflow parity
+#   2. per-file python suite (rc-propagating loop — no `|| true`, no swallowed
+#      status: the 0.1.0 wrapper bug printed FAILED next to EXIT=0)
+#   3. node --test tests/test_*.mjs            — pane + scenarios half, run from a
+#      NON-GIT copy: FACT-13 — `bd context` errors on the embedded store only when
+#      the process cwd sits outside any git repo; inside the CI checkout
+#      `git rev-parse` succeeds and the rc!==0 expectation flips (measured: red
+#      in-clone, green outside, run 36809486559-era repro + git-archive control).
+#   4. hermes plugins validate .               — manifest/validate against pinned core
+#
+# Provisioning: the tests' BEADS_LAB_BD default may encode a private seat path and
+# test_standalone derives FOREIGN_CWD from the bd binary's directory — so CI
+# provisions the PINNED bd itself: gastownhall/beads v1.3.0 linux_amd64 release
+# asset, triple-pinned (asset sha256 + the release's own checksums.txt + the
+# binary's version stamp == "bd version 1.3.0 (f45b249ce)"). Never green against
+# an unpinned bd. HERMES_VENV_PY is pinned explicitly: test_packaging/test_standalone
+# fall back to /opt/hermes/.venv/bin/python, which does NOT exist in this runner
+# layout (pip -e checkout symlinked to /opt/hermes), and the sys.executable
+# fallback would silently change the interpreter under the node lanes.
+# Pushing this file needs a token with the `workflow` scope.
+# HERMES_PIN = 40-char commit of the MEASURED requires_hermes floor: plugin.yaml
+# says requires_hermes ">=0.21" = the v2026.9.24 release (seat-verified):
+#   git ls-remote https://github.com/NousResearch/hermes-agent 'refs/tags/v2026.9.24^{}'
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+env:
+  HERMES_PIN: "f97608f178d1ffeca59860195ab7da295f7c8e5f"   # v2026.9.24 (>=0.21)
+  BD_PIN_SHA256: "2f92b904ecf35b607e44dc5c39229173af69c54f1183e8d709f1773540cdcf3b"   # beads_1.3.0_linux_amd64.tar.gz
+  BD_PIN_VERSION: "bd version 1.3.0 (f45b249ce)"
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    # Provisioning (hermes clone + pip -e + bd asset download 53MB + npm) plus the
+    # four gates. First green run must report its wall time in the PR evidence
+    # comment so this gets TIGHTENED to measured+50%, not left as a guess.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Match AGENTS.md's supported Node 26 gate: test_drafts.py checks the
+      # node:test spec summary (ℹ pass/fail), which Node 22's TAP default lacks.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The floor contract, installed FIRST: tests that import real core
+      # (hermes_constants, /opt/hermes shims) run against the pinned release, not
+      # a stub. `/opt/hermes` mirrors the seat layout some tests sys.path-insert.
+      - name: Install pinned hermes-agent (the measured floor)
+        run: |
+          git clone --filter=blob:none --quiet https://github.com/NousResearch/hermes-agent /tmp/hermes-agent
+          git -C /tmp/hermes-agent checkout --quiet "$HERMES_PIN"
+          pip install --quiet -e /tmp/hermes-agent
+          sudo ln -sfn /tmp/hermes-agent /opt/hermes
+          hermes --version
+
+      # Pin proof is threefold: byte sha256 of the downloaded asset, the same
+      # hash listed in the release's own checksums.txt, and the binary's own
+      # version string (bd stamps its build commit). Any mismatch fails here,
+      # before a single test runs.
+      - name: Provision pinned bd (v1.3.0 @ f45b249ce, asset triple-pinned)
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/bd-dist"
+          curl -fsSL -o /tmp/bd.tar.gz https://github.com/gastownhall/beads/releases/download/v1.3.0/beads_1.3.0_linux_amd64.tar.gz
+          curl -fsSL -o /tmp/bd-checksums.txt https://github.com/gastownhall/beads/releases/download/v1.3.0/checksums.txt
+          echo "$BD_PIN_SHA256  /tmp/bd.tar.gz" | sha256sum -c -
+          grep -q "^$BD_PIN_SHA256  beads_1.3.0_linux_amd64.tar.gz$" /tmp/bd-checksums.txt
+          tar -xzf /tmp/bd.tar.gz -C "$HOME/bd-dist" bd
+          chmod +x "$HOME/bd-dist/bd"
+          test "$("$HOME/bd-dist/bd" --version)" = "$BD_PIN_VERSION"
+          # Every lane reads this (python AND node — test_history/test_search/
+          # test_tree/test_mounted_smoke spawn bd too).
+          echo "BEADS_LAB_BD=$HOME/bd-dist/bd" >> "$GITHUB_ENV"
+          echo "$HOME/bd-dist" >> "$GITHUB_PATH"
+
+      # Seat-layout defaults get overridden for CI here (see header). The
+      # mounted-smoke lane imports jsdom at module level (Gate 3 dies without
+      # it) and needs a writable report dir.
+      - name: Provision test env (bd pinned above; core venv; React/jsdom)
+        run: |
+          set -euo pipefail
+          echo "HERMES_VENV_PY=$(command -v python3)" >> "$GITHUB_ENV"
+          echo "NODE_BIN=$(command -v node)" >> "$GITHUB_ENV"
+          echo "MOUNTED_REPORT_DIR=$RUNNER_TEMP/mounted-evidence" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/pane-deps"
+          cd "$HOME/pane-deps"
+          printf '{"name":"ci-pane-deps","private":true}\n' > package.json
+          npm install --no-audit --no-fund --loglevel=error react@19 react-dom@19 scheduler jsdom
+          echo "RICH_UI_NODE_MODULES=$HOME/pane-deps/node_modules" >> "$GITHUB_ENV"
+
+      - name: Gate 1 — standalone parity (python3 tests/test_standalone.py)
+        run: python3 tests/test_standalone.py
+
+      # AGENTS.md ## Commands: one file = one suite, first nonzero exits the gate.
+      # No `|| true` anywhere — a gate that cannot turn red buys false confidence
+      # (the 0.1.0 wrapper bug is the cautionary receipt).
+      - name: Gate 2 — python suite (rc-propagating per-file loop)
+        run: |
+          set -euo pipefail
+          for t in tests/test_*.py; do
+            echo "== $t"
+            python3 "$t" || exit 1
+          done
+
+      # Gate 3 runs from a git-archive copy (non-git cwd, FACT-13 — see header).
+      - name: Gate 3 — node tests (non-git cwd, FACT-13)
+        run: |
+          set -euo pipefail
+          DEST=$(mktemp -d)
+          git archive --format=tar HEAD | tar -C "$DEST" -xf -
+          test ! -d "$DEST/.git"
+          cd "$DEST"
+          node --test tests/test_*.mjs
+
+      - name: Gate 4 — plugin validate against pinned hermes-agent
+        run: hermes plugins validate .
