@@ -3,6 +3,35 @@
 All notable changes to this plugin are documented here.
 The format follows Keep-a-Changelog; versions follow SemVer.
 
+## [0.1.2] — 2026-10-02
+
+Security + honesty patch: the bd executable path is no longer model-controlled,
+handler boundaries fail as honest JSON, and the install story is two verified
+paths.
+
+### Security
+- `bd_bin` is no longer taken from the model: the bd executable path now comes
+  only from the `HERMES_BEADS_BD_BIN` env pin (or the default), closing an
+  exec-hijack surface where a model-supplied path could point `run_bd` at an
+  arbitrary binary. (PR #5, @teknium1)
+
+### Fixed
+- Handler boundary: an unexpected `ValueError` now returns an honest `_fail`
+  JSON result instead of raising through the tool surface; `beads_update`
+  reports its true settable field list; the README pane claim is honest about
+  what ships. (PR #6)
+
+### Docs
+- Two-path install story: Tier 1 (plugin-only over any `bd` on PATH) is
+  verified by `scripts/verify-tier1.sh` + `tests/test_install_tiers.py`;
+  Tier 2 (desktop pane) is documented with its version-pinned Hermes Desktop
+  requirement in `docs/install.md`. (PR #8)
+
+### CI
+- Team-standard gates workflow: Node 26 gate, pinned-bd fixture boundary
+  documented (PR #4); `.github/workflows` kept tracked and gate-3 npm deps
+  pinned exactly (PR #7).
+
 ## [0.1.1] — 2026-10-01
 
 Honest-surface release: the plugin now ships only what is wired, exercised,

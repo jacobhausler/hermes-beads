@@ -1,5 +1,5 @@
 name: hermes-beads
-version: 0.1.1
+version: 0.1.2
 description: Native Beads (bd) work-graph plugin — fixed-argv adapter, scoped ready frontier, claim with read-back, guarded writes
 description_long: |
   Thin plugin boundary to the bd CLI: explicit store path + actor, fixed argv
