@@ -25,7 +25,11 @@ blockers and the ones inherited through parents, with a breadcrumb home:
 | **The pane** | Hermes Desktop tree with search, blocker jumps (direct and inherited), claim buttons, and a draft editor whose changes only land through the bot door — the panel never writes behind `bd`'s back |
 | **Escape hatch intact** | uninstall the plugin and `bd` alone still does everything; nothing here locks your data into a private format or daemon |
 
-## Install
+## Install — two tiers
+
+Full contract with the tier-2 patch snippet: **[docs/install.md](docs/install.md)**.
+
+### Tier 1 — happy path (stock core; pane absent, honestly)
 
 ```sh
 hermes plugins install jacobhausler/hermes-beads
@@ -34,17 +38,35 @@ hermes plugins enable hermes-beads
 
 Restart the backend (`hermes serve`) so the tools mount. Requirements:
 
-- **bd 1.3.0+** on `PATH` — [releases](https://github.com/steveyegge/beads/releases) (`brew install beads`, or grab a tarball; verify against `checksums.txt`); set `HERMES_BEADS_BD_BIN=/path/to/bd` in the backend's environment to use a specific binary (the tools never take a binary path from the model)
+- **bd 1.3.0+**, configured by the operator — on `PATH`, or
+  `HERMES_BEADS_BD_BIN=/path/to/bd` in the backend's environment (the tools
+  never take a binary path from the model) — [releases](https://github.com/steveyegge/beads/releases)
+  (`brew install beads`, or grab a tarball; verify against `checksums.txt`)
 - Hermes Agent ≥ 0.21 (stock — **no patched core required**)
 - Python 3, stdlib only; Node only for the pane's tests
-- Hermes Desktop: **not required today.** The pane's modules (tree, search,
-  blockers, drafts) ship and run under `node --test`, but no `desktop/plugin.js`
-  registered through `@hermes/plugin-sdk` exists yet, so Hermes Desktop does
-  not load the pane. Shipping that entry point is a stated future slice; the
-  tools above do not depend on it.
+
+You get the six `beads_*` agent tools and their rich JSON cards. The desktop
+pane is **not part of this tier**: no `desktop/plugin.js` registered through
+`@hermes/plugin-sdk` ships today, so Hermes Desktop does not load the pane —
+nothing about it "helpfully arrives" behind your back. Verify it yourself:
+`scripts/verify-tier1.sh` enables the plugin into a throwaway `HERMES_HOME`
+under `$TMPDIR`, proves the tools mount and the pane stays absent, and scans
+the shipped docs for false pane tells (this runs in CI).
 
 Then ask your agent: *"show me the ready frontier in ~/code/myproj"* →
 `beads_frontier` answers with what `bd ready` sees, epics excluded.
+
+### Tier 2 — full features (OPTIONAL Hermes Desktop patch; documented only)
+
+Want the workbench pane? It exists and is fully tested under `node --test`,
+but it only runs when Hermes Desktop loads it — and that needs an optional,
+**version-pinned patch to Hermes Desktop** exposing the plugin-SDK entry
+point that wires `desktop/*.mjs` to the host-injected reads/provider/
+telemetry/botView (`desktop/workbench.mjs:45-58`). The patch is documented —
+pinned to Hermes Desktop v2026.9.24, with update/reset restore notes — in
+[docs/install.md](docs/install.md); the real `desktop/plugin.js` entry point
+is a stated follow-up slice. Until it merges, Tier 2 is a proposal, not a
+supported install.
 
 ## How it's built
 
