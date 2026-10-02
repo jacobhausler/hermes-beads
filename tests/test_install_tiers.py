@@ -109,7 +109,7 @@ class DocHonesty(unittest.TestCase):
 
     def test_false_tell_detector_is_live_control(self):
         planted = {"probe.md": "Boot the pane? It loaded automatically.\n"
-                              "The pane loads automatically every time."}
+                              "The pane was automatically loaded at startup."}
         self.assertEqual(len(false_tell_hits(planted)), 2,
                          "false-tell detector is dead")
 
