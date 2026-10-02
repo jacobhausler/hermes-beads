@@ -111,7 +111,7 @@ jobs:
           mkdir -p "$HOME/pane-deps"
           cd "$HOME/pane-deps"
           printf '{"name":"ci-pane-deps","private":true}\n' > package.json
-          npm install --no-audit --no-fund --loglevel=error react@19 react-dom@19 scheduler jsdom
+          npm install --no-audit --no-fund --loglevel=error react@19.3.0 react-dom@19.3.0 scheduler@0.28.0 jsdom@30.1.1
           echo "RICH_UI_NODE_MODULES=$HOME/pane-deps/node_modules" >> "$GITHUB_ENV"
 
       - name: Gate 1 — standalone parity (python3 tests/test_standalone.py)
