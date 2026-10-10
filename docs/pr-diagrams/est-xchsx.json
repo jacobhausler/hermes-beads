@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "PR-Diagram Enforcement Chain \u2014 submit \u2192 gate \u2192 event \u2192 digest",
+    "quality_profile": "showcase",
+    "output": "pr-feed-enforcement.html"
+  },
+  "lanes": [
+    {
+      "id": "author",
+      "label": "Author side"
+    },
+    {
+      "id": "platform",
+      "label": "GitHub platform"
+    },
+    {
+      "id": "estate",
+      "label": "Estate lane"
+    },
+    {
+      "id": "record",
+      "label": "Record",
+      "variant": "exception"
+    },
+    {
+      "id": "instrument",
+      "label": "Instruments"
+    }
+  ],
+  "phases": [
+    {
+      "id": "gate",
+      "label": "Two paths, one PR",
+      "fromCol": 0,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "event",
+      "label": "Event lane + instruments",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "author",
+    "gate",
+    "branch",
+    "main"
+  ],
+  "nodes": [
+    {
+      "id": "author",
+      "lane": "author",
+      "col": 0,
+      "type": "external",
+      "label": "Bot / Agent",
+      "sublabel": "opens PR via gh or API",
+      "width": 150
+    },
+    {
+      "id": "gate",
+      "lane": "platform",
+      "col": 1,
+      "type": "security",
+      "label": "pr-compliance gate",
+      "sublabel": "fail-closed diagram-check",
+      "width": 168
+    },
+    {
+      "id": "branch",
+      "lane": "platform",
+      "col": 2,
+      "type": "database",
+      "label": "Diagram on head",
+      "sublabel": "docs/pr-diagrams/*.png",
+      "width": 162
+    },
+    {
+      "id": "main",
+      "lane": "platform",
+      "col": 3,
+      "type": "security",
+      "label": "Protected main",
+      "sublabel": "required check + admins",
+      "width": 164
+    },
+    {
+      "id": "hook",
+      "lane": "estate",
+      "col": 0,
+      "type": "messagebus",
+      "label": "Webhook receiver",
+      "sublabel": "HMAC verify, rhuidean",
+      "width": 164
+    },
+    {
+      "id": "spool",
+      "lane": "estate",
+      "col": 3,
+      "type": "database",
+      "label": "Spool file",
+      "sublabel": "inbox delivery = event",
+      "width": 154
+    },
+    {
+      "id": "feed",
+      "lane": "estate",
+      "col": 4,
+      "type": "backend",
+      "label": "pr-feed --event",
+      "sublabel": "watcher 2s poll, flock claim",
+      "width": 170
+    },
+    {
+      "id": "digest",
+      "lane": "record",
+      "col": 5,
+      "type": "frontend",
+      "label": "#dev-digest post",
+      "sublabel": "real-named PNG attached",
+      "width": 160
+    },
+    {
+      "id": "witness",
+      "lane": "instrument",
+      "col": 5,
+      "type": "backend",
+      "label": "Instruments",
+      "sublabel": "ratio witness + gum-watch",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-author-gate",
+      "from": "author",
+      "to": "gate",
+      "label": "pull_request/opened",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-gate-branch",
+      "from": "gate",
+      "to": "branch",
+      "label": "PNG OR C2 token"
+    },
+    {
+      "id": "e-branch-main",
+      "from": "branch",
+      "to": "main",
+      "label": "green check"
+    },
+    {
+      "id": "e-author-hook",
+      "from": "author",
+      "to": "hook",
+      "label": "GitHub delivery"
+    },
+    {
+      "id": "e-hook-spool",
+      "from": "hook",
+      "to": "spool",
+      "label": "verified file"
+    },
+    {
+      "id": "e-spool-feed",
+      "from": "spool",
+      "to": "feed",
+      "label": "fires --event"
+    },
+    {
+      "id": "e-feed-digest",
+      "from": "feed",
+      "to": "digest",
+      "label": "one post, no double",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-branch-feed",
+      "from": "branch",
+      "to": "feed",
+      "label": "diagram = trigger",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-main-witness",
+      "from": "main",
+      "to": "witness",
+      "label": "merged PRs",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-feed-witness",
+      "from": "feed",
+      "to": "witness",
+      "label": "state rows",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Unavoidable by construction",
+      "items": [
+        "Gate runs at GitHub on the head SHA \u2014 nothing for a submitter to remember or skip",
+        "Diagram PNG on branch OR two-claim C2 token; workflow error = red = blocked (fail-closed)",
+        "5-min lap re-applies required check + enforce_admins \u2014 single writer, guard watches the lock"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Honest edges",
+      "items": [
+        "Form checked, not truth \u2014 reviewer reads the PNG first, then the diff",
+        "Same-token admin bypass stays detectable, not preventable (403 below Pro, both estates)",
+        "exempt:diagram ratio (30d) is the only thing that catches the diligent liar"
+      ]
+    }
+  ]
+}
