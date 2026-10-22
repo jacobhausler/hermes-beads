@@ -44,7 +44,6 @@ jobs:
   contract-call:
     name: contract-call (declared caller; flips live at P2)
     if: false
-    continue-on-error: true
     uses: jacobhausler/estate-ci/.github/workflows/estate-ci.yml@v1
     with:
       legs: '[{"label":"floor","python":"3.12","hermes_pin":"floor"},{"label":"tip","python":"3.12","hermes_pin":"tip"}]'
