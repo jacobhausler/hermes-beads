@@ -1,0 +1,66 @@
+# ci-contract: jacobhausler/estate-ci@v1
+# P1 observe wiring for the estate-ci contract (NEXTGEN-CI.md (e) P1; (d) S7).
+# OBSERVE ONLY — nothing here changes a merge-blocking answer:
+#   * preflight-observe runs the CONTRACT's OWN preflight script, fetched at
+#     the pinned tag @v1, against this checkout, and reports the verdict.
+#     It is not a required check, it writes no commit status, and the job
+#     exits 0 whatever preflight says.
+#   * contract-call below is the declared caller for P2: `if: false` at P1 so
+#     zero jobs of the contract graph execute yet; it still exists for
+#     preflight to machine-check the pin line, the ref (tag), the seven
+#     knobs, and the artifact prefix — the canary's trick pointed back at
+#     this repo.
+# Mirrors the estate-ci canary hb block (spec (b) hb row): floor+tip arms,
+# py+node components, ledger-hb artifact.
+name: estate-ci-observe
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  preflight-observe:
+    name: preflight-observe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      IN_LEGS: '[{"label":"floor","python":"3.12","hermes_pin":"floor"},{"label":"tip","python":"3.12","hermes_pin":"tip"}]'
+      IN_COMPONENTS: '["py","node","pkg","doc"]'
+      IN_SHARDS: auto
+      IN_LANE_CAP_S: '150'
+      IN_BUDGET: tests/budget.json
+      IN_PATHS: default
+      IN_ARTIFACT_GATE: '{"provenance_dir":"tests/runs","artifact_name":"ledger-hb","retention_days":90}'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: contract preflight, OBSERVE (fetch @v1, run verbatim, never red)
+        run: python3 scripts/ci_preflight_observe.py
+
+  contract-call:
+    name: contract-call (declared caller; flips live at P2)
+    if: false
+    # estate-ci@v1 declares actions/pull-requests/statuses: write. GitHub
+    # startup-FAILS (not job-fails) a reusable-call job whose effective token
+    # permissions are below the called workflow's block, so the grant must
+    # exist for the run to even parse. It is scoped to THIS job — which
+    # `if: false` guarantees executes zero jobs at P1 — and the workflow
+    # default stays contents: read.
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: write
+      statuses: write
+    uses: jacobhausler/estate-ci/.github/workflows/estate-ci.yml@v1
+    with:
+      legs: '[{"label":"floor","python":"3.12","hermes_pin":"floor"},{"label":"tip","python":"3.12","hermes_pin":"tip"}]'
+      components: '["py","node","pkg","doc"]'
+      shards: auto
+      lane_cap_s: 150
+      budget: tests/budget.json
+      paths: default
+      artifact-gate: '{"provenance_dir":"tests/runs","artifact_name":"ledger-hb","retention_days":90}'

@@ -1,0 +1,2326 @@
+[
+  {
+    "case": "tests/test_b9s_drift.mjs::b9s pinned binary still reads the embedded-dolt store class",
+    "tier": 1,
+    "burn": 0.0011,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::BlockerCard renders target, ancestors, blockers, lease; NO mutation affordance",
+    "tier": 1,
+    "burn": 0.0013,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::BlockersDoor: renders on blocked rows, absent on clean rows, disabled-with-reason without the provider, and clicks reach onOpen",
+    "tier": 1,
+    "burn": 0.0014,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::Return rule: the card's ONLY affordance calls onReturn (root wires returnFromCard, not rerender)",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::S2 restore: jump then ONE back restores selection/focus/expansion/filter/search/tab/pane/scroll",
+    "tier": 1,
+    "burn": 0.0011,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::assertReadArgv: reads pass, every mutation verb/flag refused by name",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::badge honesty: no blocked read => unknown, never inferred",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::blockersFor: direct typed, inherited with source path, closed dropped",
+    "tier": 1,
+    "burn": 0.0023,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::buildBlockerCard: ancestry carried, lease shown, no mutation surface",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::edges distinguished: incoming blockers vs outgoing dependents vs parent-child",
+    "tier": 1,
+    "burn": 0.0008,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::jump pushes onto the single history stack in lockstep with the model",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::jumpToBlocker only issues read commands through the provider",
+    "tier": 1,
+    "burn": 0.002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::native external close: refresh flips derived badge; focus never auto-jumps",
+    "tier": 1,
+    "burn": 12.1511,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::one-press return via the app-back gesture (Alt+ArrowLeft \u2192 history-back)",
+    "tier": 1,
+    "burn": 0.0008,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_blockers.mjs::unknown edge types preserved verbatim, never classified as blockers",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::askDecision refuses an ok:true ask as a fabricated delivery",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::askDecision reports read-only ask with the exact typed refusal",
+    "tier": 1,
+    "burn": 0.0011,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::bot_action.mjs imports ONLY react/jsx-runtime and is I/O-free (purity source audit)",
+    "tier": 1,
+    "burn": 0.0011,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::refineToDraft lands the bot proposal in the human draft store only",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::refineToDraft without human-accept requirement is refused",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::reopenBotDraft on a missing draft is honest, never fabricated",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::reopenBotDraft returns the stored draft and preserves it",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::work control flips to enabled only when the runner door is bound",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_bot_action.mjs::work control renders present-but-disabled with the typed reason",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_ci_hygiene.py::test_a_ci_workflow_is_tracked_and_not_ignored",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_ci_hygiene.py::test_b_gate3_npm_install_uses_exact_pins",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_blocked_then_closed_unblocks_clean_claim",
+    "tier": 1,
+    "burn": 6.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_claim_bypasses_readiness_and_surfaces_blocker",
+    "tier": 1,
+    "burn": 6.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_claim_requires_explicit_actor",
+    "tier": 1,
+    "burn": 5.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_heartbeat_after_release_survives_or_refuses_honestly",
+    "tier": 1,
+    "burn": 8.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_inherited_parent_blockage_is_not_plainly_workable",
+    "tier": 1,
+    "burn": 6.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_missing_issue_surfaces_named_native_error",
+    "tier": 1,
+    "burn": 3.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_named_blocked_work_is_refused_before_mutation",
+    "tier": 1,
+    "burn": 4.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_no_force_flags_anywhere",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_non_owner_heartbeat_is_named_failure",
+    "tier": 1,
+    "burn": 5.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_owner_heartbeat_refreshes_lease",
+    "tier": 1,
+    "burn": 10.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_q1_claim_readback_equality",
+    "tier": 1,
+    "burn": 6.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_q2_same_actor_reclaim_idempotent",
+    "tier": 1,
+    "burn": 9.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_q3_distinct_actor_conflict_names_holder",
+    "tier": 1,
+    "burn": 3.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_q6_claim_after_release_by_another",
+    "tier": 1,
+    "burn": 4.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_q7_former_loser_reclaim_refused_holder_intact",
+    "tier": 1,
+    "burn": 5.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_q8_cas_release_mismatch_names_holder_writes_nothing",
+    "tier": 1,
+    "burn": 3.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_q9_holder_release_succeeds",
+    "tier": 1,
+    "burn": 6.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_claims.py::test_ready_is_advisory_and_absent_after_claim",
+    "tier": 1,
+    "burn": 5.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_available_guards_pass_over_stale_content",
+    "tier": 1,
+    "burn": 4.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_blind_replacement_refused_without_opt_in",
+    "tier": 1,
+    "burn": 4.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_candidate_content_guard_flags_are_rejected",
+    "tier": 1,
+    "burn": 3.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_contract_declares_cas_unsupported_and_not_advertised",
+    "tier": 1,
+    "burn": 3.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_cross_actor_description_edit_under_live_claim",
+    "tier": 1,
+    "burn": 3.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_edit_command_has_no_content_guard",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_native_capability_absent_blind_overwrite_observed",
+    "tier": 1,
+    "burn": 5.7,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_preflight_detects_racing_writer_but_leaves_toctou_window",
+    "tier": 1,
+    "burn": 3.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_revision_is_telemetry_not_a_precondition",
+    "tier": 1,
+    "burn": 4.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_unsafe_opt_in_is_per_call_and_explicit",
+    "tier": 1,
+    "burn": 4.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_content_guard.py::test_update_help_exposes_only_actor_state_guards",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::Save disabled path never clears the draft (no silent discard on failed submission)",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter WITHOUT remove: honest session-only warning; discard stays discarded",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter declared unavailable: honest warning, not fake success",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter losing remove mid-session: discard returns false, durability drops, draft survives",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter throwing on get during setup probe: durable rejected, later discard cannot resurrect",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter throwing on keys: durability() must flip to memory-only with session-only warning",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter throwing on remove at setup: memory-only + storage-error; discard is honestly complete",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter throws mid-write: honest storage-error warning + in-session draft survives",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::append-only suggestion remains usable while Save is disabled",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::capability truth: CONTENT_CAS_SUPPORTED is a hard false",
+    "tier": 1,
+    "burn": 0.0025,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::capacity limit: saves beyond maxDrafts are refused, existing drafts intact",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::copyText and exportText hand out content without touching the draft",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::corrupt stored draft is dropped and surfaces null, never a crash",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::cross-workspace/reload isolation: drafts never cross store boundaries",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::desktop/drafts.mjs is pure: no fs/child_process/localStorage/window/DOM/bd reach",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::diff, reload and cancel preserve the draft; only explicit discard clears it",
+    "tier": 1,
+    "burn": 0.0014,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::discard after degrade with a revoked remove reports false and keeps the draft visible",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::discard after non-remove capability failure clears storage; no reload resurrection",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::draftKey is canonical store identity + bead ID and isolates every axis",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::draftLimitationNotice states the missing safe edit as a product limitation",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::editDecision: Save disabled without proven guard; draft/copy/export/suggestion stay enabled; no fake success",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::incomplete adapter: pre-seeded draft from an earlier durable run stays gone after discard",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::loaded draft is cleared after later storage degradation",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::no durable adapter: honest memory-only warning, drafts still work in-session",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::proven save where the draft clear FAILS reports the un-cleared draft honestly",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::proven save with a working clear reports draftCleared true",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::supported durable storage preserves drafts across simulated reload",
+    "tier": 1,
+    "burn": 0.0013,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::supported save path clears the draft only after read-back proof",
+    "tier": 1,
+    "burn": 0.0008,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::supported save path with missing/failing read-back keeps the draft",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::throwing remove is terminal: durability never flips back to durable",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.mjs::write that persists then throws still requires storage-side discard",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.py::test_concurrent_description_change_owner_status_unchanged_not_exit13",
+    "tier": 1,
+    "burn": 3.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.py::test_docs_contract_owns_capability_truth",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.py::test_drafts_module_declares_no_second_backend",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.py::test_guard_mismatch_control_still_exits_13",
+    "tier": 1,
+    "burn": 3.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.py::test_node_draft_suite_green",
+    "tier": 1,
+    "burn": 0.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.py::test_pinned_draft_key_matches_model_store_identity",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.py::test_runtime_fixture_root_is_git_ignored",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_drafts.py::test_save_disabled_pinned_to_shipped_capability_flag",
+    "tier": 1,
+    "burn": 2.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_e2e.py::test_no_comment_delete_verb",
+    "tier": 1,
+    "burn": 3.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_e2e.py::test_ready_claim_edit_evidence_close_successors",
+    "tier": 1,
+    "burn": 8.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_e2e.py::test_replacement_refused_by_default_state_untouched",
+    "tier": 1,
+    "burn": 4.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_e2e.py::test_self_fail_subprocess_exits_nonzero",
+    "tier": 1,
+    "burn": 0.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_e2e.py::test_selfdestruct_actually_fails",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_e2e.py::test_stale_guard_writes_nothing_and_reports_fresh",
+    "tier": 1,
+    "burn": 6.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_fixture_orphan_sweep.py::test_make_store_sweeps_only_stale_known_prefix_dirs",
+    "tier": 2,
+    "burn": 13.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_fixture_teardown.py::test_teardown_removes_owned_and_spares_foreign",
+    "tier": 2,
+    "burn": 12.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::HistoryPanel renders the stack as its own widget, fed only entries+index",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::breadcrumb dots are clickable and jump to exactly the dot's id",
+    "tier": 1,
+    "burn": 0.001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::breadcrumb re-resolves live after a reparent \u2014 same API, fresh snapshot",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::breadcrumb renders the parent-FIELD path while its own ID is dotted-wrong",
+    "tier": 1,
+    "burn": 0.0008,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::corrupted/cyclic chain terminates with an explicit error, never a hang",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::filtered-out ancestor surfaces as contextual path with the filter reason",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::history Set expansion normalizes; capacity bounds keep the current position",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::history stack: push/back/forward index semantics + forward-tail truncation",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::immutable restore: entries are frozen deep clones; caller mutation cannot poison the stack",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::independence: breadcrumb reads no history state; history module keeps zero imports/state",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::initial history rejects foreign workspaces and obeys capacity",
+    "tier": 1,
+    "burn": 0.0019,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::missing grandparent is contextual, never a clickable invented record",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::missing parent stays visible as contextual path with reason; not clickable",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::native ancestor outside the bounded read renders as contextual missing-parent path",
+    "tier": 1,
+    "burn": 4.8832,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::native delete of the parent: dotted ID survives, parent FIELD is truth (no phantom ancestor)",
+    "tier": 1,
+    "burn": 5.5806,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::native reparent (hci case): create without parent, then --parent move \u2014 breadcrumb follows the parent FIELD",
+    "tier": 1,
+    "burn": 6.3552,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::read-once: breadcrumb render performs no new reads (snapshot injected, chain re-derived)",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::restore bundle carries EVERY contract field incl filter/search/tab/pane/focus/scroll/expansion",
+    "tier": 1,
+    "burn": 0.0015,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::workspace isolation: per-store stacks never share entries, drafts or context",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_history.mjs::wrong-store bundle is refused, not absorbed",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_false_tell_detector_is_live_control",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_install_doc_declares_tiers_pin_and_restore_notes",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_readme_declares_two_tiers_and_links_install_doc",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_receipt_shows_plugin_and_all_six_tools_mounted",
+    "tier": 1,
+    "burn": 2.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_scratch_home_is_tempdir_not_repo",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_shipped_docs_carry_no_false_pane_tell",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_verify_script_green",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::blockers: typed direct, closed-filtered, multiple, inherited via parent chain",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::bounded: missing parent is parent-missing (NOT deleted); truncation distinct; tombstone=deleted",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::claimed-not-ready regression: absent from ready AND blocked => unknown, never inferred blocked",
+    "tier": 1,
+    "burn": 0.0001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::derived blocked vs stored 'blocked' divergence flagged both ways",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::freshness: TTL staleness + local-mutation invalidation",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::parent cycle terminates with explicit marker, no hang, no children expansion",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::read budget: each injected read-fn invoked at most once on a 150-issue fixture",
+    "tier": 1,
+    "burn": 0.002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::reparent truth: ID-dot spelling ignored after move",
+    "tier": 1,
+    "burn": 0.0012,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::search reveal API: revealed hit rows are workbench state, NEVER snapshot nodes; unknown parentage renders as an honest boundary row",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::selection vs focus, arrows, Enter, back/forward return context",
+    "tier": 1,
+    "burn": 0.0012,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::snapshot joins fixtures: parent FIELD chains, depth, breadcrumb",
+    "tier": 1,
+    "burn": 0.0017,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::store identity: workspace+db key; missing part refused",
+    "tier": 1,
+    "burn": 0.0016,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::tree expansion respects cycles: cyclic node not descended",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_model.mjs::unknown status/type/edge values preserved verbatim",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::bot runState: role=status renders the door state verbatim; Cancel enabled only in admitted/running; no success text unless succeeded",
+    "tier": 1,
+    "burn": 0.1043,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::bot_action: botActionPanel emits REAL jsx and mounts UNCONVERTED with Work disabled",
+    "tier": 1,
+    "burn": 0.0302,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::compare pane can never mount again (file deleted)",
+    "tier": 1,
+    "burn": 0.0201,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::doors: '/' and Ctrl+/ focus the search input from the tree; ShortcutHelp lists the new bindings",
+    "tier": 1,
+    "burn": 0.0241,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::doors: blocked row shows a visible blockers button AND Ctrl+b opens the card; Return button and Alt+ArrowLeft each clear the card and restore origin selection/focus (one press = one step)",
+    "tier": 1,
+    "burn": 1.4408,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::doors: missing facade => controls present-but-disabled with a visible reason, never a throw; host-injected card Return still clears",
+    "tier": 1,
+    "burn": 0.5835,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::doors: type query into the search input -> listbox; ArrowDown moves aria-selected AND document focus to hit 2; Enter lands IN the tree; letters in the input never reach the tree keymap",
+    "tier": 1,
+    "burn": 0.2405,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::drafts: survive unmount/remount via the injected storage; report memory-only when storage throws",
+    "tier": 1,
+    "burn": 0.0646,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::hostile titles: rendered as escaped TEXT; zero <script>/<img> and zero on* attributes in DOM",
+    "tier": 1,
+    "burn": 0.6392,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::keyboard: arrows move the cursor, Enter promotes focus, collapse/expand via arrows, x/Esc inert",
+    "tier": 1,
+    "burn": 0.2731,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::mounted session never mutated the store (before/after list_all JSON equality)",
+    "tier": 1,
+    "burn": 0.3601,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::mounted tree: real React DOM with treeitem roles, aria-level/expanded, roving tab stop",
+    "tier": 1,
+    "burn": 0.1066,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::prefers-reduced-motion probed via matchMedia stub; no fixed px widths in inline styles",
+    "tier": 1,
+    "burn": 0.0253,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::search/record/blockers/compare mount with live DOM evidence",
+    "tier": 1,
+    "burn": 1.869,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::telemetry: real user paths emit whitelisted events on the shipped root",
+    "tier": 1,
+    "burn": 1.2354,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::visual layer (F1-F7): one shipped <style> with :focus-visible; roving document focus; separated card/row fields",
+    "tier": 1,
+    "burn": 0.7811,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_absent_bd_is_named_error_not_empty",
+    "tier": 1,
+    "burn": 2.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_argv_must_be_fixed_list",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_claim_conflict_never_silent_steal",
+    "tier": 1,
+    "burn": 4.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_claim_readback_and_heartbeat",
+    "tier": 1,
+    "burn": 6.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_exit0_failed_json_is_rejected",
+    "tier": 1,
+    "burn": 3.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_guard_mismatch_exit_13_writes_nothing",
+    "tier": 1,
+    "burn": 3.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_hostile_workspace_named_errors",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_max_rows_circuit_breaker_is_error_not_empty",
+    "tier": 1,
+    "burn": 5.4,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_readonly_blocks_writes",
+    "tier": 1,
+    "burn": 5.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_ready_scoped_by_label_is_honest_empty",
+    "tier": 1,
+    "burn": 4.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_show_returns_exact_id",
+    "tier": 1,
+    "burn": 4.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_store_info_identity",
+    "tier": 1,
+    "burn": 3.7,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_native.py::test_version_and_smoke_receipt",
+    "tier": 1,
+    "burn": 4.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_backend_unavailable_is_named_error_not_empty",
+    "tier": 1,
+    "burn": 4.4,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_claims_layer_discloses_holder_without_steal",
+    "tier": 1,
+    "burn": 5.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_honest_empty_when_everything_claimed",
+    "tier": 1,
+    "burn": 4.4,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_label_empty_vs_backend_empty_via_listing",
+    "tier": 1,
+    "burn": 4.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_max_rows_exit2_raises_breaker",
+    "tier": 1,
+    "burn": 4.7,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_native_boundary_readonly_argv_and_exit1",
+    "tier": 1,
+    "burn": 4.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_native_close_escape_hatch_stays_open",
+    "tier": 1,
+    "burn": 4.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_native_refusal_exit1_failed_names_holder",
+    "tier": 1,
+    "burn": 4.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_no_close_or_reopen_argv_anywhere",
+    "tier": 1,
+    "burn": 0.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_protocol_stale_single_argv_business_fields_unchanged",
+    "tier": 1,
+    "burn": 4.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_raw_guard_mismatch_exit13_envelope",
+    "tier": 1,
+    "burn": 4.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_raw_readonly_refuses_exact_strings",
+    "tier": 1,
+    "burn": 4.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_readonly_is_policy_convenience_not_isolation",
+    "tier": 1,
+    "burn": 3.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_readonly_reads_still_work",
+    "tier": 1,
+    "burn": 3.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_suite_fixture_helper_uses_unique_actors",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_negative.py::test_zero_force_or_fake_cas_tokens_in_argv_call_sites",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_packaging.py::test_archive_contents_exact",
+    "tier": 1,
+    "burn": 0.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_packaging.py::test_control_private_scan_is_live",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_packaging.py::test_desktop_sources_parse",
+    "tier": 1,
+    "burn": 0.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_packaging.py::test_no_private_or_lab_strings",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_packaging.py::test_stock_admission_validator_passes",
+    "tier": 1,
+    "burn": 2.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_packaging.py::test_stock_load_then_uninstall_isolated",
+    "tier": 1,
+    "burn": 1.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_blocked_uses_native_semantics_with_client_bound",
+    "tier": 1,
+    "burn": 6.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_children_include_closed_like_native_alias",
+    "tier": 1,
+    "burn": 7.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_comments_history_parity",
+    "tier": 1,
+    "burn": 7.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_empty_ids_refused_before_any_process",
+    "tier": 1,
+    "burn": 4.4,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_fixed_argv_shape_no_shell_composition",
+    "tier": 1,
+    "burn": 2.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_frontier_parity_same_shell_native_ready",
+    "tier": 1,
+    "burn": 7.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_hostile_inputs_fail_named_never_empty",
+    "tier": 1,
+    "burn": 2.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_live_circuit_breaker_native_semantics",
+    "tier": 1,
+    "burn": 6.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_missing_id_preserves_native_error_envelope",
+    "tier": 1,
+    "burn": 4.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_receipt_replay_pipe_masked_exit1_is_error_not_empty",
+    "tier": 1,
+    "burn": 3.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_receipt_replay_stdout_failed_body_exit0_is_rejected",
+    "tier": 1,
+    "burn": 3.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_replay_exit2_is_circuit_breaker_not_empty",
+    "tier": 1,
+    "burn": 2.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_show_list_children_query_parent_parity",
+    "tier": 1,
+    "burn": 6.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_unbounded_usage_refused",
+    "tier": 1,
+    "burn": 3.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_read_model.py::test_verbatim_preservation_of_unknown_values",
+    "tier": 1,
+    "burn": 3.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_record.mjs::agreement case renders derived readiness with NO warning",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_record.mjs::dep-tree READY badge on the record never drives derived readiness",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_record.mjs::divergence case: stored 'blocked' with native-ready renders BOTH plus a warning",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_record.mjs::malicious-looking unknown values render as plain text children, never markup",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_record.mjs::unknown status/type/edge type survive read->render->re-emit verbatim; raw record unchanged",
+    "tier": 1,
+    "burn": 0.0028,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::S1 orient: Ready/Mine tabs, epic rail, store header \u2014 all vs same-moment readbacks",
+    "tier": 2,
+    "burn": 3.3424,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::S10 inherited multi-blocker: x10 shows inherited g1,g2 (via p10) plus direct g3",
+    "tier": 2,
+    "burn": 15.1437,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::S3 derived-blocked badge vs stored open + external close flips to ready on refresh",
+    "tier": 2,
+    "burn": 4.4006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::S4 search reveals ancestor path; Enter lands in tree, back restores",
+    "tier": 2,
+    "burn": 1.0464,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::model blockersFor: closed blocker drops out of list-sourced snapshots too (status resolved via snapshot record)",
+    "tier": 2,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_b.mjs::S5 claim contention: second actor refused naming holder, readback assignee unchanged, UI never shows two assignees",
+    "tier": 2,
+    "burn": 4.8373,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_b.mjs::S5 dead worker: lease lapses, reclaim --older-than returns it to open, another claim succeeds, UI never shows two assignees",
+    "tier": 2,
+    "burn": 312.1788,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_c.mjs::S2 negative control (SCENARIO_NEGATIVE=1): Ready INCLUDES the claimed row",
+    "tier": 2,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_c.mjs::S2: x-jump to the cross-branch blocker card, Esc restores the bundle byte-identical, draft survives, Save honestly unsupported",
+    "tier": 2,
+    "burn": 3.5528,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_c.mjs::S6: external CLI edit surfaces a conflict; reload only after explicit confirm; save path honestly unsupported",
+    "tier": 2,
+    "burn": 1.923,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_scenarios_c.mjs::negative control harness: SCENARIO_NEGATIVE=1 child run exits nonzero naming the broken test",
+    "tier": 2,
+    "burn": 22.654,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::Enter lands IN the tree: focus+selection on the hit, ancestors expanded, history pushed, Back restores pre-search state incl. the query",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::Enter on an out-of-filter hit still lands in the tree (jump works without a list row)",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::REGRESSION: out-of-snapshot hit whose ancestors are ALL in the snapshot resolves root\u2192hit (unshift-order bug)",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::REVEAL ACCEPTANCE (hitVisible): Enter on an out-of-snapshot hit makes the ACTUAL hit row visible with correct ancestry; Back restores visible rows/filter/query/focus/expansion",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::REVEAL ACCEPTANCE (unknown parentage): a hit with no authoritative parent still becomes a visible row \u2014 never a crowned root, no invented parentage",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::REVEAL AUDIT (actual model state): Enter on an out-of-snapshot hit expands the real workbench, not just history claims",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::S4 equality: 'branch B' hits carry full parent-field paths; no per-hit native calls",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::SearchPanel: ArrowDown/ArrowUp move the cursor AND focus the hit; onKeyDown is wired",
+    "tier": 1,
+    "burn": 0.0013,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::a query that looks like an ID earns NO fallback lookup (exclusion: no ID-spelling inference)",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::bounded fallback resolves a missing ancestor: labeled, call-count bounded",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::fallback exhaustion surfaces a visible unavailable state \u2014 never a show loop",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::hit absent from the snapshot is revealed as unknown-hit via the fallback, visible on Back",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::missing parent from the bounded snapshot renders an explicit ancestor-missing state, no calls",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::native S4: real bd search hits enriched with snapshot paths; call-bound asserted; reparented no-dot case shows true path",
+    "tier": 1,
+    "burn": 8.6971,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::native fallback path: out-of-page ancestor resolved under budget, exhaustion stays visible",
+    "tier": 1,
+    "burn": 8.8067,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::out-of-snapshot hit's OWN parent comes from the authoritative showRead row",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::parent cycle terminates with an explicit marker \u2014 no infinite walk",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::query-level searchRead failure propagates visibly \u2014 never faked as an empty world",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::rendered Tree reveals native hit and Back restores rows and expansion",
+    "tier": 1,
+    "burn": 0.0092,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::reparented dotted-ID-less bead shows its TRUE path (no ID-spelling inference)",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::search requires the injected read facade, a snapshot, and refuses unbounded limits",
+    "tier": 1,
+    "burn": 0.001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::shared model traversal preserves ready-first root ordering",
+    "tier": 1,
+    "burn": 0.0011,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_search.mjs::truncation is explicit and visible: bound drops rows status-blind with a banner",
+    "tier": 1,
+    "burn": 0.0008,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_actor_tokens_refused",
+    "tier": 1,
+    "burn": 3.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_bad_actor_returns_fail_json_not_raise",
+    "tier": 1,
+    "burn": 3.7,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_claims_actor_gate_refused_without_spawn",
+    "tier": 1,
+    "burn": 0.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_control_catches_active_markup",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_control_gate_without_check_would_spawn",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_control_would_catch_truncation",
+    "tier": 1,
+    "burn": 7.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_dash_leading_comment_is_stored_verbatim",
+    "tier": 1,
+    "burn": 0.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_every_plugin_flag_is_known_to_the_gate",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_flag_named_id_cannot_redirect_a_close",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_gateway_flag_never_spoofable",
+    "tier": 1,
+    "burn": 0.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_handler_ignores_model_bd_bin",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_hostile_bead_id_returns_fail_json_not_raise",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_hostile_id_tokens_refused_before_spawn",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_inert_hostile_ids_spawn_but_change_nothing",
+    "tier": 1,
+    "burn": 1.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_legit_values_merely_containing_metachars_pass",
+    "tier": 1,
+    "burn": 0.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_list_rows_survive_verbatim",
+    "tier": 1,
+    "burn": 0.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_malformed_prefixes_refused",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_no_schema_exposes_bd_bin",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_plugin_paths_spawn_only_fixed_argv",
+    "tier": 1,
+    "burn": 1.7,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_render_is_inert_text",
+    "tier": 1,
+    "burn": 0.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_run_bd_wires_the_gate",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_show_roundtrips_verbatim",
+    "tier": 1,
+    "burn": 3.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_update_schema_description_lists_only_allowed_fields",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_security.py::test_update_with_illegal_field_returns_fail_json_not_raise",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_standalone.py::test_ast_scan_is_live_control",
+    "tier": 2,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_standalone.py::test_core_ast_scan_is_clean",
+    "tier": 2,
+    "burn": 0.1,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_standalone.py::test_full_native_loop_isolated_and_workflow_free",
+    "tier": 2,
+    "burn": 7.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_standalone.py::test_stock_bd_foreign_cwd_readbacks_match_plugin_loop",
+    "tier": 2,
+    "burn": 14.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_standalone.py::test_sysmodules_scan_is_live_control",
+    "tier": 2,
+    "burn": 8.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_telemetry.mjs::missing storeKey falls to 'unknown'; empty counts are never serialised",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_telemetry.mjs::records known events with storeKey, counts uses",
+    "tier": 1,
+    "burn": 0.001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_telemetry.mjs::ring is bounded and FIFO; EVENTS lists every instrumented pane",
+    "tier": 1,
+    "burn": 0.0036,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_telemetry.mjs::unknown event names are dropped, never recorded (no unbounded keys)",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::'?' overlay lists exactly the bound keys \u2014 no more, no fewer",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::1000-row cap: explicit partial-scope + load-more, never silent truncation",
+    "tier": 1,
+    "burn": 0.0056,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::ARIA tree contract: role tree/treeitem, aria-expanded/level/posinset/setsize consistent with the loaded set; roving tab stop; visible focus",
+    "tier": 1,
+    "burn": 0.0006,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::Browse exposes blocked and unassigned branches (Ready/Mine are not the only navigation)",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::P1: collapse then Alt+Back/Alt+Forward restores expansion in the RENDERED tree",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::P2: model initial.expanded is the tree's starting view (collapsed parents hide descendants, no tail re-emit)",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::P3: ui.toggleExpanded (the model's expansion API) drives the rendered tree",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::P4: ui.jump is a reveal primitive \u2014 jumping into a collapsed subtree renders the row",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::P4b: cursor on a previously-hidden row keeps exactly one tabbable + one aria-selected row",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::P6: buildTreeRows renders the same collapsed view as Tree, with per-parent posinset <= setsize",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::Tab onto the fallback tab stop, first ArrowDown moves FROM that row (real-Chrome finding: first arrow was swallowed)",
+    "tier": 1,
+    "burn": 0.001,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::app back/forward restore prior selection+focus context (Alt+Arrow bindings)",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::bounded 150-row refresh issues <=4 native queries",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::coalesced 2s auto-refresh: bursts collapse to one fetch; stale and error states surface",
+    "tier": 1,
+    "burn": 0.0007,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::controller executes exactly the bound commands; Tab exits without preventDefault; '?' toggles the overlay",
+    "tier": 1,
+    "burn": 0.0011,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::conventional tree arrows: Right expands then visits first child, Left collapses in place then visits parent, Home/End jump",
+    "tier": 1,
+    "burn": 0.0009,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::epic rows show progress counts matching native epic-status semantics (closed/total children)",
+    "tier": 1,
+    "burn": 0.0008,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::keymap is data: every binding resolves to its command without a human",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::native parity: Ready tab rows === `bd ready --exclude-type=epic`, Mine tab rows === `bd list --assignee`",
+    "tier": 1,
+    "burn": 10.397,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::status renders glyph AND word; never glyph-only; unknown statuses verbatim with a distinct glyph",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::tab descriptors reproduce their bd commands verbatim (argv + display string)",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::text labels, not color alone: rows carry textual status + label; focus and selection separately labelled",
+    "tier": 1,
+    "burn": 0.0014,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::text-input focus swallows ALL letter keys (and bare keys generally); no shortcut interception in editors",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::tree rows render the hierarchy only: indent from parent-field depth, never ID-dot spelling",
+    "tier": 1,
+    "burn": 0.003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::warm parent/sibling/back navigation: zero native queries; only an explicit refresh queries",
+    "tier": 1,
+    "burn": 0.0011,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_tree.mjs::warm visual p95 <= 100ms on this test hardware (render + navigate, recorded host)",
+    "tier": 1,
+    "burn": 0.0402,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_visual.mjs::F1: exactly one stylesheet ships \u2014 workbench.css is byte-identical to WORKBENCH_CSS",
+    "tier": 1,
+    "burn": 0.0049,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_visual.mjs::F2: the stylesheet carries the accessibility floor",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_visual.mjs::F4-F7 field separation is structural, not paint-adjacent text",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_visual.mjs::blocked chip border meets 3:1 non-text contrast on white (real-Chrome finding: Mark fallback = yellow, 1.07:1)",
+    "tier": 1,
+    "burn": 0.0005,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_visual.mjs::layout: tree left, panels right, flex-wrap under 40rem",
+    "tier": 1,
+    "burn": 0.0003,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_visual.mjs::the shipped root renders the stylesheet exactly once (source truth)",
+    "tier": 1,
+    "burn": 0.0002,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_visual.mjs::theme tokens fall back to system colors; sizes are rem, never px widths",
+    "tier": 1,
+    "burn": 0.0004,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_append_comment_needs_no_guard_flags",
+    "tier": 1,
+    "burn": 4.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_at_least_the_known_write_sites_exist",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_claim_clobber_flags_never_built",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_description_replacement_disabled_by_default",
+    "tier": 1,
+    "burn": 3.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_every_write_call_site_guarded_or_labelled",
+    "tier": 1,
+    "burn": 0.0,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_guarded_status_group_writes_under_claim",
+    "tier": 1,
+    "burn": 4.7,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_guardless_update_is_refused",
+    "tier": 1,
+    "burn": 2.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_no_retry_on_guard_mismatch",
+    "tier": 1,
+    "burn": 5.2,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_one_command_per_field_group",
+    "tier": 1,
+    "burn": 4.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_opt_in_is_explicit_and_goes_through_guards",
+    "tier": 1,
+    "burn": 3.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_opt_in_never_promises_no_lost_update",
+    "tier": 1,
+    "burn": 2.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_r1_correct_guard_writes_and_readback_confirms",
+    "tier": 1,
+    "burn": 5.5,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_r1_mismatch_yields_stale_and_byte_identical_bead",
+    "tier": 1,
+    "burn": 3.8,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_stale_after_takeover_maps_to_stale_with_current_holder",
+    "tier": 1,
+    "burn": 4.6,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_stale_tells_parent_via_append_only_comment",
+    "tier": 1,
+    "burn": 6.3,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_title_replacement_disabled_by_default",
+    "tier": 1,
+    "burn": 3.9,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_u4_correct_guard_writes_and_readback_confirms",
+    "tier": 1,
+    "burn": 3.4,
+    "order_group": null,
+    "after": []
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_u4_mismatch_yields_stale_and_byte_identical_bead",
+    "tier": 1,
+    "burn": 4.1,
+    "order_group": null,
+    "after": []
+  }
+]
