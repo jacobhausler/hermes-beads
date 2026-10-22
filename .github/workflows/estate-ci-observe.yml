@@ -44,6 +44,17 @@ jobs:
   contract-call:
     name: contract-call (declared caller; flips live at P2)
     if: false
+    # estate-ci@v1 declares actions/pull-requests/statuses: write. GitHub
+    # startup-FAILS (not job-fails) a reusable-call job whose effective token
+    # permissions are below the called workflow's block, so the grant must
+    # exist for the run to even parse. It is scoped to THIS job — which
+    # `if: false` guarantees executes zero jobs at P1 — and the workflow
+    # default stays contents: read.
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: write
+      statuses: write
     uses: jacobhausler/estate-ci/.github/workflows/estate-ci.yml@v1
     with:
       legs: '[{"label":"floor","python":"3.12","hermes_pin":"floor"},{"label":"tip","python":"3.12","hermes_pin":"tip"}]'
