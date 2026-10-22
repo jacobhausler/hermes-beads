@@ -1,0 +1,92 @@
+# ci-contract: estate-ci@v1
+#
+# OBSERVE-MODE preflight (nextgen-ci (e)P1). This workflow is NOT the gate
+# and NOT a required check: it exists to prove the pinned contract's shape
+# against this repo before P2 flips the merge path. Nothing here changes
+# what ci.yml (the live gates) does — same triggers, zero behavior change.
+#
+# The call to the reusable preflight is deliberately `if: false` at P1:
+# the contract-call job never executes, so no commit status is written and
+# no behavior can change; the fetch/validate steps below still run and
+# report the preflight verdict to the job log. P2 replaces this file with
+# a `uses:` call plus the required-check wiring.
+name: estate-ci-observe
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/estate-ci-observe.yml"
+      - "plugin.yaml"
+      - "__init__.py"
+      - "beads/**"
+      - "desktop/**"
+      - "scripts/**"
+      - "tests/**"
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/estate-ci-observe.yml"
+      - "plugin.yaml"
+      - "__init__.py"
+      - "beads/**"
+      - "desktop/**"
+      - "scripts/**"
+      - "tests/**"
+
+permissions:
+  contents: read
+
+jobs:
+  # OBSERVE preflight: fetch the reusable at the pinned commit, run the
+  # shipped preflight against this repo's own manifest inputs, and report
+  # the verdict as a log line ONLY. Exit code never propagates at P1
+  # (observe: warn, never block), and this check is not required.
+  preflight-observe:
+    name: preflight-observe
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve and verify the contract pin
+        run: |
+          set -euo pipefail
+          line=$(grep -m1 '^# ci-contract: ' .github/workflows/estate-ci-observe.yml)
+          ref="${line#*\# ci-contract: }"
+          owner=$(echo "$ref" | cut -d/ -f1); repo=$(echo "$ref" | cut -d/ -f2 | cut -d@ -f1)
+          tag="${ref##*@}"
+          sha=$(gh api "repos/$owner/$repo/refs/tags/$tag" \
+                --jq '.object.type == "tag" and .object.sha or error("not an annotated tag")' >/dev/null \
+                && gh api "repos/$owner/$repo/git/refs/tags/$tag" --jq '.object.sha')
+          echo "CONTRACT_REF=$ref" >> "$GITHUB_ENV"
+          echo "CONTRACT_SHA=$sha" >> "$GITHUB_ENV"
+          gh api "repos/$owner/$repo/contents/.github/workflows/estate-ci.yml?ref=$sha" \
+            --jq .content | base64 -d > /tmp/contract.yml
+          grep -q 'artifact_name:' /tmp/contract.yml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Preflight (observe — verdict to log only, never blocks)
+        run: |
+          python3 scripts/ci_preflight_observe.py \
+            --workflow .github/workflows/estate-ci-observe.yml \
+            --repo "$CONTRACT_REF" --sha "$CONTRACT_SHA" || true
+  # The contract-call job is wired-but-off at P1: `if: false` means it
+  # never executes (no status, no behavior). P2 replaces this file with a
+  # `uses:` call plus the required-check wiring.
+  contract-call:
+    name: contract-call (P2 wiring preview)
+    if: false
+    uses: jacobhausler/estate-ci/.github/workflows/estate-ci.yml@v1
+    with:
+      manifest_path: tests/timing.json
+      manifest_format: array
+      shard_unit_s: 150
+      pr_gate_wall_s: 580
+      artifact_name: ledger-hb
+      provenance_dir: tests/runs
+      runner_min_per_pr: 30
+      runner_min_wk: 132
+      budget_path: tests/budget.json
+      md_inputs_path: tests/md_inputs.txt
+      registry_path: tests/registry.json

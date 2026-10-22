@@ -1,0 +1,7 @@
+{
+  "pr_gate_wall_s": 580,
+  "runner_min_per_pr": 30,
+  "runner_min_wk": 132,
+  "basis": "interim; recut at observe week",
+  "note": "Numbers are the NEXTGEN-CI section-(b) row for hermes-beads, interim until the observe week recuts them from real estate-ci-observe runs."
+}

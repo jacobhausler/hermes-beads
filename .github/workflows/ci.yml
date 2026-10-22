@@ -175,4 +175,8 @@ jobs:
       - name: Aggregate leg verdicts
         run: |
           echo "leg aggregate result=${{ needs.leg.result }}"
+          # run_attempt echo: additive ledger field (nextgen-ci (e)P1) —
+          # attempt N of a re-run job; absent locally. Rollup output stays
+          # grep-safe: nothing parses this line yet.
+          echo "run_attempt=${{ github.run_attempt }}"
           test "${{ needs.leg.result }}" = "success"

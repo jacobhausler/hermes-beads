@@ -3,6 +3,18 @@
 All notable changes to this plugin are documented here.
 The format follows Keep-a-Changelog; versions follow SemVer.
 
+## [Unreleased]
+
+### Added — nextgen-ci P1 observe-mode instruments (observe only; zero merge-path behavior change)
+
+* `tests/budget.json` — budget at the interim section-(b) numbers (580 / 30 / 132), `basis` field says 'interim; recut at observe week'. Nothing reads it yet.
+* `scripts/timing_observe.py` — generator: parses the leg's unittest + node-test output from the repo's OWN `gh run view --log` and writes `tests/timing.json` rows {case, wall_s, timeout_s} ONLY. Fail-closed counts: Gate-2 completions == Σ Ran (Gate-1 cross-checked separately — the standalone file runs in both, so sums are per-section, never pooled), node rows == `ℹ tests`. Generator law: may only DECREASE rows; raising requires `--cite-run <id>` (S3 addendum kills timeout self-inflation). First commit run from action run 39617350745, leg `floor` (TIERS canonical-leg precedent): 332 rows (151 py unique + 181 node).
+* `scripts/registry_observe.py` + committed `tests/registry.json` — burn-token registry {case, tier, burn, order_group, after}. hb prints no per-case burn token, so burn = observed wall_s (documented; P2's b9s-native token replaces at the recut). T2 set = scenario .mjs files + fixture-lifecycle py tests + standalone live readbacks (TIERS hb row); no ordering teeth named here.
+* `scripts/md_inputs_observe.py` + committed `tests/md_inputs.txt` — .md paths test sources reference as inputs; names two real ones (README.md, docs/install.md — the install-docs gate reads them).
+* `scripts/ci_preflight_observe.py` — fetches the pinned contract's shipped preflight at the pin SHA and runs it against this repo's inputs; verdict to log only. `tests/test_ci_hygiene.py` untouched.
+* `.github/workflows/estate-ci-observe.yml` — OBSERVE-MODE preflight workflow carrying the `# ci-contract: estate-ci@v1` pin line. NOT a required check; the contract-call job is `if: false` (never executes, writes no status). `ci.yml` (the live gates) is untouched except the additive ledger line below.
+* `ci.yml` gates rollup additionally echoes `run_attempt=${{ github.run_attempt }}` (additive ledger field; existing output untouched — P1 (e)).
+
 ## [0.1.2] — 2026-10-02
 
 Security + honesty patch: the bd executable path is no longer model-controlled,

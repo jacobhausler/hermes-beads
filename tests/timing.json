@@ -1,0 +1,1662 @@
+[
+  {
+    "case": "tests/test_b9s_drift.mjs::b9s pinned binary still reads the embedded-dolt store class",
+    "wall_s": 0.0011,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::BlockerCard renders target, ancestors, blockers, lease; NO mutation affordance",
+    "wall_s": 0.0013,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::BlockersDoor: renders on blocked rows, absent on clean rows, disabled-with-reason without the provider, and clicks reach onOpen",
+    "wall_s": 0.0014,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::Return rule: the card's ONLY affordance calls onReturn (root wires returnFromCard, not rerender)",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::S2 restore: jump then ONE back restores selection/focus/expansion/filter/search/tab/pane/scroll",
+    "wall_s": 0.0011,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::assertReadArgv: reads pass, every mutation verb/flag refused by name",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::badge honesty: no blocked read => unknown, never inferred",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::blockersFor: direct typed, inherited with source path, closed dropped",
+    "wall_s": 0.0023,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::buildBlockerCard: ancestry carried, lease shown, no mutation surface",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::edges distinguished: incoming blockers vs outgoing dependents vs parent-child",
+    "wall_s": 0.0008,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::jump pushes onto the single history stack in lockstep with the model",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::jumpToBlocker only issues read commands through the provider",
+    "wall_s": 0.002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::native external close: refresh flips derived badge; focus never auto-jumps",
+    "wall_s": 12.1511,
+    "timeout_s": 37
+  },
+  {
+    "case": "tests/test_blockers.mjs::one-press return via the app-back gesture (Alt+ArrowLeft \u2192 history-back)",
+    "wall_s": 0.0008,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_blockers.mjs::unknown edge types preserved verbatim, never classified as blockers",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::askDecision refuses an ok:true ask as a fabricated delivery",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::askDecision reports read-only ask with the exact typed refusal",
+    "wall_s": 0.0011,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::bot_action.mjs imports ONLY react/jsx-runtime and is I/O-free (purity source audit)",
+    "wall_s": 0.0011,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::refineToDraft lands the bot proposal in the human draft store only",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::refineToDraft without human-accept requirement is refused",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::reopenBotDraft on a missing draft is honest, never fabricated",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::reopenBotDraft returns the stored draft and preserves it",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::work control flips to enabled only when the runner door is bound",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_bot_action.mjs::work control renders present-but-disabled with the typed reason",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_ci_hygiene.py::test_a_ci_workflow_is_tracked_and_not_ignored",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_ci_hygiene.py::test_b_gate3_npm_install_uses_exact_pins",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_claims.py::test_blocked_then_closed_unblocks_clean_claim",
+    "wall_s": 6.8,
+    "timeout_s": 21
+  },
+  {
+    "case": "tests/test_claims.py::test_claim_bypasses_readiness_and_surfaces_blocker",
+    "wall_s": 6.3,
+    "timeout_s": 19
+  },
+  {
+    "case": "tests/test_claims.py::test_claim_requires_explicit_actor",
+    "wall_s": 5.5,
+    "timeout_s": 17
+  },
+  {
+    "case": "tests/test_claims.py::test_heartbeat_after_release_survives_or_refuses_honestly",
+    "wall_s": 8.0,
+    "timeout_s": 24
+  },
+  {
+    "case": "tests/test_claims.py::test_inherited_parent_blockage_is_not_plainly_workable",
+    "wall_s": 6.6,
+    "timeout_s": 20
+  },
+  {
+    "case": "tests/test_claims.py::test_missing_issue_surfaces_named_native_error",
+    "wall_s": 3.2,
+    "timeout_s": 10
+  },
+  {
+    "case": "tests/test_claims.py::test_named_blocked_work_is_refused_before_mutation",
+    "wall_s": 4.6,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_claims.py::test_no_force_flags_anywhere",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_claims.py::test_non_owner_heartbeat_is_named_failure",
+    "wall_s": 5.8,
+    "timeout_s": 18
+  },
+  {
+    "case": "tests/test_claims.py::test_owner_heartbeat_refreshes_lease",
+    "wall_s": 10.0,
+    "timeout_s": 30
+  },
+  {
+    "case": "tests/test_claims.py::test_q1_claim_readback_equality",
+    "wall_s": 6.0,
+    "timeout_s": 18
+  },
+  {
+    "case": "tests/test_claims.py::test_q2_same_actor_reclaim_idempotent",
+    "wall_s": 9.9,
+    "timeout_s": 30
+  },
+  {
+    "case": "tests/test_claims.py::test_q3_distinct_actor_conflict_names_holder",
+    "wall_s": 3.9,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_claims.py::test_q6_claim_after_release_by_another",
+    "wall_s": 4.6,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_claims.py::test_q7_former_loser_reclaim_refused_holder_intact",
+    "wall_s": 5.2,
+    "timeout_s": 16
+  },
+  {
+    "case": "tests/test_claims.py::test_q8_cas_release_mismatch_names_holder_writes_nothing",
+    "wall_s": 3.8,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_claims.py::test_q9_holder_release_succeeds",
+    "wall_s": 6.5,
+    "timeout_s": 20
+  },
+  {
+    "case": "tests/test_claims.py::test_ready_is_advisory_and_absent_after_claim",
+    "wall_s": 5.6,
+    "timeout_s": 17
+  },
+  {
+    "case": "tests/test_content_guard.py::test_available_guards_pass_over_stale_content",
+    "wall_s": 4.1,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_content_guard.py::test_blind_replacement_refused_without_opt_in",
+    "wall_s": 4.2,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_content_guard.py::test_candidate_content_guard_flags_are_rejected",
+    "wall_s": 3.3,
+    "timeout_s": 10
+  },
+  {
+    "case": "tests/test_content_guard.py::test_contract_declares_cas_unsupported_and_not_advertised",
+    "wall_s": 3.6,
+    "timeout_s": 11
+  },
+  {
+    "case": "tests/test_content_guard.py::test_cross_actor_description_edit_under_live_claim",
+    "wall_s": 3.5,
+    "timeout_s": 11
+  },
+  {
+    "case": "tests/test_content_guard.py::test_edit_command_has_no_content_guard",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_content_guard.py::test_native_capability_absent_blind_overwrite_observed",
+    "wall_s": 5.7,
+    "timeout_s": 18
+  },
+  {
+    "case": "tests/test_content_guard.py::test_preflight_detects_racing_writer_but_leaves_toctou_window",
+    "wall_s": 3.8,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_content_guard.py::test_revision_is_telemetry_not_a_precondition",
+    "wall_s": 4.2,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_content_guard.py::test_unsafe_opt_in_is_per_call_and_explicit",
+    "wall_s": 4.1,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_content_guard.py::test_update_help_exposes_only_actor_state_guards",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_drafts.mjs::Save disabled path never clears the draft (no silent discard on failed submission)",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter WITHOUT remove: honest session-only warning; discard stays discarded",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter declared unavailable: honest warning, not fake success",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter losing remove mid-session: discard returns false, durability drops, draft survives",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter throwing on get during setup probe: durable rejected, later discard cannot resurrect",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter throwing on keys: durability() must flip to memory-only with session-only warning",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter throwing on remove at setup: memory-only + storage-error; discard is honestly complete",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::adapter throws mid-write: honest storage-error warning + in-session draft survives",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::append-only suggestion remains usable while Save is disabled",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::capability truth: CONTENT_CAS_SUPPORTED is a hard false",
+    "wall_s": 0.0025,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::capacity limit: saves beyond maxDrafts are refused, existing drafts intact",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::copyText and exportText hand out content without touching the draft",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::corrupt stored draft is dropped and surfaces null, never a crash",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::cross-workspace/reload isolation: drafts never cross store boundaries",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::desktop/drafts.mjs is pure: no fs/child_process/localStorage/window/DOM/bd reach",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::diff, reload and cancel preserve the draft; only explicit discard clears it",
+    "wall_s": 0.0014,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::discard after degrade with a revoked remove reports false and keeps the draft visible",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::discard after non-remove capability failure clears storage; no reload resurrection",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::draftKey is canonical store identity + bead ID and isolates every axis",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::draftLimitationNotice states the missing safe edit as a product limitation",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::editDecision: Save disabled without proven guard; draft/copy/export/suggestion stay enabled; no fake success",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::incomplete adapter: pre-seeded draft from an earlier durable run stays gone after discard",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::loaded draft is cleared after later storage degradation",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::no durable adapter: honest memory-only warning, drafts still work in-session",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::proven save where the draft clear FAILS reports the un-cleared draft honestly",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::proven save with a working clear reports draftCleared true",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::supported durable storage preserves drafts across simulated reload",
+    "wall_s": 0.0013,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::supported save path clears the draft only after read-back proof",
+    "wall_s": 0.0008,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::supported save path with missing/failing read-back keeps the draft",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::throwing remove is terminal: durability never flips back to durable",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.mjs::write that persists then throws still requires storage-side discard",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.py::test_concurrent_description_change_owner_status_unchanged_not_exit13",
+    "wall_s": 3.6,
+    "timeout_s": 11
+  },
+  {
+    "case": "tests/test_drafts.py::test_docs_contract_owns_capability_truth",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_drafts.py::test_drafts_module_declares_no_second_backend",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_drafts.py::test_guard_mismatch_control_still_exits_13",
+    "wall_s": 3.5,
+    "timeout_s": 11
+  },
+  {
+    "case": "tests/test_drafts.py::test_node_draft_suite_green",
+    "wall_s": 0.1,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_drafts.py::test_pinned_draft_key_matches_model_store_identity",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_drafts.py::test_runtime_fixture_root_is_git_ignored",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_drafts.py::test_save_disabled_pinned_to_shipped_capability_flag",
+    "wall_s": 2.5,
+    "timeout_s": 8
+  },
+  {
+    "case": "tests/test_e2e.py::test_no_comment_delete_verb",
+    "wall_s": 3.3,
+    "timeout_s": 10
+  },
+  {
+    "case": "tests/test_e2e.py::test_ready_claim_edit_evidence_close_successors",
+    "wall_s": 8.5,
+    "timeout_s": 26
+  },
+  {
+    "case": "tests/test_e2e.py::test_replacement_refused_by_default_state_untouched",
+    "wall_s": 4.9,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_e2e.py::test_self_fail_subprocess_exits_nonzero",
+    "wall_s": 0.1,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_e2e.py::test_selfdestruct_actually_fails",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_e2e.py::test_stale_guard_writes_nothing_and_reports_fresh",
+    "wall_s": 6.5,
+    "timeout_s": 20
+  },
+  {
+    "case": "tests/test_fixture_orphan_sweep.py::test_make_store_sweeps_only_stale_known_prefix_dirs",
+    "wall_s": 13.0,
+    "timeout_s": 39
+  },
+  {
+    "case": "tests/test_fixture_teardown.py::test_teardown_removes_owned_and_spares_foreign",
+    "wall_s": 12.0,
+    "timeout_s": 36
+  },
+  {
+    "case": "tests/test_history.mjs::HistoryPanel renders the stack as its own widget, fed only entries+index",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::breadcrumb dots are clickable and jump to exactly the dot's id",
+    "wall_s": 0.001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::breadcrumb re-resolves live after a reparent \u2014 same API, fresh snapshot",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::breadcrumb renders the parent-FIELD path while its own ID is dotted-wrong",
+    "wall_s": 0.0008,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::corrupted/cyclic chain terminates with an explicit error, never a hang",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::filtered-out ancestor surfaces as contextual path with the filter reason",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::history Set expansion normalizes; capacity bounds keep the current position",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::history stack: push/back/forward index semantics + forward-tail truncation",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::immutable restore: entries are frozen deep clones; caller mutation cannot poison the stack",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::independence: breadcrumb reads no history state; history module keeps zero imports/state",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::initial history rejects foreign workspaces and obeys capacity",
+    "wall_s": 0.0019,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::missing grandparent is contextual, never a clickable invented record",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::missing parent stays visible as contextual path with reason; not clickable",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::native ancestor outside the bounded read renders as contextual missing-parent path",
+    "wall_s": 4.8832,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_history.mjs::native delete of the parent: dotted ID survives, parent FIELD is truth (no phantom ancestor)",
+    "wall_s": 5.5806,
+    "timeout_s": 17
+  },
+  {
+    "case": "tests/test_history.mjs::native reparent (hci case): create without parent, then --parent move \u2014 breadcrumb follows the parent FIELD",
+    "wall_s": 6.3552,
+    "timeout_s": 20
+  },
+  {
+    "case": "tests/test_history.mjs::read-once: breadcrumb render performs no new reads (snapshot injected, chain re-derived)",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::restore bundle carries EVERY contract field incl filter/search/tab/pane/focus/scroll/expansion",
+    "wall_s": 0.0015,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::workspace isolation: per-store stacks never share entries, drafts or context",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_history.mjs::wrong-store bundle is refused, not absorbed",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_false_tell_detector_is_live_control",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_install_doc_declares_tiers_pin_and_restore_notes",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_readme_declares_two_tiers_and_links_install_doc",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_receipt_shows_plugin_and_all_six_tools_mounted",
+    "wall_s": 2.3,
+    "timeout_s": 7
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_scratch_home_is_tempdir_not_repo",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_shipped_docs_carry_no_false_pane_tell",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_install_tiers.py::test_verify_script_green",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_model.mjs::blockers: typed direct, closed-filtered, multiple, inherited via parent chain",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::bounded: missing parent is parent-missing (NOT deleted); truncation distinct; tombstone=deleted",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::claimed-not-ready regression: absent from ready AND blocked => unknown, never inferred blocked",
+    "wall_s": 0.0001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::derived blocked vs stored 'blocked' divergence flagged both ways",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::freshness: TTL staleness + local-mutation invalidation",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::parent cycle terminates with explicit marker, no hang, no children expansion",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::read budget: each injected read-fn invoked at most once on a 150-issue fixture",
+    "wall_s": 0.002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::reparent truth: ID-dot spelling ignored after move",
+    "wall_s": 0.0012,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::search reveal API: revealed hit rows are workbench state, NEVER snapshot nodes; unknown parentage renders as an honest boundary row",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::selection vs focus, arrows, Enter, back/forward return context",
+    "wall_s": 0.0012,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::snapshot joins fixtures: parent FIELD chains, depth, breadcrumb",
+    "wall_s": 0.0017,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::store identity: workspace+db key; missing part refused",
+    "wall_s": 0.0016,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::tree expansion respects cycles: cyclic node not descended",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_model.mjs::unknown status/type/edge values preserved verbatim",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::bot runState: role=status renders the door state verbatim; Cancel enabled only in admitted/running; no success text unless succeeded",
+    "wall_s": 0.1043,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::bot_action: botActionPanel emits REAL jsx and mounts UNCONVERTED with Work disabled",
+    "wall_s": 0.0302,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::compare pane can never mount again (file deleted)",
+    "wall_s": 0.0201,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::doors: '/' and Ctrl+/ focus the search input from the tree; ShortcutHelp lists the new bindings",
+    "wall_s": 0.0241,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::doors: blocked row shows a visible blockers button AND Ctrl+b opens the card; Return button and Alt+ArrowLeft each clear the card and restore origin selection/focus (one press = one step)",
+    "wall_s": 1.4408,
+    "timeout_s": 5
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::doors: missing facade => controls present-but-disabled with a visible reason, never a throw; host-injected card Return still clears",
+    "wall_s": 0.5835,
+    "timeout_s": 2
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::doors: type query into the search input -> listbox; ArrowDown moves aria-selected AND document focus to hit 2; Enter lands IN the tree; letters in the input never reach the tree keymap",
+    "wall_s": 0.2405,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::drafts: survive unmount/remount via the injected storage; report memory-only when storage throws",
+    "wall_s": 0.0646,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::hostile titles: rendered as escaped TEXT; zero <script>/<img> and zero on* attributes in DOM",
+    "wall_s": 0.6392,
+    "timeout_s": 2
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::keyboard: arrows move the cursor, Enter promotes focus, collapse/expand via arrows, x/Esc inert",
+    "wall_s": 0.2731,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::mounted session never mutated the store (before/after list_all JSON equality)",
+    "wall_s": 0.3601,
+    "timeout_s": 2
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::mounted tree: real React DOM with treeitem roles, aria-level/expanded, roving tab stop",
+    "wall_s": 0.1066,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::prefers-reduced-motion probed via matchMedia stub; no fixed px widths in inline styles",
+    "wall_s": 0.0253,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::search/record/blockers/compare mount with live DOM evidence",
+    "wall_s": 1.869,
+    "timeout_s": 6
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::telemetry: real user paths emit whitelisted events on the shipped root",
+    "wall_s": 1.2354,
+    "timeout_s": 4
+  },
+  {
+    "case": "tests/test_mounted_smoke.mjs::visual layer (F1-F7): one shipped <style> with :focus-visible; roving document focus; separated card/row fields",
+    "wall_s": 0.7811,
+    "timeout_s": 3
+  },
+  {
+    "case": "tests/test_native.py::test_absent_bd_is_named_error_not_empty",
+    "wall_s": 2.5,
+    "timeout_s": 8
+  },
+  {
+    "case": "tests/test_native.py::test_argv_must_be_fixed_list",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_native.py::test_claim_conflict_never_silent_steal",
+    "wall_s": 4.8,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_native.py::test_claim_readback_and_heartbeat",
+    "wall_s": 6.0,
+    "timeout_s": 18
+  },
+  {
+    "case": "tests/test_native.py::test_exit0_failed_json_is_rejected",
+    "wall_s": 3.0,
+    "timeout_s": 9
+  },
+  {
+    "case": "tests/test_native.py::test_guard_mismatch_exit_13_writes_nothing",
+    "wall_s": 3.5,
+    "timeout_s": 11
+  },
+  {
+    "case": "tests/test_native.py::test_hostile_workspace_named_errors",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_native.py::test_max_rows_circuit_breaker_is_error_not_empty",
+    "wall_s": 5.4,
+    "timeout_s": 17
+  },
+  {
+    "case": "tests/test_native.py::test_readonly_blocks_writes",
+    "wall_s": 5.5,
+    "timeout_s": 17
+  },
+  {
+    "case": "tests/test_native.py::test_ready_scoped_by_label_is_honest_empty",
+    "wall_s": 4.1,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_native.py::test_show_returns_exact_id",
+    "wall_s": 4.0,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_native.py::test_store_info_identity",
+    "wall_s": 3.7,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_native.py::test_version_and_smoke_receipt",
+    "wall_s": 4.5,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_negative.py::test_backend_unavailable_is_named_error_not_empty",
+    "wall_s": 4.4,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_negative.py::test_claims_layer_discloses_holder_without_steal",
+    "wall_s": 5.0,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_negative.py::test_honest_empty_when_everything_claimed",
+    "wall_s": 4.4,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_negative.py::test_label_empty_vs_backend_empty_via_listing",
+    "wall_s": 4.5,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_negative.py::test_max_rows_exit2_raises_breaker",
+    "wall_s": 4.7,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_negative.py::test_native_boundary_readonly_argv_and_exit1",
+    "wall_s": 4.1,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_negative.py::test_native_close_escape_hatch_stays_open",
+    "wall_s": 4.0,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_negative.py::test_native_refusal_exit1_failed_names_holder",
+    "wall_s": 4.9,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_negative.py::test_no_close_or_reopen_argv_anywhere",
+    "wall_s": 0.1,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_negative.py::test_protocol_stale_single_argv_business_fields_unchanged",
+    "wall_s": 4.6,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_negative.py::test_raw_guard_mismatch_exit13_envelope",
+    "wall_s": 4.3,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_negative.py::test_raw_readonly_refuses_exact_strings",
+    "wall_s": 4.9,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_negative.py::test_readonly_is_policy_convenience_not_isolation",
+    "wall_s": 3.3,
+    "timeout_s": 10
+  },
+  {
+    "case": "tests/test_negative.py::test_readonly_reads_still_work",
+    "wall_s": 3.8,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_negative.py::test_suite_fixture_helper_uses_unique_actors",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_negative.py::test_zero_force_or_fake_cas_tokens_in_argv_call_sites",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_packaging.py::test_archive_contents_exact",
+    "wall_s": 0.1,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_packaging.py::test_control_private_scan_is_live",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_packaging.py::test_desktop_sources_parse",
+    "wall_s": 0.2,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_packaging.py::test_no_private_or_lab_strings",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_packaging.py::test_stock_admission_validator_passes",
+    "wall_s": 2.1,
+    "timeout_s": 7
+  },
+  {
+    "case": "tests/test_packaging.py::test_stock_load_then_uninstall_isolated",
+    "wall_s": 1.0,
+    "timeout_s": 3
+  },
+  {
+    "case": "tests/test_read_model.py::test_blocked_uses_native_semantics_with_client_bound",
+    "wall_s": 6.6,
+    "timeout_s": 20
+  },
+  {
+    "case": "tests/test_read_model.py::test_children_include_closed_like_native_alias",
+    "wall_s": 7.2,
+    "timeout_s": 22
+  },
+  {
+    "case": "tests/test_read_model.py::test_comments_history_parity",
+    "wall_s": 7.0,
+    "timeout_s": 21
+  },
+  {
+    "case": "tests/test_read_model.py::test_empty_ids_refused_before_any_process",
+    "wall_s": 4.4,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_read_model.py::test_fixed_argv_shape_no_shell_composition",
+    "wall_s": 2.8,
+    "timeout_s": 9
+  },
+  {
+    "case": "tests/test_read_model.py::test_frontier_parity_same_shell_native_ready",
+    "wall_s": 7.3,
+    "timeout_s": 22
+  },
+  {
+    "case": "tests/test_read_model.py::test_hostile_inputs_fail_named_never_empty",
+    "wall_s": 2.9,
+    "timeout_s": 9
+  },
+  {
+    "case": "tests/test_read_model.py::test_live_circuit_breaker_native_semantics",
+    "wall_s": 6.8,
+    "timeout_s": 21
+  },
+  {
+    "case": "tests/test_read_model.py::test_missing_id_preserves_native_error_envelope",
+    "wall_s": 4.3,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_read_model.py::test_receipt_replay_pipe_masked_exit1_is_error_not_empty",
+    "wall_s": 3.1,
+    "timeout_s": 10
+  },
+  {
+    "case": "tests/test_read_model.py::test_receipt_replay_stdout_failed_body_exit0_is_rejected",
+    "wall_s": 3.0,
+    "timeout_s": 9
+  },
+  {
+    "case": "tests/test_read_model.py::test_replay_exit2_is_circuit_breaker_not_empty",
+    "wall_s": 2.5,
+    "timeout_s": 8
+  },
+  {
+    "case": "tests/test_read_model.py::test_show_list_children_query_parent_parity",
+    "wall_s": 6.8,
+    "timeout_s": 21
+  },
+  {
+    "case": "tests/test_read_model.py::test_unbounded_usage_refused",
+    "wall_s": 3.0,
+    "timeout_s": 9
+  },
+  {
+    "case": "tests/test_read_model.py::test_verbatim_preservation_of_unknown_values",
+    "wall_s": 3.2,
+    "timeout_s": 10
+  },
+  {
+    "case": "tests/test_record.mjs::agreement case renders derived readiness with NO warning",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_record.mjs::dep-tree READY badge on the record never drives derived readiness",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_record.mjs::divergence case: stored 'blocked' with native-ready renders BOTH plus a warning",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_record.mjs::malicious-looking unknown values render as plain text children, never markup",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_record.mjs::unknown status/type/edge type survive read->render->re-emit verbatim; raw record unchanged",
+    "wall_s": 0.0028,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::S1 orient: Ready/Mine tabs, epic rail, store header \u2014 all vs same-moment readbacks",
+    "wall_s": 3.3424,
+    "timeout_s": 11
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::S10 inherited multi-blocker: x10 shows inherited g1,g2 (via p10) plus direct g3",
+    "wall_s": 15.1437,
+    "timeout_s": 46
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::S3 derived-blocked badge vs stored open + external close flips to ready on refresh",
+    "wall_s": 4.4006,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::S4 search reveals ancestor path; Enter lands in tree, back restores",
+    "wall_s": 1.0464,
+    "timeout_s": 4
+  },
+  {
+    "case": "tests/test_scenarios_a.mjs::model blockersFor: closed blocker drops out of list-sourced snapshots too (status resolved via snapshot record)",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_scenarios_b.mjs::S5 claim contention: second actor refused naming holder, readback assignee unchanged, UI never shows two assignees",
+    "wall_s": 4.8373,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_scenarios_b.mjs::S5 dead worker: lease lapses, reclaim --older-than returns it to open, another claim succeeds, UI never shows two assignees",
+    "wall_s": 312.1788,
+    "timeout_s": 937
+  },
+  {
+    "case": "tests/test_scenarios_c.mjs::S2 negative control (SCENARIO_NEGATIVE=1): Ready INCLUDES the claimed row",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_scenarios_c.mjs::S2: x-jump to the cross-branch blocker card, Esc restores the bundle byte-identical, draft survives, Save honestly unsupported",
+    "wall_s": 3.5528,
+    "timeout_s": 11
+  },
+  {
+    "case": "tests/test_scenarios_c.mjs::S6: external CLI edit surfaces a conflict; reload only after explicit confirm; save path honestly unsupported",
+    "wall_s": 1.923,
+    "timeout_s": 6
+  },
+  {
+    "case": "tests/test_scenarios_c.mjs::negative control harness: SCENARIO_NEGATIVE=1 child run exits nonzero naming the broken test",
+    "wall_s": 22.654,
+    "timeout_s": 68
+  },
+  {
+    "case": "tests/test_search.mjs::Enter lands IN the tree: focus+selection on the hit, ancestors expanded, history pushed, Back restores pre-search state incl. the query",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::Enter on an out-of-filter hit still lands in the tree (jump works without a list row)",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::REGRESSION: out-of-snapshot hit whose ancestors are ALL in the snapshot resolves root\u2192hit (unshift-order bug)",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::REVEAL ACCEPTANCE (hitVisible): Enter on an out-of-snapshot hit makes the ACTUAL hit row visible with correct ancestry; Back restores visible rows/filter/query/focus/expansion",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::REVEAL ACCEPTANCE (unknown parentage): a hit with no authoritative parent still becomes a visible row \u2014 never a crowned root, no invented parentage",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::REVEAL AUDIT (actual model state): Enter on an out-of-snapshot hit expands the real workbench, not just history claims",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::S4 equality: 'branch B' hits carry full parent-field paths; no per-hit native calls",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::SearchPanel: ArrowDown/ArrowUp move the cursor AND focus the hit; onKeyDown is wired",
+    "wall_s": 0.0013,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::a query that looks like an ID earns NO fallback lookup (exclusion: no ID-spelling inference)",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::bounded fallback resolves a missing ancestor: labeled, call-count bounded",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::fallback exhaustion surfaces a visible unavailable state \u2014 never a show loop",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::hit absent from the snapshot is revealed as unknown-hit via the fallback, visible on Back",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::missing parent from the bounded snapshot renders an explicit ancestor-missing state, no calls",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::native S4: real bd search hits enriched with snapshot paths; call-bound asserted; reparented no-dot case shows true path",
+    "wall_s": 8.6971,
+    "timeout_s": 27
+  },
+  {
+    "case": "tests/test_search.mjs::native fallback path: out-of-page ancestor resolved under budget, exhaustion stays visible",
+    "wall_s": 8.8067,
+    "timeout_s": 27
+  },
+  {
+    "case": "tests/test_search.mjs::out-of-snapshot hit's OWN parent comes from the authoritative showRead row",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::parent cycle terminates with an explicit marker \u2014 no infinite walk",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::query-level searchRead failure propagates visibly \u2014 never faked as an empty world",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::rendered Tree reveals native hit and Back restores rows and expansion",
+    "wall_s": 0.0092,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::reparented dotted-ID-less bead shows its TRUE path (no ID-spelling inference)",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::search requires the injected read facade, a snapshot, and refuses unbounded limits",
+    "wall_s": 0.001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::shared model traversal preserves ready-first root ordering",
+    "wall_s": 0.0011,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_search.mjs::truncation is explicit and visible: bound drops rows status-blind with a banner",
+    "wall_s": 0.0008,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_security.py::test_actor_tokens_refused",
+    "wall_s": 3.8,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_security.py::test_bad_actor_returns_fail_json_not_raise",
+    "wall_s": 3.7,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_security.py::test_claims_actor_gate_refused_without_spawn",
+    "wall_s": 0.1,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_security.py::test_control_catches_active_markup",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_control_gate_without_check_would_spawn",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_control_would_catch_truncation",
+    "wall_s": 7.8,
+    "timeout_s": 24
+  },
+  {
+    "case": "tests/test_security.py::test_dash_leading_comment_is_stored_verbatim",
+    "wall_s": 0.5,
+    "timeout_s": 2
+  },
+  {
+    "case": "tests/test_security.py::test_every_plugin_flag_is_known_to_the_gate",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_flag_named_id_cannot_redirect_a_close",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_gateway_flag_never_spoofable",
+    "wall_s": 0.2,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_security.py::test_handler_ignores_model_bd_bin",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_hostile_bead_id_returns_fail_json_not_raise",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_hostile_id_tokens_refused_before_spawn",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_inert_hostile_ids_spawn_but_change_nothing",
+    "wall_s": 1.8,
+    "timeout_s": 6
+  },
+  {
+    "case": "tests/test_security.py::test_legit_values_merely_containing_metachars_pass",
+    "wall_s": 0.6,
+    "timeout_s": 2
+  },
+  {
+    "case": "tests/test_security.py::test_list_rows_survive_verbatim",
+    "wall_s": 0.2,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_security.py::test_malformed_prefixes_refused",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_no_schema_exposes_bd_bin",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_plugin_paths_spawn_only_fixed_argv",
+    "wall_s": 1.7,
+    "timeout_s": 6
+  },
+  {
+    "case": "tests/test_security.py::test_render_is_inert_text",
+    "wall_s": 0.1,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_security.py::test_run_bd_wires_the_gate",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_show_roundtrips_verbatim",
+    "wall_s": 3.2,
+    "timeout_s": 10
+  },
+  {
+    "case": "tests/test_security.py::test_update_schema_description_lists_only_allowed_fields",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_security.py::test_update_with_illegal_field_returns_fail_json_not_raise",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_standalone.py::test_ast_scan_is_live_control",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_standalone.py::test_core_ast_scan_is_clean",
+    "wall_s": 0.1,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_standalone.py::test_full_native_loop_isolated_and_workflow_free",
+    "wall_s": 7.9,
+    "timeout_s": 24
+  },
+  {
+    "case": "tests/test_standalone.py::test_stock_bd_foreign_cwd_readbacks_match_plugin_loop",
+    "wall_s": 14.5,
+    "timeout_s": 44
+  },
+  {
+    "case": "tests/test_standalone.py::test_sysmodules_scan_is_live_control",
+    "wall_s": 8.6,
+    "timeout_s": 26
+  },
+  {
+    "case": "tests/test_telemetry.mjs::missing storeKey falls to 'unknown'; empty counts are never serialised",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_telemetry.mjs::records known events with storeKey, counts uses",
+    "wall_s": 0.001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_telemetry.mjs::ring is bounded and FIFO; EVENTS lists every instrumented pane",
+    "wall_s": 0.0036,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_telemetry.mjs::unknown event names are dropped, never recorded (no unbounded keys)",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::'?' overlay lists exactly the bound keys \u2014 no more, no fewer",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::1000-row cap: explicit partial-scope + load-more, never silent truncation",
+    "wall_s": 0.0056,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::ARIA tree contract: role tree/treeitem, aria-expanded/level/posinset/setsize consistent with the loaded set; roving tab stop; visible focus",
+    "wall_s": 0.0006,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::Browse exposes blocked and unassigned branches (Ready/Mine are not the only navigation)",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::P1: collapse then Alt+Back/Alt+Forward restores expansion in the RENDERED tree",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::P2: model initial.expanded is the tree's starting view (collapsed parents hide descendants, no tail re-emit)",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::P3: ui.toggleExpanded (the model's expansion API) drives the rendered tree",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::P4: ui.jump is a reveal primitive \u2014 jumping into a collapsed subtree renders the row",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::P4b: cursor on a previously-hidden row keeps exactly one tabbable + one aria-selected row",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::P6: buildTreeRows renders the same collapsed view as Tree, with per-parent posinset <= setsize",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::Tab onto the fallback tab stop, first ArrowDown moves FROM that row (real-Chrome finding: first arrow was swallowed)",
+    "wall_s": 0.001,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::app back/forward restore prior selection+focus context (Alt+Arrow bindings)",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::bounded 150-row refresh issues <=4 native queries",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::coalesced 2s auto-refresh: bursts collapse to one fetch; stale and error states surface",
+    "wall_s": 0.0007,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::controller executes exactly the bound commands; Tab exits without preventDefault; '?' toggles the overlay",
+    "wall_s": 0.0011,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::conventional tree arrows: Right expands then visits first child, Left collapses in place then visits parent, Home/End jump",
+    "wall_s": 0.0009,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::epic rows show progress counts matching native epic-status semantics (closed/total children)",
+    "wall_s": 0.0008,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::keymap is data: every binding resolves to its command without a human",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::native parity: Ready tab rows === `bd ready --exclude-type=epic`, Mine tab rows === `bd list --assignee`",
+    "wall_s": 10.397,
+    "timeout_s": 32
+  },
+  {
+    "case": "tests/test_tree.mjs::status renders glyph AND word; never glyph-only; unknown statuses verbatim with a distinct glyph",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::tab descriptors reproduce their bd commands verbatim (argv + display string)",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::text labels, not color alone: rows carry textual status + label; focus and selection separately labelled",
+    "wall_s": 0.0014,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::text-input focus swallows ALL letter keys (and bare keys generally); no shortcut interception in editors",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::tree rows render the hierarchy only: indent from parent-field depth, never ID-dot spelling",
+    "wall_s": 0.003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::warm parent/sibling/back navigation: zero native queries; only an explicit refresh queries",
+    "wall_s": 0.0011,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_tree.mjs::warm visual p95 <= 100ms on this test hardware (render + navigate, recorded host)",
+    "wall_s": 0.0402,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_visual.mjs::F1: exactly one stylesheet ships \u2014 workbench.css is byte-identical to WORKBENCH_CSS",
+    "wall_s": 0.0049,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_visual.mjs::F2: the stylesheet carries the accessibility floor",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_visual.mjs::F4-F7 field separation is structural, not paint-adjacent text",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_visual.mjs::blocked chip border meets 3:1 non-text contrast on white (real-Chrome finding: Mark fallback = yellow, 1.07:1)",
+    "wall_s": 0.0005,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_visual.mjs::layout: tree left, panels right, flex-wrap under 40rem",
+    "wall_s": 0.0003,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_visual.mjs::the shipped root renders the stylesheet exactly once (source truth)",
+    "wall_s": 0.0002,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_visual.mjs::theme tokens fall back to system colors; sizes are rem, never px widths",
+    "wall_s": 0.0004,
+    "timeout_s": 1
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_append_comment_needs_no_guard_flags",
+    "wall_s": 4.3,
+    "timeout_s": 13
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_at_least_the_known_write_sites_exist",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_claim_clobber_flags_never_built",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_description_replacement_disabled_by_default",
+    "wall_s": 3.0,
+    "timeout_s": 9
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_every_write_call_site_guarded_or_labelled",
+    "wall_s": 0.0,
+    "timeout_s": 0
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_guarded_status_group_writes_under_claim",
+    "wall_s": 4.7,
+    "timeout_s": 15
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_guardless_update_is_refused",
+    "wall_s": 2.9,
+    "timeout_s": 9
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_no_retry_on_guard_mismatch",
+    "wall_s": 5.2,
+    "timeout_s": 16
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_one_command_per_field_group",
+    "wall_s": 4.6,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_opt_in_is_explicit_and_goes_through_guards",
+    "wall_s": 3.9,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_opt_in_never_promises_no_lost_update",
+    "wall_s": 2.8,
+    "timeout_s": 9
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_r1_correct_guard_writes_and_readback_confirms",
+    "wall_s": 5.5,
+    "timeout_s": 17
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_r1_mismatch_yields_stale_and_byte_identical_bead",
+    "wall_s": 3.8,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_stale_after_takeover_maps_to_stale_with_current_holder",
+    "wall_s": 4.6,
+    "timeout_s": 14
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_stale_tells_parent_via_append_only_comment",
+    "wall_s": 6.3,
+    "timeout_s": 19
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_title_replacement_disabled_by_default",
+    "wall_s": 3.9,
+    "timeout_s": 12
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_u4_correct_guard_writes_and_readback_confirms",
+    "wall_s": 3.4,
+    "timeout_s": 11
+  },
+  {
+    "case": "tests/test_write_protocol.py::test_u4_mismatch_yields_stale_and_byte_identical_bead",
+    "wall_s": 4.1,
+    "timeout_s": 13
+  }
+]
