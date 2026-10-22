@@ -36,7 +36,7 @@ from pathlib import Path
 CONTRACT_REPO = 'jacobhausler/estate-ci'
 CONTRACT_FILE = '.github/workflows/estate-ci.yml'
 SELF_YML = Path('.github') / 'workflows' / 'estate-ci-observe.yml'
-PIN_RE = re.compile(r'^[ \t]*#[ \t]*ci-contract:[ \t]*estate-ci@(v\d+(?:\.\d+){0,2})[ \t]*$', re.M)
+PIN_RE = re.compile(r'^[ \t]*#[ \t]*ci-contract:[ \t]*(?:[\w.-]+/)?estate-ci@(v\d+(?:\.\d+){0,2})[ \t]*$', re.M)
 USES_RE = re.compile(r'uses:\s*jacobhausler/estate-ci/\.github/workflows/estate-ci\.yml@(\S+)')
 IN_VARS = ('IN_LEGS', 'IN_COMPONENTS', 'IN_SHARDS', 'IN_LANE_CAP_S',
            'IN_BUDGET', 'IN_PATHS', 'IN_ARTIFACT_GATE')

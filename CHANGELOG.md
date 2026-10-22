@@ -12,7 +12,7 @@ The format follows Keep-a-Changelog; versions follow SemVer.
 * `scripts/registry_observe.py` + committed `tests/registry.json` — burn-token registry {case, tier, burn, order_group, after}. hb prints no per-case burn token, so burn = observed wall_s (documented; P2's b9s-native token replaces at the recut). T2 set = scenario .mjs files + fixture-lifecycle py tests + standalone live readbacks (TIERS hb row); no ordering teeth named here.
 * `scripts/md_inputs_observe.py` + committed `tests/md_inputs.txt` — .md paths test sources reference as inputs; names two real ones (README.md, docs/install.md — the install-docs gate reads them).
 * `scripts/ci_preflight_observe.py` — fetches the pinned contract's shipped preflight at the pin SHA and runs it against this repo's inputs; verdict to log only. `tests/test_ci_hygiene.py` untouched.
-* `.github/workflows/estate-ci-observe.yml` — OBSERVE-MODE preflight workflow carrying the `# ci-contract: estate-ci@v1` pin line. NOT a required check; the contract-call job is `if: false` (never executes, writes no status). `ci.yml` (the live gates) is untouched except the additive ledger line below.
+* `.github/workflows/estate-ci-observe.yml` — OBSERVE-MODE preflight workflow carrying the `# ci-contract: jacobhausler/estate-ci@v1` pin line and the seven-knob P2 caller (`if: false`). NOT a required check; the contract-call job never executes, writes no status. `ci.yml` (the live gates) is untouched except the additive ledger line below.
 * `ci.yml` gates rollup additionally echoes `run_attempt=${{ github.run_attempt }}` (additive ledger field; existing output untouched — P1 (e)).
 
 ## [0.1.2] — 2026-10-02
