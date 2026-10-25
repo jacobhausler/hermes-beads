@@ -5,6 +5,28 @@ The format follows Keep-a-Changelog; versions follow SemVer.
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-10-25
+
+CI-matrix and standards release: parallel floor/tip provisioning legs,
+nextgen-ci observe instruments, and standards-parity docs. Zero plugin runtime
+surface changed since v0.1.2 (`beads/`, `__init__.py`, `desktop/` untouched) —
+tooling and documentation only.
+
+### CI
+- Provisioning legs: floor (python 3.12, hermes v2026.9.24 pin) + tip (python
+  3.14, hermes v0.22.2 pin), each owning its (interpreter, core-pin) pair — no
+  single interpreter can serve both contract ends. (PR #19, @jacobhausler)
+- The two legs run as a parallel matrix behind the single required `gates`
+  check: wall time is max(leg) + aggregate, not the serial sum. (PR #20, @jacobhausler)
+- pr-compliance diagram-check gate and the pr-diagram PR template installed on
+  main (pushes `b44464d`, `5e9748e`); v0.3 C8 teeth mirror. (PR #18, @jacobhausler)
+
+### Docs
+- CONTRIBUTING.md + SECURITY.md — standards parity with the estate plugin repos.
+  (PR #14, @jacobhausler)
+- R5 clarified: a version bump is required for PUBLIC releases only — it is
+  never a gate on local dogfood installs. (PR #15, @jacobhausler)
+
 ### Added — nextgen-ci P1 observe-mode instruments (observe only; zero merge-path behavior change)
 
 * `tests/budget.json` — budget at the interim section-(b) numbers (580 / 30 / 132), `basis` field says 'interim; recut at observe week'. Nothing reads it yet.
