@@ -182,6 +182,73 @@ class RealStoreSmoke(unittest.TestCase):
         self.assertEqual(cm.exception.exit_code, 1)
 
 
+class StoreSelectionPrecedence(unittest.TestCase):
+    """Ruling hermes-beads#23 (option A): an explicit `workspace` selects
+    the store independently of inherited store selectors, while bd's own
+    cwd discovery — including intentional .beads/redirect — keeps working.
+    """
+
+    def setUp(self):
+        self.saved_dir = os.environ.pop("BEADS_DIR", None)
+        self.saved_db = os.environ.pop("BEADS_DB", None)
+
+    def tearDown(self):
+        for key, val in (("BEADS_DIR", self.saved_dir),
+                         ("BEADS_DB", self.saved_db)):
+            if val is not None:
+                os.environ[key] = val
+            else:
+                os.environ.pop(key, None)
+
+    def test_beads_dir_decoy_cannot_reroute_an_explicit_workspace(self):
+        real = make_store()
+        decoy = make_store()
+        real_id = seed(real, "row in the named workspace")
+        decoy_id = seed(decoy, "row in the decoy store")
+        os.environ["BEADS_DIR"] = os.path.join(decoy, ".beads")
+        # read path: the named workspace answers, the decoy store does not
+        code, rows, _ = native.run_bd(["list", "--json", "--all"],
+                                      workspace=real, bd_bin=BD_BIN,
+                                      readonly=True)
+        ids = {r["id"] for r in rows}
+        self.assertEqual(code, 0)
+        self.assertIn(real_id, ids)
+        self.assertNotIn(decoy_id, ids)
+        # write path: a mutation lands in the validated store, not the decoy
+        native.run_bd(["create", "written via scrubbed call", "--json"],
+                      workspace=real, bd_bin=BD_BIN)
+        _, decoy_rows, _ = native.run_bd(["list", "--json", "--all"],
+                                         workspace=decoy, bd_bin=BD_BIN,
+                                         readonly=True)
+        self.assertNotIn("written via scrubbed call", json.dumps(decoy_rows))
+        _, real_rows, _ = native.run_bd(["list", "--json", "--all"],
+                                        workspace=real, bd_bin=BD_BIN,
+                                        readonly=True)
+        self.assertIn("written via scrubbed call", json.dumps(real_rows))
+
+    def test_workspace_redirect_to_shared_store_survives_decoy_env(self):
+        # Author constraint check: the workspace's own .beads/redirect (the
+        # sanctioned shared-store mechanism) must still bind the call, even
+        # while BEADS_DIR points at a decoy.
+        shared = make_store()
+        shared_id = seed(shared, "row in the shared store")
+        decoy = make_store()
+        seed(decoy, "decoy row")
+        workdir = tempfile.mkdtemp(dir=FIXTURE_ROOT)
+        subprocess.run(["git", "init", "-q", "."], cwd=workdir, check=True,
+                       capture_output=True)
+        os.makedirs(os.path.join(workdir, ".beads"))
+        with open(os.path.join(workdir, ".beads", "redirect"), "w") as fh:
+            fh.write(os.path.join(shared, ".beads") + "\n")
+        os.environ["BEADS_DIR"] = os.path.join(decoy, ".beads")
+        code, rows, _ = native.run_bd(["list", "--json", "--all"],
+                                      workspace=workdir, bd_bin=BD_BIN,
+                                      readonly=True)
+        ids = {r["id"] for r in rows}
+        self.assertEqual(code, 0)
+        self.assertIn(shared_id, ids)
+
+
 if __name__ == "__main__":
     os.makedirs(FIXTURE_ROOT, exist_ok=True)
     unittest.main(verbosity=2)
