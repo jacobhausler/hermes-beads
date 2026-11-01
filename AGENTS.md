@@ -26,7 +26,14 @@ tests/                 stdlib unittest + node:test suites; fixtures/ seeds helpe
 
 1. **One spawn point.** All bd access goes through `beads/native.py:run_bd`
    with a fixed argv list, an explicit store path, and an explicit `--actor`
-   for writes. Never `shell=True`, never string-built commands. New flags must
+   for writes. Never `shell=True`, never string-built commands. The explicit
+   workspace is the store selector: `run_bd` strips bd's cwd-independent
+   store-path selectors (`BEADS_DIR`, `BEADS_DB`) from the child env so a call
+   can never validate one store and act on another, and leaves bd's own cwd
+   discovery — `.beads/redirect` included — in charge of what that workspace
+   resolves to. Backend config that talks to the resolved store (e.g.
+   `BEADS_DOLT_SERVER_HOST`/`_PORT`, credentials) passes through untouched.
+   New flags must
    be registered in the argv gate (`_VALUE_FLAGS`/`_BOOL_FLAGS`) — the
    security suite fails otherwise.
 2. **Honest exit codes.** 0 ok, 1 failure, 13 stale guard (nothing written —

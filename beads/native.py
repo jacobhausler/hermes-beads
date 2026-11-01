@@ -9,6 +9,16 @@ Contract ( / N0):
     path/ID/label values as separate argv entries; nothing is shell-interpolated.
   - Every invocation binds an explicit canonical workspace (cwd=) and, for
     mutations and audit-relevant reads, an explicit --actor.
+  - Store selection (ruling hermes-beads#23): the explicit `workspace` IS the
+    store selector. bd's cwd-independent store-path selectors (BEADS_DIR, and
+    its deprecated sibling BEADS_DB) win over cwd inside bd itself, so run_bd
+    strips them from the child env; otherwise a call that validates one store
+    would silently act on another. Store resolution then rides bd's own cwd
+    discovery, which keeps intentional `.beads/redirect` files and shared-store
+    setups working (they are workspace-local facts, not inherited env).
+    Backend-internal operator config (e.g. BEADS_DOLT_SERVER_HOST/_PORT and
+    credentials) talks to the resolved store, not which store, and passes
+    through untouched.
   - JSON is parsed from stdout; a nonzero exit is honored regardless of whether
     stdout parses (a pipe-masked exit-1 must not become an empty success).
   - Exit-code map (observed bd 1.3.0): 0 ok | 1 general failure | 13 stale
@@ -24,6 +34,21 @@ import shutil
 import subprocess
 
 DEFAULT_TIMEOUT = 30
+
+# Store-path selectors bd reads from the environment before it ever looks at
+# cwd (bd >= 1.3: BEADS_DIR beats cwd in findLocalBeadsDir; BEADS_DB is the
+# deprecated sibling). run_bd strips these so an explicit `workspace` cannot
+# be silently re-routed to a different store — see the module docstring
+# (ruling hermes-beads#23).
+_STORE_SELECTOR_ENV = ("BEADS_DIR", "BEADS_DB")
+
+
+def _store_scoped_env():
+    """os.environ minus the cwd-independent store-path selectors."""
+    env = dict(os.environ)
+    for key in _STORE_SELECTOR_ENV:
+        env.pop(key, None)
+    return env
 
 # ---- fixed-argv security boundary ------------------------------------
 # run_bd is the single spawn point. There is no shell, so shell metachars,
@@ -156,6 +181,11 @@ def run_bd(argv_prefix, *, workspace, bd_bin="bd", readonly=False, actor=None,
     (paths, IDs, labels) are separate entries — never a composed shell string.
     Returns (exit_code, parsed_json_or_None, stderr). Raises the named errors
     above; a missing binary never degrades into an empty result.
+
+    `workspace` selects the store: inherited store-path selectors
+    (BEADS_DIR/BEADS_DB) are stripped from the child env for this call, so
+    the validated workspace is always the store that acts (ruling
+    hermes-beads#23). Without `workspace` there is no run_bd.
     """
     if not isinstance(argv_prefix, list) or not all(isinstance(t, str) for t in argv_prefix):
         raise ValueError("argv_prefix must be a list of str tokens (fixed argv)")
@@ -175,7 +205,8 @@ def run_bd(argv_prefix, *, workspace, bd_bin="bd", readonly=False, actor=None,
     argv += argv_prefix
 
     try:
-        proc = subprocess.run(argv, cwd=workspace, capture_output=True,
+        proc = subprocess.run(argv, cwd=workspace, env=_store_scoped_env(),
+                              capture_output=True,
                               text=True, shell=False, timeout=timeout)
     except FileNotFoundError as exc:
         raise BdNotFoundError(bd_bin, argv) from exc

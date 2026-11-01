@@ -84,7 +84,15 @@ Two rules fall out of that picture:
 - **Everything crosses one boundary.** `beads/native.py` is the only place a
   process spawns. Fixed argv, an explicit store path and actor every time, and
   an exit-code map that mirrors what bd actually does — so a masked failure
-  can't turn into a quiet "success".
+  can't turn into a quiet "success". The explicit workspace is also the store
+  selector: `run_bd` strips bd's cwd-independent store-path selectors
+  (`BEADS_DIR`, and its deprecated sibling `BEADS_DB`) from the child env, so
+  a call can never validate one store and silently act on another. Which store
+  the workspace names is still bd's own answer — cwd discovery, including an
+  intentional `.beads/redirect` to a shared store, keeps working untouched
+  (ruling on #23). Backend configuration that talks to the store the workspace
+  already resolved (`BEADS_DOLT_SERVER_HOST`/`_PORT`, credentials) passes
+  through untouched.
 - **The pane is a view, not a writer.** Reads arrive injected; anything that
   mutates goes through the plugin door or refuses visibly. Delete the plugin
   directory and your beads are exactly as reachable by `bd` as before.
